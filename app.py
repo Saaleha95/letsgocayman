@@ -106,6 +106,10 @@ def api_users():
         } for u in users]
     })
 
+@app.route('/ping')
+def ping():
+    return jsonify({'status': 'ok'}), 200
+
 
 # ── WEBPAGE ────────────────────────────────────────────────
 @app.route('/users')
