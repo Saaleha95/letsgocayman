@@ -21,7 +21,7 @@ class User(db.Model):
     id           = db.Column(db.Integer, primary_key=True)
     username     = db.Column(db.String(80), unique=True, nullable=False)
     full_name    = db.Column(db.String(120), nullable=False)
-    phone_number = db.Column(db.String(15), nullable=False)
+    phone_number = db.Column(db.String(20), nullable=False)  # ← changed
     password     = db.Column(db.String(200), nullable=False)
     created_at   = db.Column(db.DateTime, default=datetime.utcnow)
 
