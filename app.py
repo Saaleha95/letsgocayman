@@ -79,6 +79,10 @@ def login():
     }}), 200
 
 
+@app.route('/ping')
+def ping():
+    return jsonify({'status': 'ok'}), 200
+
 # ── DELETE USER ────────────────────────────────────────────
 @app.route('/api/users/<int:user_id>', methods=['DELETE'])
 def delete_user(user_id):
