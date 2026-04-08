@@ -1835,52 +1835,298 @@ def tracking_position(token):
                     'busId': sess.bus_id, 'updatedAt': sess.updated_at.isoformat() if sess.updated_at else None})
 
 
+
+
+CAYMAN_ROUTES = [
+    # ── West Bay Routes ─────────────────────────────────────────────────────
+    {
+        'route_number': 'WB1',
+        'name': 'Seven Mile Beach – Northwest Point – Turtle Centre',
+        'color': '#F5C518',
+        'frequency': 'Every 2–5 minutes',
+        'description': 'Seven Mile Beach (SMB) • Northwest Point • Cayman Turtle Centre • Ed Bush Stadium',
+        'stops': [
+            ('George Town Depot',           19.2869, -81.3797),
+            ('George Town Harbour',         19.2900, -81.3850),
+            ('Seven Mile Beach South',      19.3044, -81.3939),
+            ('Camana Bay',                  19.3175, -81.3982),
+            ('Seven Mile Beach North',      19.3340, -81.3894),
+            ('Governors Square',            19.3480, -81.3870),
+            ('Ed Bush Stadium',             19.3560, -81.3820),
+            ('Cayman Turtle Centre',        19.3712, -81.3789),
+            ('Northwest Point',             19.3800, -81.3900),
+            ('Hell',                        19.3744, -81.4028),
+            ('West Bay Square',             19.3680, -81.3950),
+        ]
+    },
+    {
+        'route_number': 'WB2',
+        'name': 'Seven Mile Beach – Watercourse Road – Hell',
+        'color': '#4CAF50',
+        'frequency': 'Every 2–5 minutes',
+        'description': 'Seven Mile Beach (SMB) • Watercourse Road • Cayman Turtle Centre • Hell',
+        'stops': [
+            ('George Town Depot',           19.2869, -81.3797),
+            ('George Town Harbour',         19.2900, -81.3850),
+            ('Seven Mile Beach South',      19.3044, -81.3939),
+            ('Camana Bay',                  19.3175, -81.3982),
+            ('Seven Mile Beach North',      19.3340, -81.3894),
+            ('Watercourse Road',            19.3550, -81.4050),
+            ('Cayman Turtle Centre',        19.3712, -81.3789),
+            ('Hell',                        19.3744, -81.4028),
+        ]
+    },
+    {
+        'route_number': 'WB3',
+        'name': 'Owen Roberts Drive – Industrial Park – SMB – Barkers',
+        'color': '#9C27B0',
+        'frequency': 'Every 15 minutes',
+        'description': 'Owen Roberts Drive • Industrial Park • Seven Mile Beach (SMB) • Esterley Tibbetts Hwy • Cayman Turtle Centre • Mount Pleasant • Barkers',
+        'stops': [
+            ('George Town Depot',           19.2869, -81.3797),
+            ('Owen Roberts Drive',          19.2930, -81.3720),
+            ('Industrial Park',             19.2980, -81.3680),
+            ('Seven Mile Beach South',      19.3044, -81.3939),
+            ('Camana Bay',                  19.3175, -81.3982),
+            ('Esterley Tibbetts Hwy',       19.3400, -81.4000),
+            ('Mount Pleasant',              19.3550, -81.4100),
+            ('Cayman Turtle Centre',        19.3712, -81.3789),
+            ('Barkers',                     19.3820, -81.4150),
+        ]
+    },
+
+    # ── North / Interior Routes ──────────────────────────────────────────────
+    {
+        'route_number': '4A',
+        'name': 'Walkers Road – Fairbanks Road – Hospitals',
+        'color': '#00BCD4',
+        'frequency': 'Every 30 minutes',
+        'description': 'Walkers Road • Fairbanks Road • Hospitals • Schools',
+        'stops': [
+            ('George Town Depot',           19.2869, -81.3797),
+            ('Walkers Road',                19.2800, -81.3650),
+            ('Fairbanks Road',              19.2750, -81.3500),
+            ('Health City / Hospitals',     19.2900, -81.3300),
+            ('Schools Complex',             19.2950, -81.3200),
+        ]
+    },
+
+    # ── East End Routes ──────────────────────────────────────────────────────
+    {
+        'route_number': '7A',
+        'name': 'Wreck of the Ten Sails – Queens Hwy – East End',
+        'color': '#FF5722',
+        'frequency': 'Every 5–10 minutes',
+        'description': 'Wreck of the Ten Sails • Queens High Way • East End • Lovers Wall • The Blow Holes',
+        'stops': [
+            ('George Town Depot',           19.2869, -81.3797),
+            ('George Town Harbour',         19.2900, -81.3850),
+            ('Red Bay',                     19.2920, -81.3400),
+            ('Prospect',                    19.2936, -81.3339),
+            ('Savannah',                    19.2897, -81.2800),
+            ('Newlands',                    19.2850, -81.2500),
+            ('Bodden Town',                 19.2842, -81.2528),
+            ('Lookout Gardens',             19.2900, -81.2000),
+            ('Breakers',                    19.2819, -81.1747),
+            ('Frank Sound',                 19.3100, -81.1500),
+            ('Botanic Park',                19.3200, -81.1300),
+            ('East End',                    19.3036, -81.0914),
+            ('Lovers Wall',                 19.3000, -81.0700),
+            ('The Blow Holes',              19.2950, -81.0600),
+            ('Wreck of the Ten Sails',      19.2880, -81.0500),
+            ('Gun Bay',                     19.2950, -81.0800),
+        ]
+    },
+    {
+        'route_number': '7B',
+        'name': 'Walkers Rd – Smith Cove – South Sound – East End',
+        'color': '#FF9800',
+        'frequency': 'Every 30 minutes',
+        'description': 'Walkers Rd • Smith Cove • South Sound Dock • Rex Crighton Hwy • Oleander Drive • East End • Queens Hwy',
+        'stops': [
+            ('George Town Depot',           19.2869, -81.3797),
+            ('Walkers Road',                19.2800, -81.3650),
+            ('Smith Cove',                  19.2750, -81.3850),
+            ('South Sound',                 19.2700, -81.3700),
+            ('South Sound Dock',            19.2650, -81.3600),
+            ('Rex Crighton Hwy',            19.2700, -81.3300),
+            ('Oleander Drive',              19.2800, -81.3000),
+            ('Newlands',                    19.2850, -81.2500),
+            ('Bodden Town',                 19.2842, -81.2528),
+            ('East End',                    19.3036, -81.0914),
+            ('Queens Highway',              19.3000, -81.1000),
+        ]
+    },
+
+    # ── North Side Routes ────────────────────────────────────────────────────
+    {
+        'route_number': '8A',
+        'name': 'Cayman Kai – Starfish Point – North Side – Hutland – Rum Point',
+        'color': '#E91E63',
+        'frequency': 'Every 30 minutes',
+        'description': 'Cayman Kai • Star Fish Point • North Side • Hutland • Rum Point',
+        'stops': [
+            ('George Town Depot',           19.2869, -81.3797),
+            ('Frank Sound Road',            19.3289, -81.1444),
+            ('North Side',                  19.3669, -81.1533),
+            ('Hutland',                     19.3800, -81.1800),
+            ('Old Man Bay',                 19.3900, -81.2200),
+            ('Rum Point',                   19.4100, -81.2500),
+            ('Starfish Point',              19.3950, -81.2600),
+            ('Cayman Kai',                  19.3850, -81.2700),
+        ]
+    },
+    {
+        'route_number': '8B',
+        'name': 'Walkers Rd – Smith Cove – South Sound – Frank Sound – Cayman Kai',
+        'color': '#3F51B5',
+        'frequency': 'Every 30 minutes',
+        'description': 'Walkers Rd • Smith Cove • South Sound Dock • Cleander Drive • Frank Sound • Cayman Kai',
+        'stops': [
+            ('George Town Depot',           19.2869, -81.3797),
+            ('Walkers Road',                19.2800, -81.3650),
+            ('Smith Cove',                  19.2750, -81.3850),
+            ('South Sound',                 19.2700, -81.3700),
+            ('South Sound Dock',            19.2650, -81.3600),
+            ('Cleander Drive',              19.2800, -81.3000),
+            ('Frank Sound',                 19.3100, -81.1500),
+            ('Cayman Kai',                  19.3850, -81.2700),
+        ]
+    },
+
+    # ── Queens Highway / Far East ────────────────────────────────────────────
+    {
+        'route_number': '9A',
+        'name': 'Queens Highway – Gun Bay – Frank Sound – Botanic Park',
+        'color': '#009688',
+        'frequency': 'Every 5–10 minutes',
+        'description': 'Queens Highway • Gun Bay • Frank Sound • Botanic Park • Mastic Trail',
+        'stops': [
+            ('George Town Depot',           19.2869, -81.3797),
+            ('Red Bay',                     19.2920, -81.3400),
+            ('Prospect',                    19.2936, -81.3339),
+            ('Savannah',                    19.2897, -81.2800),
+            ('Bodden Town',                 19.2842, -81.2528),
+            ('Breakers',                    19.2819, -81.1747),
+            ('East End',                    19.3036, -81.0914),
+            ('Gun Bay',                     19.2950, -81.0800),
+            ('Frank Sound',                 19.3100, -81.1500),
+            ('Botanic Park',                19.3200, -81.1300),
+            ('Mastic Trail',                19.3300, -81.1600),
+        ]
+    },
+]
+
 @app.route('/api/buses/coordinates', methods=['GET'])
 def buses_coordinates():
-    wb1_stops = [
-        {"id": "WB1-S01", "name": "George Town Depot",        "lat": 19.2869, "lng": -81.3745, "type": "stop", "route": "WB1"},
-        {"id": "WB1-S02", "name": "Industrial Park",          "lat": 19.2921, "lng": -81.3798, "type": "stop", "route": "WB1"},
-        {"id": "WB1-S03", "name": "Seven Mile Beach (South)", "lat": 19.3100, "lng": -81.3851, "type": "stop", "route": "WB1"},
-        {"id": "WB1-S04", "name": "Galleria Plaza / SMB",     "lat": 19.3261, "lng": -81.3849, "type": "stop", "route": "WB1"},
-        {"id": "WB1-S05", "name": "Camana Bay",                "lat": 19.3209, "lng": -81.3900, "type": "stop", "route": "WB1"},
-        {"id": "WB1-S06", "name": "Foster's Food Fair (WB)",  "lat": 19.3185, "lng": -81.3869, "type": "stop", "route": "WB1"},
-        {"id": "WB1-S07", "name": "Seven Mile Beach (North)", "lat": 19.3420, "lng": -81.3928, "type": "stop", "route": "WB1"},
-        {"id": "WB1-S08", "name": "Public Beach",             "lat": 19.3573, "lng": -81.3960, "type": "stop", "route": "WB1"},
-        {"id": "WB1-S09", "name": "West Bay Town Centre",     "lat": 19.3548, "lng": -81.4041, "type": "stop", "route": "WB1"},
-        {"id": "WB1-S10", "name": "West Bay Police Station",  "lat": 19.3541, "lng": -81.4071, "type": "landmark", "route": "WB1",
-         "subtype": "police", "description": "Royal Cayman Islands Police Service — West Bay"},
-        {"id": "WB1-S11", "name": "Cayman Turtle Centre",     "lat": 19.3680, "lng": -81.4056, "type": "stop", "route": "WB1"},
-        {"id": "WB1-S12", "name": "Hell",                     "lat": 19.3667, "lng": -81.4103, "type": "stop", "route": "WB1"},
-        {"id": "WB1-S13", "name": "North West Point",         "lat": 19.3714, "lng": -81.4113, "type": "stop", "route": "WB1"},
-    ]
+
+    # ── Build Routes from CAYMAN_ROUTES ───────────────────────────────
+    all_routes = []
+
+    for route in CAYMAN_ROUTES:
+        stops = []
+        path = []
+
+        for i, (name, lat, lng) in enumerate(route['stops']):
+            stop = {
+                "id": f"{route['route_number']}-S{i+1:02}",
+                "name": name,
+                "lat": lat,
+                "lng": lng,
+                "type": "stop",
+                "route": route['route_number']
+            }
+            stops.append(stop)
+            path.append([lat, lng])
+
+        all_routes.append({
+            "route": route['route_number'],
+            "routeName": route['name'],
+            "color": route['color'],
+            "frequency": route['frequency'],
+            "description": route['description'],
+            "stops": stops,
+            "path": path
+        })
+
+    # ── CaymanBus (Island Loop from West Bay Police Station) ──────────
+    cayman_bus = {
+        "route": "CAYMANBUS",
+        "routeName": "Cayman Island Loop",
+        "color": "#000000",
+        "frequency": "Loop",
+        "description": "Full island loop starting at West Bay Police Station",
+        "stops": [
+            {
+                "id": "CB-S01",
+                "name": "West Bay Police Station",
+                "lat": 19.3541,
+                "lng": -81.4071,
+                "type": "landmark",
+                "subtype": "police",
+                "route": "CAYMANBUS"
+            }
+        ],
+        "path": [
+            [19.3541, -81.4071],
+            [19.3420, -81.3928],
+            [19.3175, -81.3982],
+            [19.2869, -81.3797],
+            [19.2700, -81.3700],
+            [19.2800, -81.3300],
+            [19.2842, -81.2528],
+            [19.2819, -81.1747],
+            [19.3036, -81.0914],
+            [19.2950, -81.0800],
+            [19.3100, -81.1500],
+            [19.3669, -81.1533],
+            [19.4100, -81.2500],
+            [19.3850, -81.2700],
+            [19.3600, -81.4000],
+        ],
+        "type": "loop"
+    }
+
+    all_routes.append(cayman_bus)
+
+    # ── Landmarks ────────────────────────────────────────────────────
     landmarks = [
-        {"id": "LM-POL-WB", "name": "West Bay Police Station",     "lat": 19.3541, "lng": -81.4071, "type": "landmark", "subtype": "police", "route": None},
-        {"id": "LM-POL-GT", "name": "George Town Police Station",  "lat": 19.2894, "lng": -81.3744, "type": "landmark", "subtype": "police", "route": None},
-        {"id": "LM-POL-BT", "name": "Bodden Town Police Station",  "lat": 19.2768, "lng": -81.2614, "type": "landmark", "subtype": "police", "route": None},
-        {"id": "LM-HOSP",   "name": "Health City Cayman Islands",  "lat": 19.3188, "lng": -81.2228, "type": "landmark", "subtype": "hospital", "route": None},
-        {"id": "LM-HOSP-GT","name": "Cayman Islands Hospital (GT)","lat": 19.3020, "lng": -81.3851, "type": "landmark", "subtype": "hospital", "route": None},
+        {"id": "LM-POL-WB", "name": "West Bay Police Station", "lat": 19.3541, "lng": -81.4071, "type": "landmark", "subtype": "police"},
+        {"id": "LM-POL-GT", "name": "George Town Police Station", "lat": 19.2894, "lng": -81.3744, "type": "landmark", "subtype": "police"},
+        {"id": "LM-POL-BT", "name": "Bodden Town Police Station", "lat": 19.2768, "lng": -81.2614, "type": "landmark", "subtype": "police"},
+        {"id": "LM-HOSP", "name": "Health City Cayman Islands", "lat": 19.3188, "lng": -81.2228, "type": "landmark", "subtype": "hospital"},
+        {"id": "LM-HOSP-GT", "name": "Cayman Islands Hospital (GT)", "lat": 19.3020, "lng": -81.3851, "type": "landmark", "subtype": "hospital"},
     ]
+
+    # ── Live Buses (unchanged) ───────────────────────────────────────
     live_buses = []
     for s in TrackingSession.query.filter_by(active=True).all():
         try:
             live_buses.append({
-                "id": f"LIVE-{s.token}", "name": f"Bus {s.bus_id} ({s.username})",
-                "lat": float(s.lat), "lng": float(s.lng),
-                "type": "live_bus", "route": s.route_id,
-                "busId": s.bus_id, "busName": s.bus_name, "username": s.username,
+                "id": f"LIVE-{s.token}",
+                "name": f"Bus {s.bus_id} ({s.username})",
+                "lat": float(s.lat),
+                "lng": float(s.lng),
+                "type": "live_bus",
+                "route": s.route_id,
+                "busId": s.bus_id,
+                "busName": s.bus_name,
+                "username": s.username,
                 "updatedAt": s.updated_at.isoformat() if s.updated_at else None,
                 "trackUrl": f"https://www.letsgocayman.com/track/{s.token}",
             })
         except (ValueError, TypeError):
             pass
 
+    # ── Final Response ───────────────────────────────────────────────
     return jsonify({
-        "route": "WB1", "routeName": "West Bay Route 1",
-        "stops": wb1_stops, "landmarks": landmarks, "liveBuses": live_buses,
-        "total": len(wb1_stops) + len(landmarks) + len(live_buses),
+        "routes": all_routes,
+        "landmarks": landmarks,
+        "liveBuses": live_buses,
+        "totalRoutes": len(all_routes),
+        "totalStops": sum(len(r["stops"]) for r in all_routes),
         "generatedAt": datetime.utcnow().isoformat() + "Z",
     }), 200
-
 
 @app.route('/api/safety/sos/<token>/resolve', methods=['POST'])
 def resolve_sos(token):
