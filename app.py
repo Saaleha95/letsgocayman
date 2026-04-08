@@ -98,6 +98,25 @@ class EmergencyContact(db.Model):
     created_at   = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at   = db.Column(db.DateTime, default=datetime.utcnow)
 
+
+class SMSLog(db.Model):
+    """Logs every outbound SMS sent by the server for admin visibility."""
+    id           = db.Column(db.Integer, primary_key=True)
+    username     = db.Column(db.String(80), default='')       # rider who triggered it
+    to_phone     = db.Column(db.String(30), nullable=False)   # recipient number
+    message_type = db.Column(db.String(40), default='general') # sos / journey_share / offline / general
+    route_id     = db.Column(db.String(20), default='')
+    bus_id       = db.Column(db.String(40), default='')
+    bus_name     = db.Column(db.String(120), default='')
+    eta_minutes  = db.Column(db.Integer, default=0)
+    lat          = db.Column(db.String(20), default='')
+    lng          = db.Column(db.String(20), default='')
+    track_url    = db.Column(db.String(200), default='')
+    body_preview = db.Column(db.String(200), default='')      # first 200 chars of message
+    sent         = db.Column(db.Boolean, default=False)
+    twilio_detail= db.Column(db.String(200), default='')
+    created_at   = db.Column(db.DateTime, default=datetime.utcnow)
+
 with app.app_context():
     db.create_all()
 
@@ -121,6 +140,8 @@ ADMIN_STYLE = """
   .admin-nav .nav-links a:hover,.admin-nav .nav-links a.active{background:rgba(245,197,24,.1);color:var(--gold);text-decoration:none}
   .admin-nav .nav-links a.sos-link{color:#f87171}
   .admin-nav .nav-links a.sos-link:hover,.admin-nav .nav-links a.sos-link.active{background:rgba(239,68,68,.12);color:#ef4444}
+  .admin-nav .nav-links a.sms-link{color:#818cf8}
+  .admin-nav .nav-links a.sms-link:hover,.admin-nav .nav-links a.sms-link.active{background:rgba(129,140,248,.12);color:#818cf8}
   .admin-nav .logout{color:#8b949e;font-size:13px;padding:6px 14px;border-radius:8px;border:1px solid #30363d;transition:all .2s}
   .admin-nav .logout:hover{border-color:var(--red);color:var(--red);text-decoration:none}
 
@@ -212,6 +233,7 @@ def nav_html(active='users'):
         <a href="/users" class="{'active' if active=='users' else ''}">Users</a>
         <a href="/community-reports" class="{'active' if active=='community' else ''}">Community Reports</a>
         <a href="/admin/sos-alerts" class="sos-link {'active' if active=='sos' else ''}">🆘 SOS Alerts</a>
+        <a href="/admin/sms-alerts" class="sms-link {'active' if active=='sms' else ''}">💬 SMS Alerts</a>
         <a href="/admin/settings" class="{'active' if active=='settings' else ''}">Settings</a>
         <a href="/" style="margin-left:4px">← Site</a>
       </div>
@@ -1486,7 +1508,13 @@ def upvote_report(report_id):
 
 
 # ── TWILIO HELPER ──────────────────────────────────────────
-def _send_twilio(to_number, message_body):
+def _send_twilio(to_number, message_body, log_meta=None):
+    """Send SMS via Twilio and log to SMSLog table.
+
+    log_meta (optional dict) keys:
+      username, message_type, route_id, bus_id, bus_name,
+      eta_minutes, lat, lng, track_url
+    """
     import urllib.request, urllib.parse, base64
     current_twilio = {**TWILIO_CONFIG, **_twilio_override}
     account_sid = current_twilio.get('accountSid', '').strip()
@@ -1494,6 +1522,7 @@ def _send_twilio(to_number, message_body):
     from_number = current_twilio.get('fromNumber', '').strip()
 
     if not all([account_sid, auth_token, from_number]):
+        _log_sms(to_number, message_body, False, 'Twilio credentials not configured', log_meta)
         return False, 'Twilio credentials not configured'
 
     to_clean = ''.join(c for c in to_number if c.isdigit() or c == '+')
@@ -1513,13 +1542,49 @@ def _send_twilio(to_number, message_body):
         sid = result.get('sid', '')
         status = result.get('status', '')
         if sid:
-            return True, f'Sent (sid={sid}, status={status})'
-        return False, f'Twilio error: {result.get("message","unknown")}'
+            detail = f'Sent (sid={sid}, status={status})'
+            _log_sms(to_number, message_body, True, detail, log_meta)
+            return True, detail
+        detail = f'Twilio error: {result.get("message","unknown")}'
+        _log_sms(to_number, message_body, False, detail, log_meta)
+        return False, detail
     except urllib.error.HTTPError as e:
         body = e.read().decode('utf-8', errors='replace')
-        return False, f'HTTP {e.code}: {body[:300]}'
+        detail = f'HTTP {e.code}: {body[:300]}'
+        _log_sms(to_number, message_body, False, detail, log_meta)
+        return False, detail
     except Exception as ex:
-        return False, str(ex)
+        detail = str(ex)
+        _log_sms(to_number, message_body, False, detail, log_meta)
+        return False, detail
+
+
+def _log_sms(to_phone, body, sent, detail, meta=None):
+    """Write a row to SMSLog. Never raises — swallows DB errors."""
+    try:
+        m = meta or {}
+        log = SMSLog(
+            username     = m.get('username', ''),
+            to_phone     = to_phone,
+            message_type = m.get('message_type', 'general'),
+            route_id     = m.get('route_id', ''),
+            bus_id       = m.get('bus_id', ''),
+            bus_name     = m.get('bus_name', ''),
+            eta_minutes  = int(m.get('eta_minutes', 0) or 0),
+            lat          = m.get('lat', ''),
+            lng          = m.get('lng', ''),
+            track_url    = m.get('track_url', ''),
+            body_preview = body[:200],
+            sent         = sent,
+            twilio_detail= detail[:200],
+        )
+        db.session.add(log)
+        db.session.commit()
+    except Exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
 
 
 @app.route('/api/safety/send-sms', methods=['POST'])
@@ -1529,7 +1594,16 @@ def send_sms():
     message   = (data.get('message') or data.get('body') or '').strip()
     if not to_number or not message:
         return jsonify({'success': False, 'message': '"to" and "message" are required'}), 400
-    ok, info = _send_twilio(to_number, message)
+    meta = {
+        'username':     data.get('username', ''),
+        'message_type': 'general',
+        'route_id':     data.get('routeId', ''),
+        'bus_id':       data.get('busId', ''),
+        'lat':          data.get('lat', ''),
+        'lng':          data.get('lng', ''),
+        'track_url':    data.get('trackUrl', ''),
+    }
+    ok, info = _send_twilio(to_number, message, meta)
     if ok:
         return jsonify({'success': True, 'message': 'SMS sent', 'detail': info}), 200
     return jsonify({'success': False, 'message': info}), 500
@@ -1565,7 +1639,9 @@ def offline_sms():
             f"You are approximately {eta_min} min from your stop.{location_str}\n"
             f"Stay safe — your journey is being tracked."
         )
-        ok, info = _send_twilio(phone_number, rider_body)
+        meta = {'username': username, 'message_type': 'offline', 'route_id': route_id,
+                'bus_id': bus_id, 'lat': lat, 'lng': lng, 'eta_minutes': eta_min}
+        ok, info = _send_twilio(phone_number, rider_body, meta)
         results.append({'to': 'rider', 'phone': phone_number, 'sent': ok, 'detail': info})
 
     saved_contacts = EmergencyContact.query.filter_by(username=username).all()
@@ -1575,7 +1651,9 @@ def offline_sms():
             f"and will be arriving in approximately {eta_min} min.{location_str}\n"
             f"Their phone is currently offline."
         )
-        ok, info = _send_twilio(c.phone_number, contact_body)
+        meta = {'username': username, 'message_type': 'offline', 'route_id': route_id,
+                'bus_id': bus_id, 'lat': lat, 'lng': lng, 'eta_minutes': eta_min}
+        ok, info = _send_twilio(c.phone_number, contact_body, meta)
         results.append({'to': c.contact_name, 'phone': c.phone_number, 'sent': ok, 'detail': info})
 
     any_sent = any(r['sent'] for r in results)
@@ -1665,7 +1743,9 @@ def sos_alert():
             f"🔗 Live SOS page: {sos_url}\n"
             f"👉 Call 911 if urgent."
         )
-        ok, info = _send_twilio(cphone, sms_body)
+        meta = {'username': username, 'message_type': 'sos', 'route_id': route_id,
+                'bus_id': bus_id, 'lat': lat, 'lng': lng, 'track_url': sos_url}
+        ok, info = _send_twilio(cphone, sms_body, meta)
         sms_results.append({'contact': cname, 'phone': cphone, 'sent': ok, 'detail': info})
 
     return jsonify({
@@ -1709,7 +1789,10 @@ def start_tracking():
             f'Bus: {bus_id} ({bus_name})\n'
             f'Track them live: {track_url}'
         )
-        _send_twilio(contact_phone, body)
+        meta = {'username': username, 'message_type': 'journey_share', 'route_id': str(route_id),
+                'bus_id': str(bus_id), 'bus_name': str(bus_name), 'lat': str(lat), 'lng': str(lng),
+                'track_url': track_url}
+        _send_twilio(contact_phone, body, meta)
 
     return jsonify({'success': True, 'token': session_obj.token, 'trackUrl': track_url}), 201
 
@@ -1810,6 +1893,184 @@ def resolve_sos(token):
 
 
 # ═══════════════════════════════════════════════════════════
+# SMS ALERTS ADMIN PAGE  (/admin/sms-alerts)
+# ═══════════════════════════════════════════════════════════
+
+@app.route('/admin/sms-alerts')
+@require_admin
+def admin_sms_alerts():
+    logs = SMSLog.query.order_by(SMSLog.created_at.desc()).all()
+    sent_count   = sum(1 for l in logs if l.sent)
+    failed_count = sum(1 for l in logs if not l.sent)
+
+    TYPE_LABELS = {
+        'sos':           ('🆘', '#ef4444', 'SOS'),
+        'journey_share': ('🗺', '#F5C518', 'Journey Share'),
+        'offline':       ('📵', '#fb923c', 'Offline Alert'),
+        'general':       ('💬', '#818cf8', 'General'),
+    }
+
+    rows = ''
+    for l in logs:
+        icon, color, label = TYPE_LABELS.get(l.message_type, ('💬', '#818cf8', l.message_type))
+        sent_at = l.created_at.strftime('%d %b %Y, %H:%M')
+        status_color = '#4ade80' if l.sent else '#ef4444'
+        status_label = '✓ Sent' if l.sent else '✗ Failed'
+        status_bg    = 'rgba(74,222,128,.1)' if l.sent else 'rgba(239,68,68,.1)'
+        maps_url     = f'https://maps.google.com/?q={l.lat},{l.lng}' if l.lat and l.lng else ''
+        gps_cell     = (
+            f'<a href="{maps_url}" target="_blank" style="color:#F5C518;font-family:monospace;font-size:11px">{l.lat}, {l.lng}</a>'
+            if maps_url else '<span style="color:#484f58">—</span>'
+        )
+        track_cell = (
+            f'<a href="{l.track_url}" target="_blank" style="color:#818cf8;font-size:11px">View →</a>'
+            if l.track_url else '<span style="color:#484f58">—</span>'
+        )
+        eta_cell = f'{l.eta_minutes} min' if l.eta_minutes else '—'
+        rows += f"""
+        <tr id="sms-row-{l.id}">
+          <td style="color:#6e7681;font-size:12px;font-family:monospace">#{l.id}</td>
+          <td>
+            <div style="font-weight:600;color:#f0f6fc">{l.username or '—'}</div>
+            <div style="font-family:monospace;font-size:11px;color:#6e7681;margin-top:2px">{l.to_phone}</div>
+          </td>
+          <td>
+            <span style="display:inline-flex;align-items:center;gap:5px;background:{color}15;color:{color};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid {color}33">
+              {icon} {label}
+            </span>
+          </td>
+          <td style="color:#8b949e;font-size:13px">{l.route_id or '—'}</td>
+          <td>
+            <div style="color:#8b949e;font-size:13px">{l.bus_id or '—'}</div>
+            <div style="color:#484f58;font-size:11px">{l.bus_name or ''}</div>
+          </td>
+          <td style="color:#8b949e;font-size:13px">{eta_cell}</td>
+          <td>{track_cell}</td>
+          <td>{gps_cell}</td>
+          <td>
+            <span style="display:inline-flex;align-items:center;gap:4px;background:{status_bg};color:{status_color};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid {status_color}33">
+              {status_label}
+            </span>
+          </td>
+          <td class="date-cell">{sent_at}</td>
+        </tr>"""
+
+    if not rows:
+        rows = '<tr><td colspan="10" style="text-align:center;padding:48px;color:#484f58">No SMS alerts logged yet.</td></tr>'
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMS Alerts — LetsGo Admin</title>
+{ADMIN_STYLE}
+<style>
+  table td{{max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+  .stat-card{{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:20px 24px;display:flex;align-items:center;gap:16px}}
+  .stat-card .sc-icon{{font-size:28px;width:52px;height:52px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}}
+  .stat-card .sc-num{{font-size:28px;font-weight:700;color:#f0f6fc;line-height:1}}
+  .stat-card .sc-lbl{{font-size:12px;color:#6e7681;margin-top:3px}}
+</style>
+</head>
+<body>
+{nav_html('sms')}
+<div class="admin-main">
+  <div class="page-header">
+    <div>
+      <h1>💬 SMS Alerts</h1>
+      <p>All outbound SMS messages sent by LetsGo — journey shares, SOS alerts, and offline notifications</p>
+    </div>
+    <span class="badge" id="sms-total-count">{len(logs)} total</span>
+  </div>
+
+  <!-- STAT CARDS -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px">
+    <div class="stat-card">
+      <div class="sc-icon" style="background:rgba(129,140,248,.12)">💬</div>
+      <div><div class="sc-num">{len(logs)}</div><div class="sc-lbl">Total Sent</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="sc-icon" style="background:rgba(74,222,128,.12)">✓</div>
+      <div><div class="sc-num" style="color:#4ade80">{sent_count}</div><div class="sc-lbl">Delivered</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="sc-icon" style="background:rgba(239,68,68,.12)">✗</div>
+      <div><div class="sc-num" style="color:#f87171">{failed_count}</div><div class="sc-lbl">Failed</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="sc-icon" style="background:rgba(239,68,68,.12)">🆘</div>
+      <div><div class="sc-num" style="color:#ef4444">{sum(1 for l in logs if l.message_type=='sos')}</div><div class="sc-lbl">SOS Alerts</div></div>
+    </div>
+  </div>
+
+  <div class="refresh-bar">Auto-refreshes every 15s &nbsp;|&nbsp; <span id="sms-last-updated">Updated just now</span></div>
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Rider / To</th>
+            <th>Type</th>
+            <th>Route</th>
+            <th>Bus</th>
+            <th>ETA</th>
+            <th>Tracking Link</th>
+            <th>GPS</th>
+            <th>Status</th>
+            <th>Sent At</th>
+          </tr>
+        </thead>
+        <tbody id="sms-tbody">{rows}</tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+{ADMIN_JS}
+<script>
+async function refreshSMS(){{
+  try{{
+    const res=await fetch('/api/admin/sms-alerts');
+    const data=await res.json();
+    const tbody=document.getElementById('sms-tbody');
+    const TYPE={{'sos':['🆘','#ef4444','SOS'],'journey_share':['🗺','#F5C518','Journey Share'],'offline':['📵','#fb923c','Offline Alert'],'general':['💬','#818cf8','General']}};
+    if(!data.logs||data.logs.length===0){{
+      tbody.innerHTML='<tr><td colspan="10" style="text-align:center;padding:48px;color:#484f58">No SMS alerts logged yet.</td></tr>';
+      document.getElementById('sms-total-count').textContent='0 total';
+      return;
+    }}
+    tbody.innerHTML=data.logs.map(l=>{{
+      const[icon,color,label]=TYPE[l.messageType]||['💬','#818cf8',l.messageType];
+      const sc=l.sent?'#4ade80':'#ef4444';
+      const sbg=l.sent?'rgba(74,222,128,.1)':'rgba(239,68,68,.1)';
+      const sl=l.sent?'✓ Sent':'✗ Failed';
+      const gps=l.lat&&l.lng?`<a href="https://maps.google.com/?q=${{l.lat}},${{l.lng}}" target="_blank" style="color:#F5C518;font-family:monospace;font-size:11px">${{l.lat}}, ${{l.lng}}</a>`:'<span style="color:#484f58">—</span>';
+      const track=l.trackUrl?`<a href="${{l.trackUrl}}" target="_blank" style="color:#818cf8;font-size:11px">View →</a>`:'<span style="color:#484f58">—</span>';
+      return `<tr id="sms-row-${{l.id}}">
+        <td style="color:#6e7681;font-size:12px;font-family:monospace">#${{l.id}}</td>
+        <td><div style="font-weight:600;color:#f0f6fc">${{l.username||'—'}}</div><div style="font-family:monospace;font-size:11px;color:#6e7681;margin-top:2px">${{l.toPhone}}</div></td>
+        <td><span style="display:inline-flex;align-items:center;gap:5px;background:${{color}}15;color:${{color}};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid ${{color}}33">${{icon}} ${{label}}</span></td>
+        <td style="color:#8b949e;font-size:13px">${{l.routeId||'—'}}</td>
+        <td><div style="color:#8b949e;font-size:13px">${{l.busId||'—'}}</div><div style="color:#484f58;font-size:11px">${{l.busName||''}}</div></td>
+        <td style="color:#8b949e;font-size:13px">${{l.etaMinutes?l.etaMinutes+' min':'—'}}</td>
+        <td>${{track}}</td>
+        <td>${{gps}}</td>
+        <td><span style="display:inline-flex;align-items:center;gap:4px;background:${{sbg}};color:${{sc}};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid ${{sc}}33">${{sl}}</span></td>
+        <td class="date-cell">${{l.createdAt}}</td>
+      </tr>`;
+    }}).join('');
+    document.getElementById('sms-total-count').textContent=data.total+' total';
+    document.getElementById('sms-last-updated').textContent='Updated '+new Date().toLocaleTimeString();
+  }}catch(e){{console.error(e);}}
+}}
+setInterval(refreshSMS,15000);
+</script>
+</body>
+</html>"""
+
+
+# ═══════════════════════════════════════════════════════════
 # ADMIN SOS JSON API  (for auto-refresh)
 # ═══════════════════════════════════════════════════════════
 
@@ -1832,6 +2093,32 @@ def api_admin_sos_alerts():
             'resolved':  a.resolved,
             'createdAt': a.created_at.strftime('%d %b %Y, %H:%M'),
         } for a in alerts]
+    })
+
+
+@app.route('/api/admin/sms-alerts')
+@require_admin
+def api_admin_sms_alerts():
+    logs = SMSLog.query.order_by(SMSLog.created_at.desc()).all()
+    return jsonify({
+        'total': len(logs),
+        'logs': [{
+            'id':          l.id,
+            'username':    l.username,
+            'toPhone':     l.to_phone,
+            'messageType': l.message_type,
+            'routeId':     l.route_id,
+            'busId':       l.bus_id,
+            'busName':     l.bus_name,
+            'etaMinutes':  l.eta_minutes,
+            'lat':         l.lat,
+            'lng':         l.lng,
+            'trackUrl':    l.track_url,
+            'bodyPreview': l.body_preview,
+            'sent':        l.sent,
+            'detail':      l.twilio_detail,
+            'createdAt':   l.created_at.strftime('%d %b %Y, %H:%M'),
+        } for l in logs]
     })
 
 
