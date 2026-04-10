@@ -2069,7 +2069,7 @@ CAYMAN_ROUTES = [
 @app.route('/api/buses/coordinates', methods=['GET'])
 def buses_coordinates():
 
-    # ── Get live coordinates from Raspberry Pi ────────────────────────
+    # ── Get live coordinates from Raspberry Pi for CaymanBus ─────────
     session = TrackingSession.query.filter_by(
         active=True, route_id='CaymanBus'
     ).order_by(TrackingSession.updated_at.desc()).first()
@@ -2087,31 +2087,42 @@ def buses_coordinates():
     else:
         live_location = None
 
-    cayman_bus = {
-        "route":        "CaymanBus",
-        "routeName":    "Cayman Bus – Live Tracked",
-        "color":        "#000000",
-        "frequency":    "Every 15 minutes",
-        "description":  "Live GPS tracked bus • George Town Depot • Compass Media • Cayman Enterprise City",
-        "liveLocation": live_location,
-        "stops": [
-            {"id": "CB-S01", "name": "George Town Depot",        "lat": 19.2869, "lng": -81.3797},
-            {"id": "CB-S02", "name": "Walkers Road",             "lat": 19.2800, "lng": -81.3650},
-            {"id": "CB-S03", "name": "Compass Media",            "lat": 19.2993, "lng": -81.3816},
-            {"id": "CB-S04", "name": "Cayman Enterprise City",   "lat": 19.3120, "lng": -81.3900},
-            {"id": "CB-S05", "name": "Fairbanks Road",           "lat": 19.2750, "lng": -81.3500},
-            {"id": "CB-S06", "name": "Health City / Hospitals",  "lat": 19.2900, "lng": -81.3300},
-            {"id": "CB-S07", "name": "Schools Complex",          "lat": 19.2950, "lng": -81.3200},
-        ]
-    }
+    # ── Build all routes from CAYMAN_ROUTES ──────────────────────────
+    all_routes = []
+
+    for route in CAYMAN_ROUTES:
+        stops = []
+
+        for i, (name, lat, lng) in enumerate(route['stops']):
+            stops.append({
+                "id":   f"{route['route_number']}-S{i+1:02}",
+                "name": name,
+                "lat":  lat,
+                "lng":  lng,
+            })
+
+        route_data = {
+            "route":       route['route_number'],
+            "routeName":   route['name'],
+            "color":       route['color'],
+            "frequency":   route['frequency'],
+            "description": route['description'],
+            "stops":       stops,
+        }
+
+        # Attach live Pi coordinates only to CaymanBus
+        if route['route_number'] == 'CaymanBus':
+            route_data['liveLocation'] = live_location
+
+        all_routes.append(route_data)
 
     return jsonify({
-        "routes":      [cayman_bus],
-        "totalRoutes": 1,
-        "totalStops":  len(cayman_bus["stops"]),
+        "routes":      all_routes,
+        "totalRoutes": len(all_routes),
+        "totalStops":  sum(len(r["stops"]) for r in all_routes),
         "generatedAt": datetime.utcnow().isoformat() + "Z",
     }), 200
-
+    
 @app.route('/api/safety/sos/<token>/resolve', methods=['POST'])
 def resolve_sos(token):
     sos = SOSAlert.query.filter_by(token=token).first()
