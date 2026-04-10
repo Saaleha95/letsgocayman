@@ -1756,6 +1756,33 @@ def sos_alert():
     }), 201
 
 
+@app.route('/api/bus/location/', methods=['POST'])
+def bus_location():
+    data = request.get_json()
+
+    if not data or 'lat' not in data or 'lng' not in data:
+        return jsonify({"error": "Missing lat/lng"}), 400
+
+    session = TrackingSession.query.filter_by(
+        bus_id='CaymanBus', active=True
+    ).first()
+
+    if not session:
+        session = TrackingSession(
+            bus_id   = 'CaymanBus',
+            route_id = 'CaymanBus',
+            active   = True,
+            token    = str(uuid.uuid4()),
+        )
+        db.session.add(session)
+
+    session.lat        = data['lat']
+    session.lng        = data['lng']
+    session.updated_at = datetime.utcnow()
+    db.session.commit()
+
+    return jsonify({"status": "ok"}), 200
+
 @app.route('/api/tracking/start', methods=['POST'])
 def start_tracking():
     data = request.get_json(force=True, silent=True) or {}
