@@ -1977,6 +1977,22 @@ CAYMAN_ROUTES = [
         ]
     },
     {
+    'route_number': 'CaymanBus',
+    'name': 'Cayman Bus – Live Tracked',
+    'color': '#000000',
+    'frequency': 'Every 15 minutes',
+    'description': 'Live GPS tracked bus • George Town Depot • Compass Media • Cayman Enterprise City • Hospitals • Schools',
+    'stops': [
+        ('George Town Depot',           19.2869, -81.3797),
+        ('Walkers Road',                19.2800, -81.3650),
+        ('Compass Media',               19.2993, -81.3816),
+        ('Cayman Enterprise City',      19.3120, -81.3900),
+        ('Fairbanks Road',              19.2750, -81.3500),
+        ('Health City / Hospitals',     19.2900, -81.3300),
+        ('Schools Complex',             19.2950, -81.3200),
+    ]
+},
+    {
         'route_number': '8B',
         'name': 'Walkers Rd – Smith Cove – South Sound – Frank Sound – Cayman Kai',
         'color': '#3F51B5',
@@ -2039,7 +2055,7 @@ def buses_coordinates():
             stops.append(stop)
             path.append([lat, lng])
 
-        all_routes.append({
+        route_data = {
             "route": route['route_number'],
             "routeName": route['name'],
             "color": route['color'],
@@ -2047,84 +2063,57 @@ def buses_coordinates():
             "description": route['description'],
             "stops": stops,
             "path": path
-        })
+        }
 
-    # ── CaymanBus (Island Loop from West Bay Police Station) ──────────
-    cayman_bus = {
-        "route": "CAYMANBUS",
-        "routeName": "Cayman Island Loop",
-        "color": "#000000",
-        "frequency": "Loop",
-        "description": "Full island loop starting at West Bay Police Station",
-        "stops": [
-            {
-                "id": "CB-S01",
-                "name": "West Bay Police Station",
-                "lat": 19.3541,
-                "lng": -81.4071,
-                "type": "landmark",
-                "subtype": "police",
-                "route": "CAYMANBUS"
-            }
-        ],
-        "path": [
-            [19.3541, -81.4071],
-            [19.3420, -81.3928],
-            [19.3175, -81.3982],
-            [19.2869, -81.3797],
-            [19.2700, -81.3700],
-            [19.2800, -81.3300],
-            [19.2842, -81.2528],
-            [19.2819, -81.1747],
-            [19.3036, -81.0914],
-            [19.2950, -81.0800],
-            [19.3100, -81.1500],
-            [19.3669, -81.1533],
-            [19.4100, -81.2500],
-            [19.3850, -81.2700],
-            [19.3600, -81.4000],
-        ],
-        "type": "loop"
-    }
+        # ── CaymanBus: real-time lat/lng from Raspberry Pi ────────────
+        if route['route_number'] == 'CaymanBus':
+            pi_session = TrackingSession.query.filter_by(
+                active=True, route_id='CaymanBus'
+            ).order_by(TrackingSession.updated_at.desc()).first()
 
-    all_routes.append(cayman_bus)
+            if pi_session:
+                try:
+                    route_data['liveLocation'] = {
+                        "lat":       float(pi_session.lat),
+                        "lng":       float(pi_session.lng),
+                        "busId":     pi_session.bus_id,
+                        "busName":   pi_session.bus_name,
+                        "updatedAt": pi_session.updated_at.isoformat() if pi_session.updated_at else None,
+                        "trackUrl":  f"https://www.letsgocayman.com/track/{pi_session.token}",
+                    }
+                except (ValueError, TypeError):
+                    route_data['liveLocation'] = None
+            else:
+                route_data['liveLocation'] = None
 
-    # ── Landmarks ────────────────────────────────────────────────────
-    landmarks = [
-        {"id": "LM-POL-WB", "name": "West Bay Police Station", "lat": 19.3541, "lng": -81.4071, "type": "landmark", "subtype": "police"},
-        {"id": "LM-POL-GT", "name": "George Town Police Station", "lat": 19.2894, "lng": -81.3744, "type": "landmark", "subtype": "police"},
-        {"id": "LM-POL-BT", "name": "Bodden Town Police Station", "lat": 19.2768, "lng": -81.2614, "type": "landmark", "subtype": "police"},
-        {"id": "LM-HOSP", "name": "Health City Cayman Islands", "lat": 19.3188, "lng": -81.2228, "type": "landmark", "subtype": "hospital"},
-        {"id": "LM-HOSP-GT", "name": "Cayman Islands Hospital (GT)", "lat": 19.3020, "lng": -81.3851, "type": "landmark", "subtype": "hospital"},
-    ]
+        all_routes.append(route_data)
 
-    # ── Live Buses (unchanged) ───────────────────────────────────────
+    # ── Live Buses (all other active sessions) ───────────────────────
     live_buses = []
     for s in TrackingSession.query.filter_by(active=True).all():
         try:
             live_buses.append({
-                "id": f"LIVE-{s.token}",
-                "name": f"Bus {s.bus_id} ({s.username})",
-                "lat": float(s.lat),
-                "lng": float(s.lng),
-                "type": "live_bus",
-                "route": s.route_id,
-                "busId": s.bus_id,
-                "busName": s.bus_name,
-                "username": s.username,
+                "id":        f"LIVE-{s.token}",
+                "name":      f"Bus {s.bus_id} ({s.username})",
+                "lat":       float(s.lat),
+                "lng":       float(s.lng),
+                "type":      "live_bus",
+                "route":     s.route_id,
+                "busId":     s.bus_id,
+                "busName":   s.bus_name,
+                "username":  s.username,
                 "updatedAt": s.updated_at.isoformat() if s.updated_at else None,
-                "trackUrl": f"https://www.letsgocayman.com/track/{s.token}",
+                "trackUrl":  f"https://www.letsgocayman.com/track/{s.token}",
             })
         except (ValueError, TypeError):
             pass
 
     # ── Final Response ───────────────────────────────────────────────
     return jsonify({
-        "routes": all_routes,
-        "landmarks": landmarks,
-        "liveBuses": live_buses,
+        "routes":      all_routes,
+        "liveBuses":   live_buses,
         "totalRoutes": len(all_routes),
-        "totalStops": sum(len(r["stops"]) for r in all_routes),
+        "totalStops":  sum(len(r["stops"]) for r in all_routes),
         "generatedAt": datetime.utcnow().isoformat() + "Z",
     }), 200
 
