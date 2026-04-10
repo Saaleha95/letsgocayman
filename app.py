@@ -2036,84 +2036,46 @@ CAYMAN_ROUTES = [
 @app.route('/api/buses/coordinates', methods=['GET'])
 def buses_coordinates():
 
-    # ── Build Routes from CAYMAN_ROUTES ───────────────────────────────
-    all_routes = []
+    # ── Get live coordinates from Raspberry Pi ────────────────────────
+    session = TrackingSession.query.filter_by(
+        active=True, route_id='CaymanBus'
+    ).order_by(TrackingSession.updated_at.desc()).first()
 
-    for route in CAYMAN_ROUTES:
-        stops = []
-        path = []
-
-        for i, (name, lat, lng) in enumerate(route['stops']):
-            stop = {
-                "id": f"{route['route_number']}-S{i+1:02}",
-                "name": name,
-                "lat": lat,
-                "lng": lng,
-                "type": "stop",
-                "route": route['route_number']
-            }
-            stops.append(stop)
-            path.append([lat, lng])
-
-        route_data = {
-            "route": route['route_number'],
-            "routeName": route['name'],
-            "color": route['color'],
-            "frequency": route['frequency'],
-            "description": route['description'],
-            "stops": stops,
-            "path": path
-        }
-
-        # ── CaymanBus: real-time lat/lng from Raspberry Pi ────────────
-        if route['route_number'] == 'CaymanBus':
-            pi_session = TrackingSession.query.filter_by(
-                active=True, route_id='CaymanBus'
-            ).order_by(TrackingSession.updated_at.desc()).first()
-
-            if pi_session:
-                try:
-                    route_data['liveLocation'] = {
-                        "lat":       float(pi_session.lat),
-                        "lng":       float(pi_session.lng),
-                        "busId":     pi_session.bus_id,
-                        "busName":   pi_session.bus_name,
-                        "updatedAt": pi_session.updated_at.isoformat() if pi_session.updated_at else None,
-                        "trackUrl":  f"https://www.letsgocayman.com/track/{pi_session.token}",
-                    }
-                except (ValueError, TypeError):
-                    route_data['liveLocation'] = None
-            else:
-                route_data['liveLocation'] = None
-
-        all_routes.append(route_data)
-
-    # ── Live Buses (all other active sessions) ───────────────────────
-    live_buses = []
-    for s in TrackingSession.query.filter_by(active=True).all():
+    if session:
         try:
-            live_buses.append({
-                "id":        f"LIVE-{s.token}",
-                "name":      f"Bus {s.bus_id} ({s.username})",
-                "lat":       float(s.lat),
-                "lng":       float(s.lng),
-                "type":      "live_bus",
-                "route":     s.route_id,
-                "busId":     s.bus_id,
-                "busName":   s.bus_name,
-                "username":  s.username,
-                "updatedAt": s.updated_at.isoformat() if s.updated_at else None,
-                "trackUrl":  f"https://www.letsgocayman.com/track/{s.token}",
-            })
+            live_location = {
+                "lat":       float(session.lat),
+                "lng":       float(session.lng),
+                "busId":     session.bus_id,
+                "updatedAt": session.updated_at.isoformat() if session.updated_at else None,
+            }
         except (ValueError, TypeError):
-            pass
+            live_location = None
+    else:
+        live_location = None
 
-    # ── Final Response ───────────────────────────────────────────────
+    cayman_bus = {
+        "route":        "CaymanBus",
+        "routeName":    "Cayman Bus – Live Tracked",
+        "color":        "#000000",
+        "frequency":    "Every 15 minutes",
+        "description":  "Live GPS tracked bus • George Town Depot • Compass Media • Cayman Enterprise City",
+        "liveLocation": live_location,
+        "stops": [
+            {"id": "CB-S01", "name": "George Town Depot",        "lat": 19.2869, "lng": -81.3797},
+            {"id": "CB-S02", "name": "Walkers Road",             "lat": 19.2800, "lng": -81.3650},
+            {"id": "CB-S03", "name": "Compass Media",            "lat": 19.2993, "lng": -81.3816},
+            {"id": "CB-S04", "name": "Cayman Enterprise City",   "lat": 19.3120, "lng": -81.3900},
+            {"id": "CB-S05", "name": "Fairbanks Road",           "lat": 19.2750, "lng": -81.3500},
+            {"id": "CB-S06", "name": "Health City / Hospitals",  "lat": 19.2900, "lng": -81.3300},
+            {"id": "CB-S07", "name": "Schools Complex",          "lat": 19.2950, "lng": -81.3200},
+        ]
+    }
+
     return jsonify({
-        "routes":      all_routes,
-        "liveBuses":   live_buses,
-        "totalRoutes": len(all_routes),
-        "totalStops":  sum(len(r["stops"]) for r in all_routes),
+        "routes":      [cayman_bus],
+        "totalRoutes": 1,
+        "totalStops":  len(cayman_bus["stops"]),
         "generatedAt": datetime.utcnow().isoformat() + "Z",
     }), 200
 
