@@ -1770,10 +1770,15 @@ def bus_location():
 
     if not session:
         session = TrackingSession(
-            bus_id   = 'CaymanBus',
-            route_id = 'CaymanBus',
-            active   = True,
-            token    = str(uuid.uuid4()),
+            bus_id        = 'CaymanBus',
+            route_id      = 'CaymanBus',
+            bus_name      = 'Cayman Bus',
+            username      = 'pi',
+            phone_number  = '',
+            contact_name  = '',
+            contact_phone = '',
+            active        = True,
+            token         = uuid.uuid4().hex,  # 32 chars, no dashes
         )
         db.session.add(session)
 
@@ -1783,7 +1788,7 @@ def bus_location():
     db.session.commit()
 
     return jsonify({"status": "ok"}), 200
-
+    
 @app.route('/api/tracking/start', methods=['POST'])
 def start_tracking():
     data = request.get_json(force=True, silent=True) or {}
