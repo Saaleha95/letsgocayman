@@ -563,19 +563,40 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
   </section>
   <section class="features-section" id="features">
     <div class="features-intro reveal"><div class="section-eyebrow">What's inside</div><h2 class="section-title">EVERYTHING<br>YOUR <span class="accent">RIDE</span> NEEDS</h2></div>
-    <div class="features-grid">
-      <div class="feat-card featured reveal">
-        <div class="feat-num">01 ——</div><div class="feat-icon-wrap">&#128205;</div>
-        <div class="feat-title" style="font-size:28px;color:var(--white)">AI Live Tracking &amp; ETA</div>
-        <div class="feat-desc" style="max-width:560px">Real-time GPS with machine learning — predicts your bus arrival to within 60 seconds using Cayman traffic patterns, stop dwell times, and rush-hour data.</div>
-        <div class="feat-row"><div class="feat-stat"><div class="fs-num">&lt;60s</div><div class="fs-lbl">ETA accuracy</div></div><div class="feat-stat"><div class="fs-num">100%</div><div class="fs-lbl">Offline ready</div></div><div class="feat-stat"><div class="fs-num">Live</div><div class="fs-lbl">GPS updates</div></div></div>
-        <span class="feat-pill">AI · MACHINE LEARNING · ALWAYS ON</span>
-      </div>
-      <div class="feat-card reveal reveal-delay-1"><div class="feat-num">02 ——</div><div class="feat-icon-wrap">&#128179;</div><div class="feat-title">Smart Payment</div><div class="feat-desc">NFC tap-and-go that works without internet. Your signed token wallet holds up to 10 rides and syncs automatically when you reconnect.</div><span class="feat-pill">NFC · OFFLINE · SECURE</span></div>
-      <div class="feat-card reveal reveal-delay-2"><div class="feat-num">03 ——</div><div class="feat-icon-wrap">&#128483;</div><div class="feat-title">Community Reports</div><div class="feat-desc">Caymanians helping Caymanians. Report stop conditions, route issues, and bus feedback in real time.</div><span class="feat-pill">CROWDSOURCED · REAL TIME</span></div>
-      <div class="feat-card reveal reveal-delay-1"><div class="feat-num">04 ——</div><div class="feat-icon-wrap">&#128737;</div><div class="feat-title">Safety Features</div><div class="feat-desc">Share your live journey with family. One-tap SOS sends your exact bus GPS location to emergency contacts and our ops team.</div><span class="feat-pill">SOS · LIVE SHARE · SAFE JOURNEY</span></div>
-      <div class="feat-card reveal reveal-delay-2"><div class="feat-num">05 ——</div><div class="feat-icon-wrap">&#127807;</div><div class="feat-title">Eco Impact Tracker</div><div class="feat-desc">Every bus ride over a car saves CO&#8322;. See your monthly carbon savings, earn eco badges, and help protect Cayman's coral reefs.</div><span class="feat-pill">GREEN · CAYMAN PROUD</span></div>
+   <div class="features-grid">
+  <div class="feat-card featured reveal">
+    <div class="feat-num">01 ——</div><div class="feat-icon-wrap">📍</div>
+    <div class="feat-title" style="font-size:28px;color:var(--white)">Real-Time Tracking — Online & Offline</div>
+    <div class="feat-desc" style="max-width:560px">See your bus live on the map with ETA, speed, stops, and distance. No signal? Our AI-powered device switches seamlessly to offline SMS tracking — so you're never left guessing, no matter where you are on the island.</div>
+    <div class="feat-row">
+      <div class="feat-stat"><div class="fs-num">&lt;60s</div><div class="fs-lbl">ETA accuracy</div></div>
+      <div class="feat-stat"><div class="fs-num">100%</div><div class="fs-lbl">Offline ready</div></div>
+      <div class="feat-stat"><div class="fs-num">Live</div><div class="fs-lbl">GPS updates</div></div>
     </div>
+    <span class="feat-pill">AI · MACHINE LEARNING · ALWAYS ON</span>
+  </div>
+
+  <div class="feat-card reveal reveal-delay-1">
+    <div class="feat-num">02 ——</div><div class="feat-icon-wrap">💳</div>
+    <div class="feat-title">Smart Payment — One Tap</div>
+    <div class="feat-desc">Forget cash and coins. Our NFC device is installed on every bus — just tap your phone once to pay. Buy a single ride or a monthly pass instantly, even without internet. Fast, secure, and completely cashless.</div>
+    <span class="feat-pill">NFC · ONE TAP · CASHLESS</span>
+  </div>
+
+  <div class="feat-card reveal reveal-delay-2">
+    <div class="feat-num">03 ——</div><div class="feat-icon-wrap">🛡</div>
+    <div class="feat-title">Safety Features</div>
+    <div class="feat-desc">Share your live journey with family or friends in one tap. If anything feels wrong, hit SOS — your exact GPS location is sent to your emergency contacts instantly, with 911 integrated directly in the app. Every rider is protected.</div>
+    <span class="feat-pill">SOS · LIVE SHARE · 911 INTEGRATED</span>
+  </div>
+
+  <div class="feat-card reveal reveal-delay-1">
+    <div class="feat-num">04 ——</div><div class="feat-icon-wrap">📣</div>
+    <div class="feat-title">Community Reports</div>
+    <div class="feat-desc">Riders flag broken stops, overcrowding, and delays in real time. We collect that data, analyse it, and resolve issues as fast as possible — making the entire bus network smarter and more reliable for everyone.</div>
+    <span class="feat-pill">CROWDSOURCED · REAL TIME · RESOLVED FAST</span>
+  </div>
+</div>
   </section>
   <section class="how-section">
     <div class="section-eyebrow">Simple as 1-2-3-4</div>
