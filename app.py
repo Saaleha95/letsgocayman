@@ -1438,6 +1438,43 @@ def update_user(user_id):
     }}), 200
 
 
+@app.route('/api/sms/debug', methods=['GET'])
+@require_admin
+def sms_debug():
+    """Temporary debug route — remove after fixing."""
+    current_twilio = {**TWILIO_CONFIG, **_twilio_override}
+    
+    # Check what's actually stored
+    sid    = current_twilio.get('accountSid', '')
+    token  = current_twilio.get('authToken', '')
+    from_n = current_twilio.get('fromNumber', '')
+    
+    # Check last 5 SMS logs
+    logs = SMSLog.query.order_by(SMSLog.created_at.desc()).limit(5).all()
+    
+    return jsonify({
+        'twilio': {
+            'accountSid_set':  bool(sid),
+            'accountSid_prefix': sid[:6] if sid else 'EMPTY',
+            'authToken_set':   bool(token),
+            'fromNumber':      from_n or 'EMPTY',
+        },
+        'last_5_sms_logs': [{
+            'id':       l.id,
+            'username': l.username,
+            'to_phone': l.to_phone,
+            'sent':     l.sent,
+            'detail':   l.twilio_detail,
+            'type':     l.message_type,
+            'time':     l.created_at.isoformat(),
+        } for l in logs],
+        'env_vars': {
+            'TWILIO_ACCOUNT_SID': 'set' if os.environ.get('TWILIO_ACCOUNT_SID') else 'MISSING',
+            'TWILIO_AUTH_TOKEN':  'set' if os.environ.get('TWILIO_AUTH_TOKEN')  else 'MISSING',
+            'TWILIO_FROM_NUMBER': os.environ.get('TWILIO_FROM_NUMBER', 'MISSING'),
+        }
+    })
+
 @app.route('/api/community/reports/', methods=['GET', 'POST'])
 def community_reports():
     if request.method == 'GET':
