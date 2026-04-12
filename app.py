@@ -28,7 +28,7 @@ ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'letsgo2026')
 # ── TWILIO CONFIG (stored in env / overridable via admin) ──
 TWILIO_CONFIG = {
     'accountSid': os.environ.get('TWILIO_ACCOUNT_SID', ''),
-    'authToken':  os.environ.get('TWILIO_AUTH_TOKEN', ''),
+    'authToken': os.environ.get('TWILIO_AUTH_TOKEN', ''),
     'fromNumber': os.environ.get('TWILIO_FROM_NUMBER', ''),
 }
 
@@ -37,90 +37,90 @@ _twilio_override = {}
 
 
 class User(db.Model):
-    id           = db.Column(db.Integer, primary_key=True)
-    username     = db.Column(db.String(80), unique=True, nullable=False)
-    full_name    = db.Column(db.String(120), nullable=False)
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    full_name = db.Column(db.String(120), nullable=False)
     phone_number = db.Column(db.String(20), nullable=False)
-    password     = db.Column(db.String(200), nullable=False)
-    created_at   = db.Column(db.DateTime, default=datetime.utcnow)
+    password = db.Column(db.String(200), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
 class CommunityReport(db.Model):
-    id         = db.Column(db.Integer, primary_key=True)
-    category   = db.Column(db.String(50), nullable=False)
-    message    = db.Column(db.Text, nullable=False)
-    stop_name  = db.Column(db.String(120), nullable=False)
-    route_id   = db.Column(db.String(20), default='Any')
-    upvotes    = db.Column(db.Integer, default=0)
+    id = db.Column(db.Integer, primary_key=True)
+    category = db.Column(db.String(50), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    stop_name = db.Column(db.String(120), nullable=False)
+    route_id = db.Column(db.String(20), default='Any')
+    upvotes = db.Column(db.Integer, default=0)
     upvoted_by = db.Column(db.Text, default='[]')
-    status     = db.Column(db.String(20), default='open')
-    username   = db.Column(db.String(80), nullable=False)
+    status = db.Column(db.String(20), default='open')
+    username = db.Column(db.String(80), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
 class TrackingSession(db.Model):
-    id           = db.Column(db.Integer, primary_key=True)
-    token        = db.Column(db.String(32), unique=True, nullable=False,
-                             default=lambda: secrets.token_urlsafe(8))
-    username     = db.Column(db.String(80), nullable=False)
+    id = db.Column(db.Integer, primary_key=True)
+    token = db.Column(db.String(32), unique=True, nullable=False,
+                      default=lambda: secrets.token_urlsafe(8))
+    username = db.Column(db.String(80), nullable=False)
     phone_number = db.Column(db.String(20), default='')
-    route_id     = db.Column(db.String(20), default='')
-    bus_id       = db.Column(db.String(40), default='')
-    bus_name     = db.Column(db.String(120), default='')
-    lat          = db.Column(db.String(20), default='19.3465')
-    lng          = db.Column(db.String(20), default='-81.3958')
+    route_id = db.Column(db.String(20), default='')
+    bus_id = db.Column(db.String(40), default='')
+    bus_name = db.Column(db.String(120), default='')
+    lat = db.Column(db.String(20), default='19.3465')
+    lng = db.Column(db.String(20), default='-81.3958')
     contact_name = db.Column(db.String(80), default='')
-    contact_phone= db.Column(db.String(20), default='')
-    active       = db.Column(db.Boolean, default=True)
-    created_at   = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at   = db.Column(db.DateTime, default=datetime.utcnow)
+    contact_phone = db.Column(db.String(20), default='')
+    active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
 class SOSAlert(db.Model):
-    id           = db.Column(db.Integer, primary_key=True)
-    token        = db.Column(db.String(32), unique=True, nullable=False,
-                             default=lambda: secrets.token_urlsafe(8))
-    username     = db.Column(db.String(80), nullable=False)
+    id = db.Column(db.Integer, primary_key=True)
+    token = db.Column(db.String(32), unique=True, nullable=False,
+                      default=lambda: secrets.token_urlsafe(8))
+    username = db.Column(db.String(80), nullable=False)
     phone_number = db.Column(db.String(20), default='')
-    route_id     = db.Column(db.String(20), default='')
-    bus_id       = db.Column(db.String(40), default='')
-    lat          = db.Column(db.String(20), default='')
-    lng          = db.Column(db.String(20), default='')
-    contacts     = db.Column(db.Text, default='[]')
-    resolved     = db.Column(db.Boolean, default=False)
-    created_at   = db.Column(db.DateTime, default=datetime.utcnow)
+    route_id = db.Column(db.String(20), default='')
+    bus_id = db.Column(db.String(40), default='')
+    lat = db.Column(db.String(20), default='')
+    lng = db.Column(db.String(20), default='')
+    contacts = db.Column(db.Text, default='[]')
+    resolved = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
 class EmergencyContact(db.Model):
-    id           = db.Column(db.Integer, primary_key=True)
-    username     = db.Column(db.String(80), nullable=False, index=True)
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), nullable=False, index=True)
     contact_name = db.Column(db.String(120), nullable=False)
     phone_number = db.Column(db.String(30), nullable=False)
-    created_at   = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at   = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
 class SMSLog(db.Model):
     """Logs every outbound SMS sent by the server for admin visibility."""
-    id           = db.Column(db.Integer, primary_key=True)
-    username     = db.Column(db.String(80), default='')       # rider who triggered it
-    to_phone     = db.Column(db.String(30), nullable=False)   # recipient number
-    message_type = db.Column(db.String(40), default='general') # sos / journey_share / offline / general
-    route_id     = db.Column(db.String(20), default='')
-    bus_id       = db.Column(db.String(40), default='')
-    bus_name     = db.Column(db.String(120), default='')
-    eta_minutes  = db.Column(db.Integer, default=0)
-    lat          = db.Column(db.String(20), default='')
-    lng          = db.Column(db.String(20), default='')
-    track_url    = db.Column(db.String(200), default='')
-    body_preview = db.Column(db.String(200), default='')      # first 200 chars of message
-    sent         = db.Column(db.Boolean, default=False)
-    twilio_detail= db.Column(db.String(200), default='')
-    created_at   = db.Column(db.DateTime, default=datetime.utcnow)
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), default='')  # rider who triggered it
+    to_phone = db.Column(db.String(30), nullable=False)  # recipient number
+    message_type = db.Column(db.String(40), default='general')  # sos / journey_share / offline / general
+    route_id = db.Column(db.String(20), default='')
+    bus_id = db.Column(db.String(40), default='')
+    bus_name = db.Column(db.String(120), default='')
+    eta_minutes = db.Column(db.Integer, default=0)
+    lat = db.Column(db.String(20), default='')
+    lng = db.Column(db.String(20), default='')
+    track_url = db.Column(db.String(200), default='')
+    body_preview = db.Column(db.String(200), default='')  # first 200 chars of message
+    sent = db.Column(db.Boolean, default=False)
+    twilio_detail = db.Column(db.String(200), default='')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 
 with app.app_context():
     db.create_all()
-
 
 # ═══════════════════════════════════════════════════════════
 # SHARED CSS / JS HELPERS
@@ -231,11 +231,11 @@ def nav_html(active='users'):
     <nav class="admin-nav">
       <div class="brand">🚌 LetsGo Admin</div>
       <div class="nav-links">
-        <a href="/users" class="{'active' if active=='users' else ''}">Users</a>
-        <a href="/community-reports" class="{'active' if active=='community' else ''}">Community Reports</a>
-        <a href="/admin/sos-alerts" class="sos-link {'active' if active=='sos' else ''}">🆘 SOS Alerts</a>
-        <a href="/admin/sms-alerts" class="sms-link {'active' if active=='sms' else ''}">💬 SMS Alerts</a>
-        <a href="/admin/settings" class="{'active' if active=='settings' else ''}">Settings</a>
+        <a href="/users" class="{'active' if active == 'users' else ''}">Users</a>
+        <a href="/community-reports" class="{'active' if active == 'community' else ''}">Community Reports</a>
+        <a href="/admin/sos-alerts" class="sos-link {'active' if active == 'sos' else ''}">🆘 SOS Alerts</a>
+        <a href="/admin/sms-alerts" class="sms-link {'active' if active == 'sms' else ''}">💬 SMS Alerts</a>
+        <a href="/admin/settings" class="{'active' if active == 'settings' else ''}">Settings</a>
         <a href="/" style="margin-left:4px">← Site</a>
       </div>
       <a href="/admin/logout" class="logout">Logout</a>
@@ -249,6 +249,7 @@ def require_admin(fn):
         if not session.get('admin_logged_in'):
             return redirect('/admin/login')
         return fn(*args, **kwargs)
+
     return wrapper
 
 
@@ -772,7 +773,7 @@ def admin_settings():
         if action == 'twilio':
             _twilio_override = {
                 'accountSid': request.form.get('accountSid', '').strip(),
-                'authToken':  request.form.get('authToken', '').strip(),
+                'authToken': request.form.get('authToken', '').strip(),
                 'fromNumber': request.form.get('fromNumber', '').strip(),
             }
             saved_msg = '✓ Twilio config updated (active until server restart)'
@@ -807,16 +808,16 @@ def admin_settings():
         <div class="form-row">
           <div class="form-group">
             <label>Account SID</label>
-            <input type="text" name="accountSid" value="{current_twilio.get('accountSid','')}" placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+            <input type="text" name="accountSid" value="{current_twilio.get('accountSid', '')}" placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
           </div>
           <div class="form-group">
             <label>From Number</label>
-            <input type="text" name="fromNumber" value="{current_twilio.get('fromNumber','')}" placeholder="+1345XXXXXXX">
+            <input type="text" name="fromNumber" value="{current_twilio.get('fromNumber', '')}" placeholder="+1345XXXXXXX">
           </div>
         </div>
         <div class="form-group" style="margin-bottom:20px">
           <label>Auth Token</label>
-          <input type="password" name="authToken" value="{current_twilio.get('authToken','')}" placeholder="Your Twilio auth token">
+          <input type="password" name="authToken" value="{current_twilio.get('authToken', '')}" placeholder="Your Twilio auth token">
         </div>
         <button type="submit" class="btn btn-primary">Save Twilio Config</button>
       </form>
@@ -856,7 +857,7 @@ def show_users():
     rows = ""
     for user in users:
         initials = ''.join([n[0].upper() for n in user.full_name.split()[:2]])
-        joined   = user.created_at.strftime('%d %b %Y, %H:%M')
+        joined = user.created_at.strftime('%d %b %Y, %H:%M')
         rows += f"""
         <tr id="row-{user.id}">
           <td><div class="avatar">{initials}</div></td>
@@ -1145,10 +1146,10 @@ def admin_sos_alerts():
         contacts = json.loads(a.contacts or '[]')
         contact_names = ', '.join(c.get('name', '?') for c in contacts[:3])
         if len(contacts) > 3:
-            contact_names += f' +{len(contacts)-3}'
+            contact_names += f' +{len(contacts) - 3}'
         triggered = a.created_at.strftime('%d %b %Y, %H:%M')
         status_color = '#4ade80' if a.resolved else '#ef4444'
-        status_bg    = 'rgba(74,222,128,.1)' if a.resolved else 'rgba(239,68,68,.12)'
+        status_bg = 'rgba(74,222,128,.1)' if a.resolved else 'rgba(239,68,68,.12)'
         status_label = 'Resolved' if a.resolved else 'ACTIVE'
         dot = '' if a.resolved else '<span style="width:6px;height:6px;border-radius:50%;background:#ef4444;display:inline-block;animation:blink_ 0.8s infinite;margin-right:4px"></span>'
         resolve_btn = (
@@ -1337,10 +1338,10 @@ def ping():
 @app.route('/api/auth/signup/', methods=['POST'])
 def signup():
     data = request.get_json()
-    full_name    = data.get('fullName')
-    username     = data.get('username')
+    full_name = data.get('fullName')
+    username = data.get('username')
     phone_number = data.get('phoneNumber')
-    password     = data.get('password')
+    password = data.get('password')
 
     if not all([full_name, username, phone_number, password]):
         return jsonify({'message': 'All fields are required'}), 400
@@ -1357,9 +1358,9 @@ def signup():
     db.session.commit()
 
     return jsonify({'user': {
-        'id':          str(new_user.id),
-        'username':    new_user.username,
-        'fullName':    new_user.full_name,
+        'id': str(new_user.id),
+        'username': new_user.username,
+        'fullName': new_user.full_name,
         'phoneNumber': new_user.phone_number,
     }}), 201
 
@@ -1375,9 +1376,9 @@ def login():
         return jsonify({'message': 'Invalid username or password'}), 401
 
     return jsonify({'user': {
-        'id':          str(user.id),
-        'username':    user.username,
-        'fullName':    user.full_name,
+        'id': str(user.id),
+        'username': user.username,
+        'fullName': user.full_name,
         'phoneNumber': user.phone_number,
     }}), 200
 
@@ -1389,11 +1390,11 @@ def api_users():
     return jsonify({
         'total': len(users),
         'users': [{
-            'id':          u.id,
-            'username':    u.username,
-            'fullName':    u.full_name,
+            'id': u.id,
+            'username': u.username,
+            'fullName': u.full_name,
             'phoneNumber': u.phone_number,
-            'createdAt':   u.created_at.strftime('%d %b %Y, %H:%M')
+            'createdAt': u.created_at.strftime('%d %b %Y, %H:%M')
         } for u in users],
         'twilio': current_twilio,
         'config': {'twilio': current_twilio},
@@ -1444,15 +1445,15 @@ def community_reports():
         return jsonify({
             'total': len(reports),
             'reports': [{
-                'id':        r.id,
-                'category':  r.category,
-                'message':   r.message,
-                'stopName':  r.stop_name,
-                'routeId':   r.route_id,
-                'upvotes':   r.upvotes,
+                'id': r.id,
+                'category': r.category,
+                'message': r.message,
+                'stopName': r.stop_name,
+                'routeId': r.route_id,
+                'upvotes': r.upvotes,
                 'upvotedByMe': False,
-                'status':    r.status,
-                'username':  r.username,
+                'status': r.status,
+                'username': r.username,
                 'createdAt': r.created_at.isoformat(),
             } for r in reports]
         })
@@ -1462,26 +1463,26 @@ def community_reports():
         return jsonify({'message': 'No data provided'}), 400
 
     report = CommunityReport(
-        category  = data.get('category', 'other'),
-        message   = data.get('message', ''),
-        stop_name = data.get('stopName', ''),
-        route_id  = data.get('routeId', 'Any'),
-        username  = data.get('username', 'anonymous'),
+        category=data.get('category', 'other'),
+        message=data.get('message', ''),
+        stop_name=data.get('stopName', ''),
+        route_id=data.get('routeId', 'Any'),
+        username=data.get('username', 'anonymous'),
     )
     db.session.add(report)
     db.session.commit()
 
     return jsonify({'report': {
-        'id':          report.id,
-        'category':    report.category,
-        'message':     report.message,
-        'stopName':    report.stop_name,
-        'routeId':     report.route_id,
-        'upvotes':     0,
+        'id': report.id,
+        'category': report.category,
+        'message': report.message,
+        'stopName': report.stop_name,
+        'routeId': report.route_id,
+        'upvotes': 0,
         'upvotedByMe': False,
-        'status':      report.status,
-        'username':    report.username,
-        'createdAt':   report.created_at.isoformat(),
+        'status': report.status,
+        'username': report.username,
+        'createdAt': report.created_at.isoformat(),
     }}), 201
 
 
@@ -1540,7 +1541,7 @@ def _send_twilio(to_number, message_body, log_meta=None):
     import urllib.request, urllib.parse, base64
     current_twilio = {**TWILIO_CONFIG, **_twilio_override}
     account_sid = current_twilio.get('accountSid', '').strip()
-    auth_token  = current_twilio.get('authToken', '').strip()
+    auth_token = current_twilio.get('authToken', '').strip()
     from_number = current_twilio.get('fromNumber', '').strip()
 
     if not all([account_sid, auth_token, from_number]):
@@ -1567,7 +1568,7 @@ def _send_twilio(to_number, message_body, log_meta=None):
             detail = f'Sent (sid={sid}, status={status})'
             _log_sms(to_number, message_body, True, detail, log_meta)
             return True, detail
-        detail = f'Twilio error: {result.get("message","unknown")}'
+        detail = f'Twilio error: {result.get("message", "unknown")}'
         _log_sms(to_number, message_body, False, detail, log_meta)
         return False, detail
     except urllib.error.HTTPError as e:
@@ -1586,19 +1587,19 @@ def _log_sms(to_phone, body, sent, detail, meta=None):
     try:
         m = meta or {}
         log = SMSLog(
-            username     = m.get('username', ''),
-            to_phone     = to_phone,
-            message_type = m.get('message_type', 'general'),
-            route_id     = m.get('route_id', ''),
-            bus_id       = m.get('bus_id', ''),
-            bus_name     = m.get('bus_name', ''),
-            eta_minutes  = int(m.get('eta_minutes', 0) or 0),
-            lat          = m.get('lat', ''),
-            lng          = m.get('lng', ''),
-            track_url    = m.get('track_url', ''),
-            body_preview = body[:200],
-            sent         = sent,
-            twilio_detail= detail[:200],
+            username=m.get('username', ''),
+            to_phone=to_phone,
+            message_type=m.get('message_type', 'general'),
+            route_id=m.get('route_id', ''),
+            bus_id=m.get('bus_id', ''),
+            bus_name=m.get('bus_name', ''),
+            eta_minutes=int(m.get('eta_minutes', 0) or 0),
+            lat=m.get('lat', ''),
+            lng=m.get('lng', ''),
+            track_url=m.get('track_url', ''),
+            body_preview=body[:200],
+            sent=sent,
+            twilio_detail=detail[:200],
         )
         db.session.add(log)
         db.session.commit()
@@ -1613,17 +1614,17 @@ def _log_sms(to_phone, body, sent, detail, meta=None):
 def send_sms():
     data = request.get_json(force=True, silent=True) or {}
     to_number = (data.get('to') or data.get('toNumber') or '').strip()
-    message   = (data.get('message') or data.get('body') or '').strip()
+    message = (data.get('message') or data.get('body') or '').strip()
     if not to_number or not message:
         return jsonify({'success': False, 'message': '"to" and "message" are required'}), 400
     meta = {
-        'username':     data.get('username', ''),
+        'username': data.get('username', ''),
         'message_type': 'general',
-        'route_id':     data.get('routeId', ''),
-        'bus_id':       data.get('busId', ''),
-        'lat':          data.get('lat', ''),
-        'lng':          data.get('lng', ''),
-        'track_url':    data.get('trackUrl', ''),
+        'route_id': data.get('routeId', ''),
+        'bus_id': data.get('busId', ''),
+        'lat': data.get('lat', ''),
+        'lng': data.get('lng', ''),
+        'track_url': data.get('trackUrl', ''),
     }
     ok, info = _send_twilio(to_number, message, meta)
     if ok:
@@ -1633,14 +1634,14 @@ def send_sms():
 
 @app.route('/api/safety/offline-sms', methods=['POST'])
 def offline_sms():
-    data         = request.get_json(force=True, silent=True) or {}
-    username     = (data.get('username') or 'Unknown rider').strip()
+    data = request.get_json(force=True, silent=True) or {}
+    username = (data.get('username') or 'Unknown rider').strip()
     phone_number = (data.get('phoneNumber') or data.get('phone') or '').strip()
-    route_id     = str(data.get('routeId') or data.get('route') or 'Unknown')
-    bus_id       = str(data.get('busId')   or data.get('bus')   or 'Unknown')
-    lat          = str(data.get('lat') or data.get('latitude')  or '')
-    lng          = str(data.get('lng') or data.get('longitude') or '')
-    eta_min      = int(data.get('eta') or 5)
+    route_id = str(data.get('routeId') or data.get('route') or 'Unknown')
+    bus_id = str(data.get('busId') or data.get('bus') or 'Unknown')
+    lat = str(data.get('lat') or data.get('latitude') or '')
+    lng = str(data.get('lng') or data.get('longitude') or '')
+    eta_min = int(data.get('eta') or 5)
 
     if not phone_number:
         user = User.query.filter_by(username=username).first()
@@ -1648,9 +1649,9 @@ def offline_sms():
             phone_number = user.phone_number
 
     location_str = ''
-    maps_url     = ''
+    maps_url = ''
     if lat and lng and lat != 'None' and lng != 'None':
-        maps_url     = f'https://maps.google.com/?q={lat},{lng}'
+        maps_url = f'https://maps.google.com/?q={lat},{lng}'
         location_str = f'\n📍 Last location: {maps_url}'
 
     results = []
@@ -1707,12 +1708,13 @@ def save_emergency_contacts():
         return jsonify({'message': 'username required'}), 400
     EmergencyContact.query.filter_by(username=username).delete()
     for c in contacts:
-        name  = (c.get('name') or '').strip()
+        name = (c.get('name') or '').strip()
         phone = (c.get('phone') or c.get('phoneNumber') or '').strip()
         if name and phone:
             db.session.add(EmergencyContact(username=username, contact_name=name, phone_number=phone))
     db.session.commit()
     return jsonify({'success': True}), 200
+
 
 @app.route('/api/sms/offline', methods=['POST'])
 def sms_offline_reminder():
@@ -1723,16 +1725,16 @@ def sms_offline_reminder():
     Also notifies any saved emergency contacts.
     Everything is logged to SMSLog for the admin SMS Alerts page.
     """
-    data         = request.get_json(force=True, silent=True) or {}
-    username     = (data.get('username') or 'Rider').strip()
+    data = request.get_json(force=True, silent=True) or {}
+    username = (data.get('username') or 'Rider').strip()
     phone_number = (data.get('phoneNumber') or data.get('phone') or '').strip()
-    route_id     = str(data.get('routeId') or data.get('route') or 'Unknown')
-    bus_id       = str(data.get('busId')   or data.get('bus')   or 'Unknown')
-    bus_name     = str(data.get('busName') or '')
-    lat          = str(data.get('lat') or data.get('latitude')  or '')
-    lng          = str(data.get('lng') or data.get('longitude') or '')
-    eta_min      = int(data.get('eta') or data.get('etaMinutes') or 5)
-    track_token  = (data.get('trackToken') or '').strip()
+    route_id = str(data.get('routeId') or data.get('route') or 'Unknown')
+    bus_id = str(data.get('busId') or data.get('bus') or 'Unknown')
+    bus_name = str(data.get('busName') or '')
+    lat = str(data.get('lat') or data.get('latitude') or '')
+    lng = str(data.get('lng') or data.get('longitude') or '')
+    eta_min = int(data.get('eta') or data.get('etaMinutes') or 5)
+    track_token = (data.get('trackToken') or '').strip()
 
     # Fall back to DB phone if not provided in payload
     if not phone_number:
@@ -1791,23 +1793,23 @@ def sms_offline_reminder():
 
     any_sent = any(r['sent'] for r in results)
     return jsonify({
-        'success':  any_sent,
-        'message':  'Offline reminder SMS sent' if any_sent else 'SMS could not be delivered',
-        'eta':      eta_min,
+        'success': any_sent,
+        'message': 'Offline reminder SMS sent' if any_sent else 'SMS could not be delivered',
+        'eta': eta_min,
         'trackUrl': track_url,
-        'results':  results,
+        'results': results,
     }), 200 if any_sent else 500
 
 
 @app.route('/api/safety/sos', methods=['POST'])
 def sos_alert():
-    data      = request.get_json(force=True, silent=True) or {}
-    username  = (data.get('username') or 'Unknown').strip()
-    route_id  = str(data.get('routeId') or 'Unknown')
-    bus_id    = str(data.get('busId')   or 'Unknown')
-    lat       = str(data.get('lat') or data.get('latitude')  or '19.2869')
-    lng       = str(data.get('lng') or data.get('longitude') or '-81.3674')
-    contacts  = data.get('emergencyContacts') or []
+    data = request.get_json(force=True, silent=True) or {}
+    username = (data.get('username') or 'Unknown').strip()
+    route_id = str(data.get('routeId') or 'Unknown')
+    bus_id = str(data.get('busId') or 'Unknown')
+    lat = str(data.get('lat') or data.get('latitude') or '19.2869')
+    lng = str(data.get('lng') or data.get('longitude') or '-81.3674')
+    contacts = data.get('emergencyContacts') or []
 
     if not contacts:
         saved = EmergencyContact.query.filter_by(username=username).all()
@@ -1833,13 +1835,13 @@ def sos_alert():
     db.session.add(sos)
     db.session.commit()
 
-    sos_url  = f'https://www.letsgocayman.com/sos/{sos.token}'
+    sos_url = f'https://www.letsgocayman.com/sos/{sos.token}'
     maps_url = f'https://maps.google.com/?q={lat},{lng}'
 
     sms_results = []
     for contact in contacts:
         cphone = (contact.get('phone') or contact.get('phoneNumber') or '').strip()
-        cname  = (contact.get('name') or 'Contact')
+        cname = (contact.get('name') or 'Contact')
         if not cphone:
             continue
         sms_body = (
@@ -1855,9 +1857,9 @@ def sos_alert():
         sms_results.append({'contact': cname, 'phone': cphone, 'sent': ok, 'detail': info})
 
     return jsonify({
-        'success':    True,
-        'sosId':      sos.token,
-        'sosUrl':     sos_url,
+        'success': True,
+        'sosId': sos.token,
+        'sosUrl': sos_url,
         'smsResults': sms_results,
     }), 201
 
@@ -1875,35 +1877,36 @@ def bus_location():
 
     if not session:
         session = TrackingSession(
-            bus_id        = 'CaymanBus',
-            route_id      = 'CaymanBus',
-            bus_name      = 'Cayman Bus',
-            username      = 'pi',
-            phone_number  = '',
-            contact_name  = '',
-            contact_phone = '',
-            active        = True,
-            token         = uuid.uuid4().hex,  # 32 chars, no dashes
+            bus_id='CaymanBus',
+            route_id='CaymanBus',
+            bus_name='Cayman Bus',
+            username='pi',
+            phone_number='',
+            contact_name='',
+            contact_phone='',
+            active=True,
+            token=uuid.uuid4().hex,  # 32 chars, no dashes
         )
         db.session.add(session)
 
-    session.lat        = data['lat']
-    session.lng        = data['lng']
+    session.lat = data['lat']
+    session.lng = data['lng']
     session.updated_at = datetime.utcnow()
     db.session.commit()
 
     return jsonify({"status": "ok"}), 200
-    
+
+
 @app.route('/api/tracking/start', methods=['POST'])
 def start_tracking():
     data = request.get_json(force=True, silent=True) or {}
-    username      = (data.get('username') or 'Unknown').strip()
-    route_id      = data.get('routeId') or 'WB1'
-    bus_id        = data.get('busId') or 'CI-WB1-01'
-    bus_name      = data.get('busName') or 'West Bay Route 1'
-    lat           = data.get('lat') or '19.3465'
-    lng           = data.get('lng') or '-81.3958'
-    contact_name  = data.get('contactName') or ''
+    username = (data.get('username') or 'Unknown').strip()
+    route_id = data.get('routeId') or 'WB1'
+    bus_id = data.get('busId') or 'CI-WB1-01'
+    bus_name = data.get('busName') or 'West Bay Route 1'
+    lat = data.get('lat') or '19.3465'
+    lng = data.get('lng') or '-81.3958'
+    contact_name = data.get('contactName') or ''
     contact_phone = (data.get('contactPhone') or '').strip()
 
     session_obj = TrackingSession(
@@ -1973,8 +1976,6 @@ def tracking_position(token):
                     'busId': sess.bus_id, 'updatedAt': sess.updated_at.isoformat() if sess.updated_at else None})
 
 
-
-
 CAYMAN_ROUTES = [
     # ── West Bay Routes ─────────────────────────────────────────────────────
     {
@@ -1984,17 +1985,17 @@ CAYMAN_ROUTES = [
         'frequency': 'Every 2–5 minutes',
         'description': 'Seven Mile Beach (SMB) • Northwest Point • Cayman Turtle Centre • Ed Bush Stadium',
         'stops': [
-            ('George Town Depot',           19.2869, -81.3797),
-            ('George Town Harbour',         19.2900, -81.3850),
-            ('Seven Mile Beach South',      19.3044, -81.3939),
-            ('Camana Bay',                  19.3175, -81.3982),
-            ('Seven Mile Beach North',      19.3340, -81.3894),
-            ('Governors Square',            19.3480, -81.3870),
-            ('Ed Bush Stadium',             19.3560, -81.3820),
-            ('Cayman Turtle Centre',        19.3712, -81.3789),
-            ('Northwest Point',             19.3800, -81.3900),
-            ('Hell',                        19.3744, -81.4028),
-            ('West Bay Square',             19.3680, -81.3950),
+            ('George Town Depot', 19.2869, -81.3797),
+            ('George Town Harbour', 19.2900, -81.3850),
+            ('Seven Mile Beach South', 19.3044, -81.3939),
+            ('Camana Bay', 19.3175, -81.3982),
+            ('Seven Mile Beach North', 19.3340, -81.3894),
+            ('Governors Square', 19.3480, -81.3870),
+            ('Ed Bush Stadium', 19.3560, -81.3820),
+            ('Cayman Turtle Centre', 19.3712, -81.3789),
+            ('Northwest Point', 19.3800, -81.3900),
+            ('Hell', 19.3744, -81.4028),
+            ('West Bay Square', 19.3680, -81.3950),
         ]
     },
     {
@@ -2004,14 +2005,14 @@ CAYMAN_ROUTES = [
         'frequency': 'Every 2–5 minutes',
         'description': 'Seven Mile Beach (SMB) • Watercourse Road • Cayman Turtle Centre • Hell',
         'stops': [
-            ('George Town Depot',           19.2869, -81.3797),
-            ('George Town Harbour',         19.2900, -81.3850),
-            ('Seven Mile Beach South',      19.3044, -81.3939),
-            ('Camana Bay',                  19.3175, -81.3982),
-            ('Seven Mile Beach North',      19.3340, -81.3894),
-            ('Watercourse Road',            19.3550, -81.4050),
-            ('Cayman Turtle Centre',        19.3712, -81.3789),
-            ('Hell',                        19.3744, -81.4028),
+            ('George Town Depot', 19.2869, -81.3797),
+            ('George Town Harbour', 19.2900, -81.3850),
+            ('Seven Mile Beach South', 19.3044, -81.3939),
+            ('Camana Bay', 19.3175, -81.3982),
+            ('Seven Mile Beach North', 19.3340, -81.3894),
+            ('Watercourse Road', 19.3550, -81.4050),
+            ('Cayman Turtle Centre', 19.3712, -81.3789),
+            ('Hell', 19.3744, -81.4028),
         ]
     },
     {
@@ -2021,15 +2022,15 @@ CAYMAN_ROUTES = [
         'frequency': 'Every 15 minutes',
         'description': 'Owen Roberts Drive • Industrial Park • Seven Mile Beach (SMB) • Esterley Tibbetts Hwy • Cayman Turtle Centre • Mount Pleasant • Barkers',
         'stops': [
-            ('George Town Depot',           19.2869, -81.3797),
-            ('Owen Roberts Drive',          19.2930, -81.3720),
-            ('Industrial Park',             19.2980, -81.3680),
-            ('Seven Mile Beach South',      19.3044, -81.3939),
-            ('Camana Bay',                  19.3175, -81.3982),
-            ('Esterley Tibbetts Hwy',       19.3400, -81.4000),
-            ('Mount Pleasant',              19.3550, -81.4100),
-            ('Cayman Turtle Centre',        19.3712, -81.3789),
-            ('Barkers',                     19.3820, -81.4150),
+            ('George Town Depot', 19.2869, -81.3797),
+            ('Owen Roberts Drive', 19.2930, -81.3720),
+            ('Industrial Park', 19.2980, -81.3680),
+            ('Seven Mile Beach South', 19.3044, -81.3939),
+            ('Camana Bay', 19.3175, -81.3982),
+            ('Esterley Tibbetts Hwy', 19.3400, -81.4000),
+            ('Mount Pleasant', 19.3550, -81.4100),
+            ('Cayman Turtle Centre', 19.3712, -81.3789),
+            ('Barkers', 19.3820, -81.4150),
         ]
     },
 
@@ -2041,11 +2042,11 @@ CAYMAN_ROUTES = [
         'frequency': 'Every 30 minutes',
         'description': 'Walkers Road • Fairbanks Road • Hospitals • Schools',
         'stops': [
-            ('George Town Depot',           19.2869, -81.3797),
-            ('Walkers Road',                19.2800, -81.3650),
-            ('Fairbanks Road',              19.2750, -81.3500),
-            ('Health City / Hospitals',     19.2900, -81.3300),
-            ('Schools Complex',             19.2950, -81.3200),
+            ('George Town Depot', 19.2869, -81.3797),
+            ('Walkers Road', 19.2800, -81.3650),
+            ('Fairbanks Road', 19.2750, -81.3500),
+            ('Health City / Hospitals', 19.2900, -81.3300),
+            ('Schools Complex', 19.2950, -81.3200),
         ]
     },
 
@@ -2057,22 +2058,22 @@ CAYMAN_ROUTES = [
         'frequency': 'Every 5–10 minutes',
         'description': 'Wreck of the Ten Sails • Queens High Way • East End • Lovers Wall • The Blow Holes',
         'stops': [
-            ('George Town Depot',           19.2869, -81.3797),
-            ('George Town Harbour',         19.2900, -81.3850),
-            ('Red Bay',                     19.2920, -81.3400),
-            ('Prospect',                    19.2936, -81.3339),
-            ('Savannah',                    19.2897, -81.2800),
-            ('Newlands',                    19.2850, -81.2500),
-            ('Bodden Town',                 19.2842, -81.2528),
-            ('Lookout Gardens',             19.2900, -81.2000),
-            ('Breakers',                    19.2819, -81.1747),
-            ('Frank Sound',                 19.3100, -81.1500),
-            ('Botanic Park',                19.3200, -81.1300),
-            ('East End',                    19.3036, -81.0914),
-            ('Lovers Wall',                 19.3000, -81.0700),
-            ('The Blow Holes',              19.2950, -81.0600),
-            ('Wreck of the Ten Sails',      19.2880, -81.0500),
-            ('Gun Bay',                     19.2950, -81.0800),
+            ('George Town Depot', 19.2869, -81.3797),
+            ('George Town Harbour', 19.2900, -81.3850),
+            ('Red Bay', 19.2920, -81.3400),
+            ('Prospect', 19.2936, -81.3339),
+            ('Savannah', 19.2897, -81.2800),
+            ('Newlands', 19.2850, -81.2500),
+            ('Bodden Town', 19.2842, -81.2528),
+            ('Lookout Gardens', 19.2900, -81.2000),
+            ('Breakers', 19.2819, -81.1747),
+            ('Frank Sound', 19.3100, -81.1500),
+            ('Botanic Park', 19.3200, -81.1300),
+            ('East End', 19.3036, -81.0914),
+            ('Lovers Wall', 19.3000, -81.0700),
+            ('The Blow Holes', 19.2950, -81.0600),
+            ('Wreck of the Ten Sails', 19.2880, -81.0500),
+            ('Gun Bay', 19.2950, -81.0800),
         ]
     },
     {
@@ -2082,17 +2083,17 @@ CAYMAN_ROUTES = [
         'frequency': 'Every 30 minutes',
         'description': 'Walkers Rd • Smith Cove • South Sound Dock • Rex Crighton Hwy • Oleander Drive • East End • Queens Hwy',
         'stops': [
-            ('George Town Depot',           19.2869, -81.3797),
-            ('Walkers Road',                19.2800, -81.3650),
-            ('Smith Cove',                  19.2750, -81.3850),
-            ('South Sound',                 19.2700, -81.3700),
-            ('South Sound Dock',            19.2650, -81.3600),
-            ('Rex Crighton Hwy',            19.2700, -81.3300),
-            ('Oleander Drive',              19.2800, -81.3000),
-            ('Newlands',                    19.2850, -81.2500),
-            ('Bodden Town',                 19.2842, -81.2528),
-            ('East End',                    19.3036, -81.0914),
-            ('Queens Highway',              19.3000, -81.1000),
+            ('George Town Depot', 19.2869, -81.3797),
+            ('Walkers Road', 19.2800, -81.3650),
+            ('Smith Cove', 19.2750, -81.3850),
+            ('South Sound', 19.2700, -81.3700),
+            ('South Sound Dock', 19.2650, -81.3600),
+            ('Rex Crighton Hwy', 19.2700, -81.3300),
+            ('Oleander Drive', 19.2800, -81.3000),
+            ('Newlands', 19.2850, -81.2500),
+            ('Bodden Town', 19.2842, -81.2528),
+            ('East End', 19.3036, -81.0914),
+            ('Queens Highway', 19.3000, -81.1000),
         ]
     },
 
@@ -2104,32 +2105,32 @@ CAYMAN_ROUTES = [
         'frequency': 'Every 30 minutes',
         'description': 'Cayman Kai • Star Fish Point • North Side • Hutland • Rum Point',
         'stops': [
-            ('George Town Depot',           19.2869, -81.3797),
-            ('Frank Sound Road',            19.3289, -81.1444),
-            ('North Side',                  19.3669, -81.1533),
-            ('Hutland',                     19.3800, -81.1800),
-            ('Old Man Bay',                 19.3900, -81.2200),
-            ('Rum Point',                   19.4100, -81.2500),
-            ('Starfish Point',              19.3950, -81.2600),
-            ('Cayman Kai',                  19.3850, -81.2700),
+            ('George Town Depot', 19.2869, -81.3797),
+            ('Frank Sound Road', 19.3289, -81.1444),
+            ('North Side', 19.3669, -81.1533),
+            ('Hutland', 19.3800, -81.1800),
+            ('Old Man Bay', 19.3900, -81.2200),
+            ('Rum Point', 19.4100, -81.2500),
+            ('Starfish Point', 19.3950, -81.2600),
+            ('Cayman Kai', 19.3850, -81.2700),
         ]
     },
     {
-    'route_number': 'CaymanBus',
-    'name': 'Cayman Bus – Live Tracked',
-    'color': '#000000',
-    'frequency': 'Every 15 minutes',
-    'description': 'Live GPS tracked bus • George Town Depot • Compass Media • Cayman Enterprise City • Hospitals • Schools',
-    'stops': [
-        ('George Town Depot',           19.2869, -81.3797),
-        ('Walkers Road',                19.2800, -81.3650),
-        ('Compass Media',               19.2993, -81.3816),
-        ('Cayman Enterprise City',      19.3120, -81.3900),
-        ('Fairbanks Road',              19.2750, -81.3500),
-        ('Health City / Hospitals',     19.2900, -81.3300),
-        ('Schools Complex',             19.2950, -81.3200),
-    ]
-},
+        'route_number': 'CaymanBus',
+        'name': 'Cayman Bus – Live Tracked',
+        'color': '#000000',
+        'frequency': 'Every 15 minutes',
+        'description': 'Live GPS tracked bus • George Town Depot • Compass Media • Cayman Enterprise City • Hospitals • Schools',
+        'stops': [
+            ('George Town Depot', 19.2869, -81.3797),
+            ('Walkers Road', 19.2800, -81.3650),
+            ('Compass Media', 19.2993, -81.3816),
+            ('Cayman Enterprise City', 19.3120, -81.3900),
+            ('Fairbanks Road', 19.2750, -81.3500),
+            ('Health City / Hospitals', 19.2900, -81.3300),
+            ('Schools Complex', 19.2950, -81.3200),
+        ]
+    },
     {
         'route_number': '8B',
         'name': 'Walkers Rd – Smith Cove – South Sound – Frank Sound – Cayman Kai',
@@ -2137,14 +2138,14 @@ CAYMAN_ROUTES = [
         'frequency': 'Every 30 minutes',
         'description': 'Walkers Rd • Smith Cove • South Sound Dock • Cleander Drive • Frank Sound • Cayman Kai',
         'stops': [
-            ('George Town Depot',           19.2869, -81.3797),
-            ('Walkers Road',                19.2800, -81.3650),
-            ('Smith Cove',                  19.2750, -81.3850),
-            ('South Sound',                 19.2700, -81.3700),
-            ('South Sound Dock',            19.2650, -81.3600),
-            ('Cleander Drive',              19.2800, -81.3000),
-            ('Frank Sound',                 19.3100, -81.1500),
-            ('Cayman Kai',                  19.3850, -81.2700),
+            ('George Town Depot', 19.2869, -81.3797),
+            ('Walkers Road', 19.2800, -81.3650),
+            ('Smith Cove', 19.2750, -81.3850),
+            ('South Sound', 19.2700, -81.3700),
+            ('South Sound Dock', 19.2650, -81.3600),
+            ('Cleander Drive', 19.2800, -81.3000),
+            ('Frank Sound', 19.3100, -81.1500),
+            ('Cayman Kai', 19.3850, -81.2700),
         ]
     },
 
@@ -2156,24 +2157,24 @@ CAYMAN_ROUTES = [
         'frequency': 'Every 5–10 minutes',
         'description': 'Queens Highway • Gun Bay • Frank Sound • Botanic Park • Mastic Trail',
         'stops': [
-            ('George Town Depot',           19.2869, -81.3797),
-            ('Red Bay',                     19.2920, -81.3400),
-            ('Prospect',                    19.2936, -81.3339),
-            ('Savannah',                    19.2897, -81.2800),
-            ('Bodden Town',                 19.2842, -81.2528),
-            ('Breakers',                    19.2819, -81.1747),
-            ('East End',                    19.3036, -81.0914),
-            ('Gun Bay',                     19.2950, -81.0800),
-            ('Frank Sound',                 19.3100, -81.1500),
-            ('Botanic Park',                19.3200, -81.1300),
-            ('Mastic Trail',                19.3300, -81.1600),
+            ('George Town Depot', 19.2869, -81.3797),
+            ('Red Bay', 19.2920, -81.3400),
+            ('Prospect', 19.2936, -81.3339),
+            ('Savannah', 19.2897, -81.2800),
+            ('Bodden Town', 19.2842, -81.2528),
+            ('Breakers', 19.2819, -81.1747),
+            ('East End', 19.3036, -81.0914),
+            ('Gun Bay', 19.2950, -81.0800),
+            ('Frank Sound', 19.3100, -81.1500),
+            ('Botanic Park', 19.3200, -81.1300),
+            ('Mastic Trail', 19.3300, -81.1600),
         ]
     },
 ]
 
+
 @app.route('/api/buses/coordinates', methods=['GET'])
 def buses_coordinates():
-
     # ── Get live coordinates from Raspberry Pi for CaymanBus ─────────
     session = TrackingSession.query.filter_by(
         active=True, route_id='CaymanBus'
@@ -2182,9 +2183,9 @@ def buses_coordinates():
     if session:
         try:
             live_location = {
-                "lat":       float(session.lat),
-                "lng":       float(session.lng),
-                "busId":     session.bus_id,
+                "lat": float(session.lat),
+                "lng": float(session.lng),
+                "busId": session.bus_id,
                 "updatedAt": session.updated_at.isoformat() if session.updated_at else None,
             }
         except (ValueError, TypeError):
@@ -2200,19 +2201,19 @@ def buses_coordinates():
 
         for i, (name, lat, lng) in enumerate(route['stops']):
             stops.append({
-                "id":   f"{route['route_number']}-S{i+1:02}",
+                "id": f"{route['route_number']}-S{i + 1:02}",
                 "name": name,
-                "lat":  lat,
-                "lng":  lng,
+                "lat": lat,
+                "lng": lng,
             })
 
         route_data = {
-            "route":       route['route_number'],
-            "routeName":   route['name'],
-            "color":       route['color'],
-            "frequency":   route['frequency'],
+            "route": route['route_number'],
+            "routeName": route['name'],
+            "color": route['color'],
+            "frequency": route['frequency'],
             "description": route['description'],
-            "stops":       stops,
+            "stops": stops,
         }
 
         # Attach live Pi coordinates only to CaymanBus
@@ -2222,12 +2223,13 @@ def buses_coordinates():
         all_routes.append(route_data)
 
     return jsonify({
-        "routes":      all_routes,
+        "routes": all_routes,
         "totalRoutes": len(all_routes),
-        "totalStops":  sum(len(r["stops"]) for r in all_routes),
+        "totalStops": sum(len(r["stops"]) for r in all_routes),
         "generatedAt": datetime.utcnow().isoformat() + "Z",
     }), 200
-    
+
+
 @app.route('/api/safety/sos/<token>/resolve', methods=['POST'])
 def resolve_sos(token):
     sos = SOSAlert.query.filter_by(token=token).first()
@@ -2241,206 +2243,6 @@ def resolve_sos(token):
 # ═══════════════════════════════════════════════════════════
 # SMS ALERTS ADMIN PAGE  (/admin/sms-alerts)
 # ═══════════════════════════════════════════════════════════
-
-@app.route('/admin/sms-alerts')
-@require_admin
-def admin_sms_alerts():
-    logs = SMSLog.query.order_by(SMSLog.created_at.desc()).all()
-    sent_count   = sum(1 for l in logs if l.sent)
-    failed_count = sum(1 for l in logs if not l.sent)
-
-    TYPE_LABELS = {
-        'sos':           ('🆘', '#ef4444', 'SOS'),
-        'journey_share': ('🗺', '#F5C518', 'Journey Share'),
-        'offline':       ('📵', '#fb923c', 'Offline Alert'),
-        'general':       ('💬', '#818cf8', 'General'),
-    }
-
-    rows = ''
-    for l in logs:
-        icon, color, label = TYPE_LABELS.get(l.message_type, ('💬', '#818cf8', l.message_type))
-        sent_at = l.created_at.strftime('%d %b %Y, %H:%M')
-        status_color = '#4ade80' if l.sent else '#ef4444'
-        status_label = '✓ Sent' if l.sent else '✗ Failed'
-        status_bg    = 'rgba(74,222,128,.1)' if l.sent else 'rgba(239,68,68,.1)'
-        maps_url     = f'https://maps.google.com/?q={l.lat},{l.lng}' if l.lat and l.lng else ''
-        gps_cell     = (
-            f'<a href="{maps_url}" target="_blank" style="color:#F5C518;font-family:monospace;font-size:11px">{l.lat}, {l.lng}</a>'
-            if maps_url else '<span style="color:#484f58">—</span>'
-        )
-        track_cell = (
-            f'<a href="{l.track_url}" target="_blank" style="color:#818cf8;font-size:11px">View →</a>'
-            if l.track_url else '<span style="color:#484f58">—</span>'
-        )
-        eta_cell = f'{l.eta_minutes} min' if l.eta_minutes else '—'
-        rows += f"""
-        <tr id="sms-row-{l.id}">
-          <td style="color:#6e7681;font-size:12px;font-family:monospace">#{l.id}</td>
-          <td>
-            <div style="font-weight:600;color:#f0f6fc">{l.username or '—'}</div>
-            <div style="font-family:monospace;font-size:11px;color:#6e7681;margin-top:2px">{l.to_phone}</div>
-          </td>
-          <td>
-            <span style="display:inline-flex;align-items:center;gap:5px;background:{color}15;color:{color};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid {color}33">
-              {icon} {label}
-            </span>
-          </td>
-          <td style="color:#8b949e;font-size:13px">{l.route_id or '—'}</td>
-          <td>
-            <div style="color:#8b949e;font-size:13px">{l.bus_id or '—'}</div>
-            <div style="color:#484f58;font-size:11px">{l.bus_name or ''}</div>
-          </td>
-          <td style="color:#8b949e;font-size:13px">{eta_cell}</td>
-          <td>{track_cell}</td>
-          <td>{gps_cell}</td>
-          <td>
-            <span style="display:inline-flex;align-items:center;gap:4px;background:{status_bg};color:{status_color};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid {status_color}33">
-              {status_label}
-            </span>
-          </td>
-          <td class="date-cell">{sent_at}</td>
-        </tr>"""
-
-    if not rows:
-        rows = '<tr><td colspan="10" style="text-align:center;padding:48px;color:#484f58">No SMS alerts logged yet.</td></tr>'
-
-    return f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SMS Alerts — LetsGo Admin</title>
-{ADMIN_STYLE}
-<style>
-  table td{{max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
-  .stat-card{{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:20px 24px;display:flex;align-items:center;gap:16px}}
-  .stat-card .sc-icon{{font-size:28px;width:52px;height:52px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}}
-  .stat-card .sc-num{{font-size:28px;font-weight:700;color:#f0f6fc;line-height:1}}
-  .stat-card .sc-lbl{{font-size:12px;color:#6e7681;margin-top:3px}}
-</style>
-</head>
-<body>
-{nav_html('sms')}
-<div class="admin-main">
-  <div class="page-header">
-    <div>
-      <h1>💬 SMS Alerts</h1>
-      <p>All outbound SMS messages sent by LetsGo — journey shares, SOS alerts, and offline notifications</p>
-    </div>
-    <span class="badge" id="sms-total-count">{len(logs)} total</span>
-  </div>
-
-  <!-- STAT CARDS -->
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px">
-    <div class="stat-card">
-      <div class="sc-icon" style="background:rgba(129,140,248,.12)">💬</div>
-      <div><div class="sc-num">{len(logs)}</div><div class="sc-lbl">Total Sent</div></div>
-    </div>
-    <div class="stat-card">
-      <div class="sc-icon" style="background:rgba(74,222,128,.12)">✓</div>
-      <div><div class="sc-num" style="color:#4ade80">{sent_count}</div><div class="sc-lbl">Delivered</div></div>
-    </div>
-    <div class="stat-card">
-      <div class="sc-icon" style="background:rgba(239,68,68,.12)">✗</div>
-      <div><div class="sc-num" style="color:#f87171">{failed_count}</div><div class="sc-lbl">Failed</div></div>
-    </div>
-    <div class="stat-card">
-      <div class="sc-icon" style="background:rgba(239,68,68,.12)">🆘</div>
-      <div><div class="sc-num" style="color:#ef4444">{sum(1 for l in logs if l.message_type=='sos')}</div><div class="sc-lbl">SOS Alerts</div></div>
-    </div>
-  </div>
-
-  <div class="refresh-bar">Auto-refreshes every 15s &nbsp;|&nbsp; <span id="sms-last-updated">Updated just now</span></div>
-  <div class="card">
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Rider / To</th>
-            <th>Type</th>
-            <th>Route</th>
-            <th>Bus</th>
-            <th>ETA</th>
-            <th>Tracking Link</th>
-            <th>GPS</th>
-            <th>Status</th>
-            <th>Sent At</th>
-          </tr>
-        </thead>
-        <tbody id="sms-tbody">{rows}</tbody>
-      </table>
-    </div>
-  </div>
-</div>
-<div class="toast" id="toast"></div>
-{ADMIN_JS}
-<script>
-async function refreshSMS(){{
-  try{{
-    const res=await fetch('/api/admin/sms-alerts');
-    const data=await res.json();
-    const tbody=document.getElementById('sms-tbody');
-    const TYPE={{'sos':['🆘','#ef4444','SOS'],'journey_share':['🗺','#F5C518','Journey Share'],'offline':['📵','#fb923c','Offline Alert'],'general':['💬','#818cf8','General']}};
-    if(!data.logs||data.logs.length===0){{
-      tbody.innerHTML='<tr><td colspan="10" style="text-align:center;padding:48px;color:#484f58">No SMS alerts logged yet.</td></tr>';
-      document.getElementById('sms-total-count').textContent='0 total';
-      return;
-    }}
-    tbody.innerHTML=data.logs.map(l=>{{
-      const[icon,color,label]=TYPE[l.messageType]||['💬','#818cf8',l.messageType];
-      const sc=l.sent?'#4ade80':'#ef4444';
-      const sbg=l.sent?'rgba(74,222,128,.1)':'rgba(239,68,68,.1)';
-      const sl=l.sent?'✓ Sent':'✗ Failed';
-      const gps=l.lat&&l.lng?`<a href="https://maps.google.com/?q=${{l.lat}},${{l.lng}}" target="_blank" style="color:#F5C518;font-family:monospace;font-size:11px">${{l.lat}}, ${{l.lng}}</a>`:'<span style="color:#484f58">—</span>';
-      const track=l.trackUrl?`<a href="${{l.trackUrl}}" target="_blank" style="color:#818cf8;font-size:11px">View →</a>`:'<span style="color:#484f58">—</span>';
-      return `<tr id="sms-row-${{l.id}}">
-        <td style="color:#6e7681;font-size:12px;font-family:monospace">#${{l.id}}</td>
-        <td><div style="font-weight:600;color:#f0f6fc">${{l.username||'—'}}</div><div style="font-family:monospace;font-size:11px;color:#6e7681;margin-top:2px">${{l.toPhone}}</div></td>
-        <td><span style="display:inline-flex;align-items:center;gap:5px;background:${{color}}15;color:${{color}};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid ${{color}}33">${{icon}} ${{label}}</span></td>
-        <td style="color:#8b949e;font-size:13px">${{l.routeId||'—'}}</td>
-        <td><div style="color:#8b949e;font-size:13px">${{l.busId||'—'}}</div><div style="color:#484f58;font-size:11px">${{l.busName||''}}</div></td>
-        <td style="color:#8b949e;font-size:13px">${{l.etaMinutes?l.etaMinutes+' min':'—'}}</td>
-        <td>${{track}}</td>
-        <td>${{gps}}</td>
-        <td><span style="display:inline-flex;align-items:center;gap:4px;background:${{sbg}};color:${{sc}};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid ${{sc}}33">${{sl}}</span></td>
-        <td class="date-cell">${{l.createdAt}}</td>
-      </tr>`;
-    }}).join('');
-    document.getElementById('sms-total-count').textContent=data.total+' total';
-    document.getElementById('sms-last-updated').textContent='Updated '+new Date().toLocaleTimeString();
-  }}catch(e){{console.error(e);}}
-}}
-setInterval(refreshSMS,15000);
-</script>
-</body>
-</html>"""
-
-
-# ═══════════════════════════════════════════════════════════
-# ADMIN SOS JSON API  (for auto-refresh)
-# ═══════════════════════════════════════════════════════════
-
-@app.route('/api/admin/sos-alerts')
-@require_admin
-def api_admin_sos_alerts():
-    alerts = SOSAlert.query.order_by(SOSAlert.created_at.desc()).all()
-    return jsonify({
-        'total': len(alerts),
-        'alerts': [{
-            'id':        a.id,
-            'token':     a.token,
-            'username':  a.username,
-            'phone':     a.phone_number,
-            'routeId':   a.route_id,
-            'busId':     a.bus_id,
-            'lat':       a.lat,
-            'lng':       a.lng,
-            'contacts':  json.loads(a.contacts or '[]'),
-            'resolved':  a.resolved,
-            'createdAt': a.created_at.strftime('%d %b %Y, %H:%M'),
-        } for a in alerts]
-    })
-
 
 @app.route('/admin/sms-alerts')
 @require_admin
@@ -2662,6 +2464,35 @@ setInterval(refreshSMS, 15000);
 </body>
 </html>"""
 
+
+# ═══════════════════════════════════════════════════════════
+# ADMIN SOS JSON API  (for auto-refresh)
+# ═══════════════════════════════════════════════════════════
+
+@app.route('/api/admin/sos-alerts')
+@require_admin
+def api_admin_sos_alerts():
+    alerts = SOSAlert.query.order_by(SOSAlert.created_at.desc()).all()
+    return jsonify({
+        'total': len(alerts),
+        'alerts': [{
+            'id': a.id,
+            'token': a.token,
+            'username': a.username,
+            'phone': a.phone_number,
+            'routeId': a.route_id,
+            'busId': a.bus_id,
+            'lat': a.lat,
+            'lng': a.lng,
+            'contacts': json.loads(a.contacts or '[]'),
+            'resolved': a.resolved,
+            'createdAt': a.created_at.strftime('%d %b %Y, %H:%M'),
+        } for a in alerts]
+    })
+
+
+
+
 # ═══════════════════════════════════════════════════════════
 # PUBLIC TRACKING PAGE  /track/<token>
 # ═══════════════════════════════════════════════════════════
@@ -2671,19 +2502,23 @@ def tracking_page(token):
     sess = TrackingSession.query.filter_by(token=token).first()
 
     if sess:
-        lat      = sess.lat      or '19.3465'
-        lng      = sess.lng      or '-81.3958'
+        lat = sess.lat or '19.3465'
+        lng = sess.lng or '-81.3958'
         username = sess.username or 'Rider'
-        bus_id   = sess.bus_id   or 'CaymanBus'
+        bus_id = sess.bus_id or 'CaymanBus'
         bus_name = sess.bus_name or 'Cayman Bus'
         route_id = sess.route_id or 'CaymanBus'
-        active   = sess.active
-        updated  = sess.updated_at.strftime('%H:%M:%S') if sess.updated_at else 'N/A'
+        active = sess.active
+        updated = sess.updated_at.strftime('%H:%M:%S') if sess.updated_at else 'N/A'
     else:
-        lat='19.3465'; lng='-81.3958'
-        username='Rider'; bus_id='CaymanBus'
-        bus_name='Cayman Bus'; route_id='CaymanBus'
-        active=True; updated='Demo'
+        lat = '19.3465';
+        lng = '-81.3958'
+        username = 'Rider';
+        bus_id = 'CaymanBus'
+        bus_name = 'Cayman Bus';
+        route_id = 'CaymanBus'
+        active = True;
+        updated = 'Demo'
 
     sc = '#16a34a' if active else '#6b7280'
     sl = 'LIVE' if active else 'ENDED'
@@ -2972,6 +2807,7 @@ if(IS_LIVE) setInterval(fetchBus,8000);
 </body>
 </html>"""
 
+
 # ═══════════════════════════════════════════════════════════
 # PUBLIC SOS PAGE  /sos/<token>
 # ═══════════════════════════════════════════════════════════
@@ -2981,30 +2817,34 @@ def sos_page(token):
     sos = SOSAlert.query.filter_by(token=token).first()
 
     if sos:
-        username     = sos.username
+        username = sos.username
         phone_number = sos.phone_number
-        route_id     = sos.route_id
-        bus_id       = sos.bus_id
-        lat          = sos.lat  or '19.3465'
-        lng          = sos.lng  or '-81.3958'
+        route_id = sos.route_id
+        bus_id = sos.bus_id
+        lat = sos.lat or '19.3465'
+        lng = sos.lng or '-81.3958'
         triggered_at = sos.created_at.strftime('%d %b %Y at %H:%M UTC')
-        contacts     = json.loads(sos.contacts or '[]')
-        resolved     = sos.resolved
+        contacts = json.loads(sos.contacts or '[]')
+        resolved = sos.resolved
     else:
-        username='Demo Rider'; phone_number='+1 (345) 555-0123'
-        route_id='WB1'; bus_id='CI-WB1-01'
-        lat='19.3465'; lng='-81.3958'
-        triggered_at=datetime.utcnow().strftime('%d %b %Y at %H:%M UTC')
-        contacts=[]; resolved=False
+        username = 'Demo Rider';
+        phone_number = '+1 (345) 555-0123'
+        route_id = 'WB1';
+        bus_id = 'CI-WB1-01'
+        lat = '19.3465';
+        lng = '-81.3958'
+        triggered_at = datetime.utcnow().strftime('%d %b %Y at %H:%M UTC')
+        contacts = [];
+        resolved = False
 
     # Enrich contacts from stored EmergencyContact table
     stored = EmergencyContact.query.filter_by(username=username).all()
     existing_phones = set()
     for c in contacts:
-        p = (c.get('phone') or '').replace(' ','').replace('-','').replace('+','')
+        p = (c.get('phone') or '').replace(' ', '').replace('-', '').replace('+', '')
         existing_phones.add(p)
     for c in stored:
-        p = c.phone_number.replace(' ','').replace('-','').replace('+','')
+        p = c.phone_number.replace(' ', '').replace('-', '').replace('+', '')
         if p not in existing_phones:
             contacts.append({'name': c.contact_name, 'phone': c.phone_number})
 
@@ -3027,11 +2867,11 @@ def sos_page(token):
 
     contact_items = ''
     for i, c in enumerate(contacts):
-        name  = c.get('name', 'Contact')
+        name = c.get('name', 'Contact')
         phone = c.get('phone', '')
-        av    = name[:1].upper()
+        av = name[:1].upper()
         colors = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#a855f7']
-        col   = colors[i % len(colors)]
+        col = colors[i % len(colors)]
         contact_items += f'''
         <div class="contact-card" style="animation-delay:{i * 0.08}s">
           <div class="contact-avatar" style="background:{col}22;border-color:{col}55;color:{col}">{av}</div>
