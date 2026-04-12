@@ -2393,18 +2393,18 @@ def tracking_page(token):
     sess = TrackingSession.query.filter_by(token=token).first()
 
     if sess:
-        lat        = sess.lat        or '19.3465'
-        lng        = sess.lng        or '-81.3958'
-        username   = sess.username   or 'Rider'
-        bus_id     = sess.bus_id     or 'CI-WB1-01'
-        bus_name   = sess.bus_name   or 'West Bay Route 1'
-        route_id   = sess.route_id   or 'WB1'
-        active     = sess.active
-        updated    = sess.updated_at.strftime('%H:%M:%S') if sess.updated_at else 'N/A'
+        lat      = sess.lat      or '19.3465'
+        lng      = sess.lng      or '-81.3958'
+        username = sess.username or 'Rider'
+        bus_id   = sess.bus_id   or 'CaymanBus'
+        bus_name = sess.bus_name or 'Cayman Bus'
+        route_id = sess.route_id or 'CaymanBus'
+        active   = sess.active
+        updated  = sess.updated_at.strftime('%H:%M:%S') if sess.updated_at else 'N/A'
     else:
         lat='19.3465'; lng='-81.3958'
-        username='Rider'; bus_id='CI-WB1-01'
-        bus_name='West Bay Route 1'; route_id='WB1'
+        username='Rider'; bus_id='CaymanBus'
+        bus_name='Cayman Bus'; route_id='CaymanBus'
         active=True; updated='Demo'
 
     sc = '#34C759' if active else '#8b949e'
@@ -2427,21 +2427,34 @@ body{{display:flex;flex-direction:column}}
 .hdr-logo{{font-size:15px;font-weight:700;color:#F5C518}}
 .hdr-center{{text-align:center}}
 .hdr-center .title{{font-size:13px;font-weight:600;color:#f0f6fc}}
-.hdr-center .sub{{font-size:11px;color:#8b949e}}
+.hdr-center .sub{{font-size:11px;color:#8b949e;margin-top:2px}}
 .live-pill{{display:inline-flex;align-items:center;gap:5px;background:{sc}18;border:1px solid {sc}40;color:{sc};padding:4px 11px;border-radius:20px;font-size:11px;font-weight:700}}
 .live-dot{{width:6px;height:6px;border-radius:50%;background:{sc};animation:pdot 1.4s infinite}}
 @keyframes pdot{{0%,100%{{opacity:1;transform:scale(1)}}50%{{opacity:.4;transform:scale(1.3)}}}}
-#map{{flex:1;width:100%}}
+#map{{flex:1;width:100%;min-height:0}}
 .bottom{{background:#161b22;border-top:1px solid #30363d;flex-shrink:0}}
-.info-row{{display:flex;padding:12px 16px;gap:0;border-bottom:1px solid #21262d}}
-.info-item{{flex:1;text-align:center}}
-.info-item .lbl{{font-size:9px;font-weight:600;color:#6e7681;text-transform:uppercase;letter-spacing:.5px}}
-.info-item .val{{font-size:14px;font-weight:700;color:#f0f6fc;margin-top:2px}}
-.info-item .sub{{font-size:10px;color:#8b949e}}
-.coords-bar{{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;background:#0d1117}}
-.coords-text{{font-size:11px;color:#484f58;font-family:monospace}}
-.refresh-note{{font-size:11px;color:#484f58}}
-.ended{{background:#161b22;padding:10px 16px;text-align:center;font-size:12px;color:#6e7681;border-top:1px solid #21262d}}
+.info-row{{display:flex;padding:10px 12px;border-bottom:1px solid #21262d}}
+.info-item{{flex:1;text-align:center;padding:0 4px}}
+.info-item .lbl{{font-size:8px;font-weight:700;color:#484f58;text-transform:uppercase;letter-spacing:.6px}}
+.info-item .val{{font-size:13px;font-weight:700;color:#f0f6fc;margin-top:3px;line-height:1.1}}
+.info-item .sub{{font-size:9px;color:#6e7681;margin-top:2px}}
+.info-item.eta-box .val{{color:#F5C518;font-size:18px}}
+.coords-bar{{display:flex;align-items:center;justify-content:space-between;padding:6px 14px;background:#0d1117}}
+.coords-text{{font-size:10px;color:#484f58;font-family:monospace}}
+.refresh-note{{font-size:10px;color:#484f58}}
+.ended-bar{{background:#21262d;padding:8px 16px;text-align:center;font-size:11px;color:#6e7681}}
+
+/* legend overlay */
+.leg{{position:absolute;left:10px;bottom:10px;z-index:500;background:rgba(13,17,23,.88);border:1px solid #30363d;border-radius:10px;padding:8px 12px;display:flex;flex-direction:column;gap:6px;pointer-events:none}}
+.leg-row{{display:flex;align-items:center;gap:7px;font-size:10px;color:#8b949e}}
+.leg-dot{{width:9px;height:9px;border-radius:50%;flex-shrink:0}}
+
+.leaflet-popup-content-wrapper{{background:#161b22!important;border:1px solid #30363d!important;border-radius:10px!important;color:#e6edf3!important;box-shadow:0 8px 24px rgba(0,0,0,.5)!important}}
+.leaflet-popup-tip{{background:#161b22!important}}
+.leaflet-popup-content{{margin:10px 14px!important;font-family:'Outfit',sans-serif;font-size:12px;line-height:1.7}}
+.leaflet-bar a{{background:#161b22!important;color:#e6edf3!important;border-color:#30363d!important}}
+.leaflet-bar a:hover{{background:#21262d!important;color:#F5C518!important}}
+.leaflet-container .leaflet-control-attribution{{display:none}}
 </style>
 </head>
 <body>
@@ -2453,60 +2466,190 @@ body{{display:flex;flex-direction:column}}
   </div>
   <div class="live-pill"><div class="live-dot"></div>{sl}</div>
 </div>
-<div id="map"></div>
+
+<div style="position:relative;flex:1;display:flex;flex-direction:column;min-height:0">
+  <div id="map"></div>
+  <div class="leg">
+    <div class="leg-row"><div class="leg-dot" style="background:#F5C518"></div>Live bus</div>
+    <div class="leg-row"><div class="leg-dot" style="background:#00bcd4"></div>You</div>
+    <div class="leg-row"><div class="leg-dot" style="background:#F5C518;opacity:.5"></div>Bus stop</div>
+  </div>
+</div>
+
 <div class="bottom">
   <div class="info-row">
     <div class="info-item"><div class="lbl">Rider</div><div class="val">{username}</div></div>
-    <div class="info-item"><div class="lbl">Bus</div><div class="val">{bus_id}</div><div class="sub">{bus_name}</div></div>
-    <div class="info-item"><div class="lbl">Route</div><div class="val">{route_id}</div></div>
-    <div class="info-item"><div class="lbl">Updated</div><div class="val" id="last-upd" style="font-size:12px">{updated}</div></div>
+    <div class="info-item"><div class="lbl">Bus</div><div class="val">{bus_id}</div><div class="sub">{bus_name[:16]}</div></div>
+    <div class="info-item eta-box"><div class="lbl">ETA to you</div><div class="val" id="eta-val">—</div><div class="sub" id="eta-sub">calculating</div></div>
+    <div class="info-item"><div class="lbl">Updated</div><div class="val" id="last-upd" style="font-size:11px">{updated}</div></div>
   </div>
   <div class="coords-bar">
-    <span class="coords-text" id="coords-txt">📍 {lat}, {lng}</span>
-    {'<span class="refresh-note">Auto-updates every 8s</span>' if active else ''}
+    <span class="coords-text" id="coords-txt">📍 Acquiring location…</span>
+    {'<span class="refresh-note">Bus refreshes every 8s</span>' if active else ''}
   </div>
-  {'<div class="ended">⚑ Journey ended — showing last known position</div>' if not active else ''}
+  {'<div class="ended-bar">Journey ended — showing last known position</div>' if not active else ''}
 </div>
+
 <script>
-const TOKEN='{token}';const IS_LIVE={'true' if active else 'false'};
-let curLat={lat};let curLng={lng};
-const ALL_STOPS=[
-  {{n:'George Town Depot',lat:19.2869,lng:-81.3745}},{{n:'Industrial Park',lat:19.2921,lng:-81.3798}},
-  {{n:'Seven Mile Beach (South)',lat:19.3100,lng:-81.3851}},{{n:'Galleria Plaza',lat:19.3261,lng:-81.3849}},
-  {{n:'Seven Mile Beach (North)',lat:19.3420,lng:-81.3928}},{{n:'Public Beach',lat:19.3573,lng:-81.3960}},
-  {{n:'West Bay Town Centre',lat:19.3548,lng:-81.4041}},{{n:'Cayman Turtle Centre',lat:19.3680,lng:-81.4056}},
-  {{n:'Hell',lat:19.3667,lng:-81.4103}},{{n:'North West Point',lat:19.3714,lng:-81.4113}},
-  {{n:'Savannah',lat:19.2764,lng:-81.3395}},{{n:'Red Bay',lat:19.2794,lng:-81.3468}},
-  {{n:'Bodden Town',lat:19.2757,lng:-81.2590}},{{n:'East End',lat:19.2960,lng:-81.1016}},
-  {{n:'Camana Bay',lat:19.3209,lng:-81.3900}},{{n:'Airport (ORIA)',lat:19.2928,lng:-81.3576}},
-];
-const map=L.map('map',{{zoomControl:false,attributionControl:false}}).setView([curLat,curLng],15);
+const TOKEN = '{token}';
+const IS_LIVE = {'true' if active else 'false'} === 'true';
+
+/* ── Haversine distance (km) ── */
+function hav(lat1,lng1,lat2,lng2){{
+  const R=6371, dL=(lat2-lat1)*Math.PI/180, dN=(lng2-lng1)*Math.PI/180;
+  const a=Math.sin(dL/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dN/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}}
+
+/* ── Map init ── */
+const map = L.map('map',{{zoomControl:false,attributionControl:false}}).setView([19.2993,-81.3816],14);
 L.tileLayer('https://{{s}}.basemaps.cartocdn.com/dark_all/{{z}}/{{x}}/{{y}}{{r}}.png',{{subdomains:'abcd',maxZoom:19}}).addTo(map);
 L.control.zoom({{position:'topright'}}).addTo(map);
-ALL_STOPS.forEach(s=>{{
-  const icon=L.divIcon({{html:`<div style="width:8px;height:8px;border-radius:50%;background:#F5C518;border:1.5px solid #0d1117;opacity:.8"></div>`,iconSize:[8,8],iconAnchor:[4,4],className:''}});
-  L.marker([s.lat,s.lng],{{icon}}).addTo(map).bindTooltip(s.n,{{direction:'top',offset:[0,-6]}});
+
+/* ── Stops ── */
+const STOPS = [
+  {{n:'George Town Depot',lat:19.2869,lng:-81.3797}},
+  {{n:'Walkers Road',lat:19.2800,lng:-81.3650}},
+  {{n:'Compass Media',lat:19.2993,lng:-81.3816}},
+  {{n:'Cayman Enterprise City',lat:19.3120,lng:-81.3900}},
+  {{n:'Fairbanks Road',lat:19.2750,lng:-81.3500}},
+  {{n:'Health City / Hospitals',lat:19.2900,lng:-81.3300}},
+  {{n:'Schools Complex',lat:19.2950,lng:-81.3200}},
+  {{n:'Seven Mile Beach (South)',lat:19.3044,lng:-81.3939}},
+  {{n:'Camana Bay',lat:19.3175,lng:-81.3982}},
+  {{n:'Seven Mile Beach (North)',lat:19.3340,lng:-81.3894}},
+  {{n:'Cayman Turtle Centre',lat:19.3712,lng:-81.3789}},
+  {{n:'Bodden Town',lat:19.2842,lng:-81.2528}},
+  {{n:'East End',lat:19.3036,lng:-81.0914}},
+  {{n:'Airport (ORIA)',lat:19.2928,lng:-81.3576}},
+];
+STOPS.forEach(s=>{{
+  L.circleMarker([s.lat,s.lng],{{radius:5,color:'#F5C518',fillColor:'#F5C518',fillOpacity:.55,weight:1.5}})
+   .addTo(map)
+   .bindTooltip(`<span style="font-size:12px;font-weight:600;color:#F5C518">${{s.n}}</span>`,{{direction:'top',offset:[0,-4]}});
 }});
-const WB_PATH=[[19.2869,-81.3745],[19.2921,-81.3798],[19.3100,-81.3851],[19.3261,-81.3849],[19.3420,-81.3928],[19.3573,-81.3960],[19.3548,-81.4041],[19.3680,-81.4056],[19.3667,-81.4103]];
-L.polyline(WB_PATH,{{color:'#F5C518',weight:2.5,opacity:.4,dashArray:'8 5'}}).addTo(map);
-const busIcon=L.divIcon({{html:`<div style="background:#F5C518;width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;border:3px solid #0d1117;box-shadow:0 0 16px rgba(245,197,24,.6)">🚌</div>`,iconSize:[38,38],iconAnchor:[19,19],className:''}});
-let busMarker=L.marker([curLat,curLng],{{icon:busIcon}}).addTo(map).bindPopup(`<b style="color:#0d1117">{bus_id}</b><br><span style="color:#333">{bus_name}</span>`);
-let ring=L.circle([curLat,curLng],{{color:'#F5C518',fillColor:'#F5C518',fillOpacity:.07,weight:1.5,radius:60}}).addTo(map);
-const riderIcon=L.divIcon({{html:`<div style="background:#00bcd4;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;border:2px solid #0d1117;box-shadow:0 0 10px rgba(0,188,212,.5)">👤</div>`,iconSize:[28,28],iconAnchor:[14,14],className:''}});
-let riderMarker=L.marker([curLat,curLng],{{icon:riderIcon,zIndexOffset:-10}}).addTo(map).bindTooltip('{username}',{{permanent:false,direction:'top'}});
-function moveBus(lat,lng){{
-  curLat=lat;curLng=lng;const ll=[lat,lng];
-  busMarker.setLatLng(ll);riderMarker.setLatLng(ll);ring.setLatLng(ll);
-  map.panTo(ll,{{animate:true,duration:.8}});
-  document.getElementById('last-upd').textContent=new Date().toLocaleTimeString();
-  document.getElementById('coords-txt').textContent='📍 '+lat.toFixed(5)+', '+lng.toFixed(5);
+
+/* ── Route polyline ── */
+L.polyline([
+  [19.2869,-81.3797],[19.2800,-81.3650],[19.2993,-81.3816],
+  [19.3120,-81.3900],[19.2750,-81.3500],[19.2900,-81.3300],[19.2950,-81.3200]
+],{{color:'#F5C518',weight:2.5,opacity:.25,dashArray:'7 5'}}).addTo(map);
+
+/* ── BUS marker (polls /api/buses/coordinates) ── */
+const busIco = L.divIcon({{
+  html:`<div style="background:#F5C518;width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;border:3px solid #0d1117;box-shadow:0 0 18px rgba(245,197,24,.65)">🚌</div>`,
+  iconSize:[44,44],iconAnchor:[22,22],className:''
+}});
+let busMarker=null, busRing=null, busLat=null, busLng=null;
+
+async function fetchBus(){{
+  try{{
+    const r = await fetch('/api/buses/coordinates');
+    if(!r.ok) return;
+    const data = await r.json();
+    const route = (data.routes||[]).find(rt=>rt.liveLocation);
+    if(!route?.liveLocation) return;
+    const lat=parseFloat(route.liveLocation.lat), lng=parseFloat(route.liveLocation.lng);
+    if(isNaN(lat)||isNaN(lng)) return;
+    busLat=lat; busLng=lng;
+    const upd = route.liveLocation.updatedAt ? new Date(route.liveLocation.updatedAt).toLocaleTimeString() : 'now';
+    if(!busMarker){{
+      busRing = L.circle([lat,lng],{{color:'#F5C518',fillColor:'#F5C518',fillOpacity:.07,weight:1.5,radius:65}}).addTo(map);
+      busMarker = L.marker([lat,lng],{{icon:busIco,zIndexOffset:200}}).addTo(map)
+        .bindPopup(`<div style="text-align:center"><div style="font-size:14px;font-weight:700;color:#F5C518">{bus_id}</div><div style="color:#8b949e;font-size:11px">{bus_name}</div><div style="color:#484f58;font-size:10px;margin-top:4px">Updated ${{upd}}</div></div>`);
+    }} else {{
+      busMarker.setLatLng([lat,lng]);
+      busRing.setLatLng([lat,lng]);
+    }}
+    document.getElementById('last-upd').textContent = upd;
+    document.getElementById('coords-txt').textContent = '🚌 Bus: '+lat.toFixed(5)+', '+lng.toFixed(5);
+    calcETA();
+  }}catch(e){{ console.warn('bus fetch:',e); }}
 }}
-if(IS_LIVE&&TOKEN){{setInterval(async()=>{{try{{const r=await fetch('/api/tracking/position/'+TOKEN);if(!r.ok)return;const d=await r.json();if(d.lat&&d.lng)moveBus(parseFloat(d.lat),parseFloat(d.lng));}}catch(e){{console.log('poll error',e);}}}},8000);}}
-if(IS_LIVE&&navigator.geolocation){{navigator.geolocation.watchPosition(pos=>{{if(TOKEN){{fetch('/api/tracking/update',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify({{token:TOKEN,lat:pos.coords.latitude,lng:pos.coords.longitude}})}});moveBus(pos.coords.latitude,pos.coords.longitude);}}}},null,{{enableHighAccuracy:true,maximumAge:5000}});}}
+
+/* ── YOUR LOCATION marker (browser geolocation) ── */
+const youIco = L.divIcon({{
+  html:`<div style="position:relative"><div style="width:36px;height:36px;border-radius:50%;background:#00bcd4;display:flex;align-items:center;justify-content:center;font-size:18px;border:3px solid #0d1117;box-shadow:0 0 14px rgba(0,188,212,.6);position:relative;z-index:2">📍</div><div style="position:absolute;inset:-6px;border-radius:50%;background:rgba(0,188,212,.18);animation:rippleYou 2s ease-out infinite;z-index:1"></div></div><style>@keyframes rippleYou{{0%{{transform:scale(1);opacity:.7}}100%{{transform:scale(2);opacity:0}}}}</style>`,
+  iconSize:[36,36],iconAnchor:[18,18],className:''
+}});
+let youMarker=null, youCircle=null, youLat=null, youLng=null, firstFix=true;
+
+function startGeo(){{
+  if(!navigator.geolocation){{ document.getElementById('coords-txt').textContent='GPS not supported'; return; }}
+  navigator.geolocation.watchPosition(pos=>{{
+    const lat=pos.coords.latitude, lng=pos.coords.longitude, acc=pos.coords.accuracy;
+    youLat=lat; youLng=lng;
+
+    /* push position to server so contacts see real-time location */
+    if(IS_LIVE && TOKEN){{
+      fetch('/api/tracking/update',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify({{token:TOKEN,lat,lng}})}});
+    }}
+
+    if(!youMarker){{
+      youCircle = L.circle([lat,lng],{{color:'#00bcd4',fillColor:'#00bcd4',fillOpacity:.08,weight:1.5,radius:Math.max(25,acc)}}).addTo(map);
+      youMarker = L.marker([lat,lng],{{icon:youIco,zIndexOffset:400}}).addTo(map)
+        .bindTooltip('{username} — you',{{permanent:true,direction:'top',offset:[0,-20]}});
+      if(firstFix){{ map.setView([lat,lng],15,{{animate:true}}); firstFix=false; }}
+    }} else {{
+      youMarker.setLatLng([lat,lng]);
+      youCircle.setLatLng([lat,lng]);
+      youCircle.setRadius(Math.max(25,acc));
+    }}
+    calcETA();
+  }}, err=>{{
+    const msgs={{1:'GPS blocked — enable in browser',2:'Position unavailable',3:'GPS timeout'}};
+    document.getElementById('coords-txt').textContent = msgs[err.code]||'GPS error';
+  }},{{enableHighAccuracy:true,maximumAge:4000,timeout:20000}});
+}}
+
+/* ── ETA calculation ── */
+/* Finds nearest upcoming stop to user, estimates time based on bus→stop distance at 30 km/h */
+function calcETA(){{
+  if(busLat===null||youLat===null) return;
+
+  /* Find closest stop to user */
+  let nearestStop=null, minDist=Infinity;
+  STOPS.forEach(s=>{{
+    const d=hav(youLat,youLng,s.lat,s.lng);
+    if(d<minDist){{ minDist=d; nearestStop=s; }}
+  }});
+  if(!nearestStop) return;
+
+  /* Distance from bus to that stop */
+  const busToStop = hav(busLat,busLng,nearestStop.lat,nearestStop.lng);
+  /* Bus avg speed ~30 km/h in Cayman */
+  const etaMin = Math.round(busToStop/30*60);
+  const youToStop = Math.round(minDist*1000); /* metres */
+
+  const etaEl = document.getElementById('eta-val');
+  const subEl = document.getElementById('eta-sub');
+
+  if(busToStop<0.05){{ /* bus is basically AT the stop */
+    etaEl.textContent='Now';
+    etaEl.style.color='#4ade80';
+    subEl.textContent='Bus arriving!';
+  }} else if(etaMin<=1){{
+    etaEl.textContent='~1 min';
+    etaEl.style.color='#fb923c';
+    subEl.textContent=nearestStop.n.slice(0,18);
+  }} else {{
+    etaEl.textContent=etaMin+' min';
+    etaEl.style.color='#F5C518';
+    subEl.textContent=nearestStop.n.slice(0,18);
+  }}
+
+  document.getElementById('coords-txt').textContent =
+    '📍 You: '+youLat.toFixed(4)+', '+youLng.toFixed(4)+
+    ' | '+youToStop+'m to '+nearestStop.n.split(' ')[0];
+}}
+
+/* ── Boot ── */
+startGeo();
+fetchBus();
+if(IS_LIVE) setInterval(fetchBus, 8000);
 </script>
 </body>
 </html>"""
-
 
 # ═══════════════════════════════════════════════════════════
 # PUBLIC SOS PAGE  /sos/<token>
