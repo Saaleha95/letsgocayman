@@ -2407,59 +2407,67 @@ def tracking_page(token):
         bus_name='Cayman Bus'; route_id='CaymanBus'
         active=True; updated='Demo'
 
-    sc = '#34C759' if active else '#8b949e'
-    sl = 'LIVE'   if active else 'ENDED'
+    sc = '#16a34a' if active else '#6b7280'
+    sl = 'LIVE' if active else 'ENDED'
+    is_live_js = 'true' if active else 'false'
 
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<title>LetsGo — Live Tracking</title>
+<title>LetsGo — {username}'s Journey</title>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 *{{box-sizing:border-box;margin:0;padding:0}}
-html,body{{height:100%;font-family:'Outfit',sans-serif;background:#0d1117;color:#e6edf3;overflow:hidden}}
+html,body{{height:100%;font-family:'Outfit',sans-serif;background:#f8fafc;color:#1e293b;overflow:hidden}}
 body{{display:flex;flex-direction:column}}
-.hdr{{background:#161b22;border-bottom:1px solid #30363d;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:1000}}
-.hdr-logo{{font-size:15px;font-weight:700;color:#F5C518}}
+
+.hdr{{background:#fff;border-bottom:1px solid #e2e8f0;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:1000;box-shadow:0 1px 4px rgba(0,0,0,.06)}}
+.hdr-logo{{font-size:15px;font-weight:700;color:#0B1F3A;display:flex;align-items:center;gap:6px}}
+.hdr-logo span{{color:#F5C518}}
 .hdr-center{{text-align:center}}
-.hdr-center .title{{font-size:13px;font-weight:600;color:#f0f6fc}}
-.hdr-center .sub{{font-size:11px;color:#8b949e;margin-top:2px}}
-.live-pill{{display:inline-flex;align-items:center;gap:5px;background:{sc}18;border:1px solid {sc}40;color:{sc};padding:4px 11px;border-radius:20px;font-size:11px;font-weight:700}}
+.hdr-center .title{{font-size:13px;font-weight:600;color:#1e293b}}
+.hdr-center .sub{{font-size:11px;color:#94a3b8;margin-top:1px}}
+.live-pill{{display:inline-flex;align-items:center;gap:5px;background:{sc}15;border:1px solid {sc}50;color:{sc};padding:4px 11px;border-radius:20px;font-size:11px;font-weight:700}}
 .live-dot{{width:6px;height:6px;border-radius:50%;background:{sc};animation:pdot 1.4s infinite}}
-@keyframes pdot{{0%,100%{{opacity:1;transform:scale(1)}}50%{{opacity:.4;transform:scale(1.3)}}}}
+@keyframes pdot{{0%,100%{{opacity:1}}50%{{opacity:.3}}}}
+
 #map{{flex:1;width:100%;min-height:0}}
-.bottom{{background:#161b22;border-top:1px solid #30363d;flex-shrink:0}}
-.info-row{{display:flex;padding:10px 12px;border-bottom:1px solid #21262d}}
-.info-item{{flex:1;text-align:center;padding:0 4px}}
-.info-item .lbl{{font-size:8px;font-weight:700;color:#484f58;text-transform:uppercase;letter-spacing:.6px}}
-.info-item .val{{font-size:13px;font-weight:700;color:#f0f6fc;margin-top:3px;line-height:1.1}}
-.info-item .sub{{font-size:9px;color:#6e7681;margin-top:2px}}
-.info-item.eta-box .val{{color:#F5C518;font-size:18px}}
-.coords-bar{{display:flex;align-items:center;justify-content:space-between;padding:6px 14px;background:#0d1117}}
-.coords-text{{font-size:10px;color:#484f58;font-family:monospace}}
-.refresh-note{{font-size:10px;color:#484f58}}
-.ended-bar{{background:#21262d;padding:8px 16px;text-align:center;font-size:11px;color:#6e7681}}
 
-/* legend overlay */
-.leg{{position:absolute;left:10px;bottom:10px;z-index:500;background:rgba(13,17,23,.88);border:1px solid #30363d;border-radius:10px;padding:8px 12px;display:flex;flex-direction:column;gap:6px;pointer-events:none}}
-.leg-row{{display:flex;align-items:center;gap:7px;font-size:10px;color:#8b949e}}
-.leg-dot{{width:9px;height:9px;border-radius:50%;flex-shrink:0}}
+.bottom{{background:#fff;border-top:1px solid #e2e8f0;flex-shrink:0;box-shadow:0 -1px 4px rgba(0,0,0,.06)}}
+.info-row{{display:flex;border-bottom:1px solid #f1f5f9}}
+.info-item{{flex:1;text-align:center;padding:10px 6px;border-right:1px solid #f1f5f9}}
+.info-item:last-child{{border-right:none}}
+.lbl{{font-size:8px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.7px}}
+.val{{font-size:13px;font-weight:700;color:#1e293b;margin-top:3px;line-height:1.1}}
+.sub{{font-size:9px;color:#94a3b8;margin-top:2px}}
+.eta-item .val{{color:#F5C518;font-size:20px;font-weight:800}}
 
-.leaflet-popup-content-wrapper{{background:#161b22!important;border:1px solid #30363d!important;border-radius:10px!important;color:#e6edf3!important;box-shadow:0 8px 24px rgba(0,0,0,.5)!important}}
-.leaflet-popup-tip{{background:#161b22!important}}
-.leaflet-popup-content{{margin:10px 14px!important;font-family:'Outfit',sans-serif;font-size:12px;line-height:1.7}}
-.leaflet-bar a{{background:#161b22!important;color:#e6edf3!important;border-color:#30363d!important}}
-.leaflet-bar a:hover{{background:#21262d!important;color:#F5C518!important}}
-.leaflet-container .leaflet-control-attribution{{display:none}}
+.coords-bar{{display:flex;align-items:center;justify-content:space-between;padding:6px 14px;background:#f8fafc;border-top:1px solid #f1f5f9}}
+.ctxt{{font-size:10px;color:#94a3b8;font-family:monospace}}
+.rnote{{font-size:10px;color:#cbd5e1}}
+.ended-bar{{background:#fef9c3;padding:7px 16px;text-align:center;font-size:11px;color:#854d0e;border-top:1px solid #fde68a}}
+
+/* You-are-here pulse ring — pure CSS on a regular div, no embedded style tags */
+.you-pulse{{width:36px;height:36px;border-radius:50%;background:#0ea5e9;display:flex;align-items:center;justify-content:center;font-size:18px;border:3px solid #fff;box-shadow:0 2px 8px rgba(14,165,233,.5);position:relative}}
+.you-pulse::before{{content:'';position:absolute;inset:-8px;border-radius:50%;background:rgba(14,165,233,.2);animation:youRipple 1.8s ease-out infinite}}
+.you-pulse::after{{content:'';position:absolute;inset:-16px;border-radius:50%;background:rgba(14,165,233,.1);animation:youRipple 1.8s ease-out .6s infinite}}
+@keyframes youRipple{{0%{{transform:scale(.6);opacity:.8}}100%{{transform:scale(1.3);opacity:0}}}}
+
+.leaflet-popup-content-wrapper{{border-radius:10px!important;box-shadow:0 4px 20px rgba(0,0,0,.12)!important}}
+.leaflet-popup-content{{margin:10px 14px!important;font-family:'Outfit',sans-serif;font-size:12px;line-height:1.7;color:#1e293b}}
+.leaflet-bar a{{background:#fff!important;color:#1e293b!important;border-color:#e2e8f0!important}}
+.leaflet-bar a:hover{{color:#F5C518!important}}
+.leaflet-container .leaflet-control-attribution{{font-size:9px!important;background:rgba(255,255,255,.7)!important}}
 </style>
 </head>
 <body>
+
 <div class="hdr">
-  <div class="hdr-logo">🚌 LetsGo</div>
+  <div class="hdr-logo">🚌 <span>LetsGo</span></div>
   <div class="hdr-center">
     <div class="title">{username}'s Journey</div>
     <div class="sub">{bus_id} · Route {route_id}</div>
@@ -2467,186 +2475,221 @@ body{{display:flex;flex-direction:column}}
   <div class="live-pill"><div class="live-dot"></div>{sl}</div>
 </div>
 
-<div style="position:relative;flex:1;display:flex;flex-direction:column;min-height:0">
-  <div id="map"></div>
-  <div class="leg">
-    <div class="leg-row"><div class="leg-dot" style="background:#F5C518"></div>Live bus</div>
-    <div class="leg-row"><div class="leg-dot" style="background:#00bcd4"></div>You</div>
-    <div class="leg-row"><div class="leg-dot" style="background:#F5C518;opacity:.5"></div>Bus stop</div>
-  </div>
-</div>
+<div id="map"></div>
 
 <div class="bottom">
   <div class="info-row">
-    <div class="info-item"><div class="lbl">Rider</div><div class="val">{username}</div></div>
-    <div class="info-item"><div class="lbl">Bus</div><div class="val">{bus_id}</div><div class="sub">{bus_name[:16]}</div></div>
-    <div class="info-item eta-box"><div class="lbl">ETA to you</div><div class="val" id="eta-val">—</div><div class="sub" id="eta-sub">calculating</div></div>
-    <div class="info-item"><div class="lbl">Updated</div><div class="val" id="last-upd" style="font-size:11px">{updated}</div></div>
+    <div class="info-item">
+      <div class="lbl">Rider</div>
+      <div class="val">{username}</div>
+    </div>
+    <div class="info-item">
+      <div class="lbl">Bus</div>
+      <div class="val">{bus_id}</div>
+      <div class="sub" id="bus-status">Searching…</div>
+    </div>
+    <div class="info-item eta-item">
+      <div class="lbl">ETA</div>
+      <div class="val" id="eta-val">—</div>
+      <div class="sub" id="eta-stop">waiting for GPS</div>
+    </div>
+    <div class="info-item">
+      <div class="lbl">Updated</div>
+      <div class="val" id="last-upd" style="font-size:11px">{updated}</div>
+      <div class="sub">bus time</div>
+    </div>
   </div>
   <div class="coords-bar">
-    <span class="coords-text" id="coords-txt">📍 Acquiring location…</span>
-    {'<span class="refresh-note">Bus refreshes every 8s</span>' if active else ''}
+    <span class="ctxt" id="coords-txt">Acquiring your location…</span>
+    {'<span class="rnote">Bus updates every 8s</span>' if active else ''}
   </div>
   {'<div class="ended-bar">Journey ended — showing last known position</div>' if not active else ''}
 </div>
 
 <script>
-const TOKEN = '{token}';
-const IS_LIVE = {'true' if active else 'false'} === 'true';
+/* ── constants ── */
+const TOKEN   = '{token}';
+const IS_LIVE = {is_live_js};   /* proper JS boolean, not a string */
 
-/* ── Haversine distance (km) ── */
-function hav(lat1,lng1,lat2,lng2){{
-  const R=6371, dL=(lat2-lat1)*Math.PI/180, dN=(lng2-lng1)*Math.PI/180;
-  const a=Math.sin(dL/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dN/2)**2;
-  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+/* ── haversine (km) ── */
+function hav(a,b,c,d){{
+  const R=6371, dL=(c-a)*Math.PI/180, dN=(d-b)*Math.PI/180,
+        x=Math.sin(dL/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dN/2)**2;
+  return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
 }}
 
-/* ── Map init ── */
-const map = L.map('map',{{zoomControl:false,attributionControl:false}}).setView([19.2993,-81.3816],14);
-L.tileLayer('https://{{s}}.basemaps.cartocdn.com/dark_all/{{z}}/{{x}}/{{y}}{{r}}.png',{{subdomains:'abcd',maxZoom:19}}).addTo(map);
+/* ── map — LIGHT tiles ── */
+const map = L.map('map',{{zoomControl:false,attributionControl:true}})
+              .setView([19.2993,-81.3816],14);
+L.tileLayer('https://{{s}}.basemaps.cartocdn.com/light_all/{{z}}/{{x}}/{{y}}{{r}}.png',
+  {{subdomains:'abcd',maxZoom:19,attribution:'© OpenStreetMap © CartoDB'}}).addTo(map);
 L.control.zoom({{position:'topright'}}).addTo(map);
 
-/* ── Stops ── */
-const STOPS = [
-  {{n:'George Town Depot',lat:19.2869,lng:-81.3797}},
-  {{n:'Walkers Road',lat:19.2800,lng:-81.3650}},
-  {{n:'Compass Media',lat:19.2993,lng:-81.3816}},
+/* ── stops ── */
+const STOPS=[
+  {{n:'George Town Depot',   lat:19.2869,lng:-81.3797}},
+  {{n:'Walkers Road',        lat:19.2800,lng:-81.3650}},
+  {{n:'Compass Media',       lat:19.2993,lng:-81.3816}},
   {{n:'Cayman Enterprise City',lat:19.3120,lng:-81.3900}},
-  {{n:'Fairbanks Road',lat:19.2750,lng:-81.3500}},
-  {{n:'Health City / Hospitals',lat:19.2900,lng:-81.3300}},
-  {{n:'Schools Complex',lat:19.2950,lng:-81.3200}},
-  {{n:'Seven Mile Beach (South)',lat:19.3044,lng:-81.3939}},
-  {{n:'Camana Bay',lat:19.3175,lng:-81.3982}},
-  {{n:'Seven Mile Beach (North)',lat:19.3340,lng:-81.3894}},
+  {{n:'Fairbanks Road',      lat:19.2750,lng:-81.3500}},
+  {{n:'Hospitals',           lat:19.2900,lng:-81.3300}},
+  {{n:'Schools Complex',     lat:19.2950,lng:-81.3200}},
+  {{n:'Seven Mile Beach S',  lat:19.3044,lng:-81.3939}},
+  {{n:'Camana Bay',          lat:19.3175,lng:-81.3982}},
+  {{n:'Seven Mile Beach N',  lat:19.3340,lng:-81.3894}},
   {{n:'Cayman Turtle Centre',lat:19.3712,lng:-81.3789}},
-  {{n:'Bodden Town',lat:19.2842,lng:-81.2528}},
-  {{n:'East End',lat:19.3036,lng:-81.0914}},
-  {{n:'Airport (ORIA)',lat:19.2928,lng:-81.3576}},
+  {{n:'Bodden Town',         lat:19.2842,lng:-81.2528}},
+  {{n:'East End',            lat:19.3036,lng:-81.0914}},
+  {{n:'Airport ORIA',        lat:19.2928,lng:-81.3576}},
 ];
+const stopIco = L.divIcon({{html:'<div style="width:10px;height:10px;border-radius:50%;background:#F5C518;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3)"></div>',iconSize:[10,10],iconAnchor:[5,5],className:''}});
 STOPS.forEach(s=>{{
-  L.circleMarker([s.lat,s.lng],{{radius:5,color:'#F5C518',fillColor:'#F5C518',fillOpacity:.55,weight:1.5}})
-   .addTo(map)
-   .bindTooltip(`<span style="font-size:12px;font-weight:600;color:#F5C518">${{s.n}}</span>`,{{direction:'top',offset:[0,-4]}});
+  L.marker([s.lat,s.lng],{{icon:stopIco}}).addTo(map)
+   .bindTooltip('<b style="color:#0B1F3A">'+s.n+'</b>',{{direction:'top',offset:[0,-6],className:''}});
 }});
 
-/* ── Route polyline ── */
-L.polyline([
-  [19.2869,-81.3797],[19.2800,-81.3650],[19.2993,-81.3816],
-  [19.3120,-81.3900],[19.2750,-81.3500],[19.2900,-81.3300],[19.2950,-81.3200]
-],{{color:'#F5C518',weight:2.5,opacity:.25,dashArray:'7 5'}}).addTo(map);
+/* route line */
+L.polyline([[19.2869,-81.3797],[19.2800,-81.3650],[19.2993,-81.3816],
+            [19.3120,-81.3900],[19.2750,-81.3500],[19.2900,-81.3300],[19.2950,-81.3200]],
+  {{color:'#F5C518',weight:3,opacity:.45,dashArray:'8 5'}}).addTo(map);
 
-/* ── BUS marker (polls /api/buses/coordinates) ── */
+/* ── BUS marker ── */
 const busIco = L.divIcon({{
-  html:`<div style="background:#F5C518;width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;border:3px solid #0d1117;box-shadow:0 0 18px rgba(245,197,24,.65)">🚌</div>`,
+  html:'<div style="background:#F5C518;width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;border:3px solid #fff;box-shadow:0 3px 10px rgba(245,197,24,.6)">🚌</div>',
   iconSize:[44,44],iconAnchor:[22,22],className:''
 }});
-let busMarker=null, busRing=null, busLat=null, busLng=null;
+let busMarker=null,busRing=null,busLat=null,busLng=null;
 
 async function fetchBus(){{
   try{{
-    const r = await fetch('/api/buses/coordinates');
-    if(!r.ok) return;
-    const data = await r.json();
-    const route = (data.routes||[]).find(rt=>rt.liveLocation);
-    if(!route?.liveLocation) return;
-    const lat=parseFloat(route.liveLocation.lat), lng=parseFloat(route.liveLocation.lng);
-    if(isNaN(lat)||isNaN(lng)) return;
+    const r=await fetch('/api/buses/coordinates');
+    if(!r.ok)return;
+    const data=await r.json();
+    const route=(data.routes||[]).find(rt=>rt.liveLocation);
+    if(!route?.liveLocation){{
+      document.getElementById('bus-status').textContent='No live bus';
+      return;
+    }}
+    const lat=parseFloat(route.liveLocation.lat),lng=parseFloat(route.liveLocation.lng);
+    if(isNaN(lat)||isNaN(lng))return;
     busLat=lat; busLng=lng;
-    const upd = route.liveLocation.updatedAt ? new Date(route.liveLocation.updatedAt).toLocaleTimeString() : 'now';
+    const upd=route.liveLocation.updatedAt
+      ? new Date(route.liveLocation.updatedAt).toLocaleTimeString() : 'now';
     if(!busMarker){{
-      busRing = L.circle([lat,lng],{{color:'#F5C518',fillColor:'#F5C518',fillOpacity:.07,weight:1.5,radius:65}}).addTo(map);
-      busMarker = L.marker([lat,lng],{{icon:busIco,zIndexOffset:200}}).addTo(map)
-        .bindPopup(`<div style="text-align:center"><div style="font-size:14px;font-weight:700;color:#F5C518">{bus_id}</div><div style="color:#8b949e;font-size:11px">{bus_name}</div><div style="color:#484f58;font-size:10px;margin-top:4px">Updated ${{upd}}</div></div>`);
-    }} else {{
+      busRing=L.circle([lat,lng],{{color:'#F5C518',fillColor:'#F5C518',fillOpacity:.08,weight:1.5,radius:70}}).addTo(map);
+      busMarker=L.marker([lat,lng],{{icon:busIco,zIndexOffset:200}}).addTo(map)
+        .bindPopup('<b style="color:#0B1F3A">{bus_id}</b><br><span style="color:#64748b">{bus_name}</span><br><small style="color:#94a3b8">Updated '+upd+'</small>');
+    }}else{{
       busMarker.setLatLng([lat,lng]);
       busRing.setLatLng([lat,lng]);
     }}
-    document.getElementById('last-upd').textContent = upd;
-    document.getElementById('coords-txt').textContent = '🚌 Bus: '+lat.toFixed(5)+', '+lng.toFixed(5);
+    document.getElementById('last-upd').textContent=upd;
+    document.getElementById('bus-status').textContent='Online';
     calcETA();
-  }}catch(e){{ console.warn('bus fetch:',e); }}
+  }}catch(e){{
+    document.getElementById('bus-status').textContent='Offline';
+    console.warn('bus:',e);
+  }}
 }}
 
-/* ── YOUR LOCATION marker (browser geolocation) ── */
+/* ── YOU marker — note: icon html has NO embedded <style> tags ── */
 const youIco = L.divIcon({{
-  html:`<div style="position:relative"><div style="width:36px;height:36px;border-radius:50%;background:#00bcd4;display:flex;align-items:center;justify-content:center;font-size:18px;border:3px solid #0d1117;box-shadow:0 0 14px rgba(0,188,212,.6);position:relative;z-index:2">📍</div><div style="position:absolute;inset:-6px;border-radius:50%;background:rgba(0,188,212,.18);animation:rippleYou 2s ease-out infinite;z-index:1"></div></div><style>@keyframes rippleYou{{0%{{transform:scale(1);opacity:.7}}100%{{transform:scale(2);opacity:0}}}}</style>`,
+  html:'<div class="you-pulse">📍</div>',
   iconSize:[36,36],iconAnchor:[18,18],className:''
 }});
-let youMarker=null, youCircle=null, youLat=null, youLng=null, firstFix=true;
+let youMarker=null,youCircle=null,youLat=null,youLng=null,geoStarted=false;
 
 function startGeo(){{
-  if(!navigator.geolocation){{ document.getElementById('coords-txt').textContent='GPS not supported'; return; }}
-  navigator.geolocation.watchPosition(pos=>{{
-    const lat=pos.coords.latitude, lng=pos.coords.longitude, acc=pos.coords.accuracy;
-    youLat=lat; youLng=lng;
-
-    /* push position to server so contacts see real-time location */
-    if(IS_LIVE && TOKEN){{
-      fetch('/api/tracking/update',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify({{token:TOKEN,lat,lng}})}});
-    }}
-
-    if(!youMarker){{
-      youCircle = L.circle([lat,lng],{{color:'#00bcd4',fillColor:'#00bcd4',fillOpacity:.08,weight:1.5,radius:Math.max(25,acc)}}).addTo(map);
-      youMarker = L.marker([lat,lng],{{icon:youIco,zIndexOffset:400}}).addTo(map)
-        .bindTooltip('{username} — you',{{permanent:true,direction:'top',offset:[0,-20]}});
-      if(firstFix){{ map.setView([lat,lng],15,{{animate:true}}); firstFix=false; }}
-    }} else {{
-      youMarker.setLatLng([lat,lng]);
-      youCircle.setLatLng([lat,lng]);
-      youCircle.setRadius(Math.max(25,acc));
-    }}
-    calcETA();
-  }}, err=>{{
-    const msgs={{1:'GPS blocked — enable in browser',2:'Position unavailable',3:'GPS timeout'}};
-    document.getElementById('coords-txt').textContent = msgs[err.code]||'GPS error';
-  }},{{enableHighAccuracy:true,maximumAge:4000,timeout:20000}});
+  if(!navigator.geolocation){{
+    document.getElementById('coords-txt').textContent='GPS not available on this device';
+    return;
+  }}
+  /* getCurrentPosition fires immediately; watchPosition follows for updates */
+  navigator.geolocation.getCurrentPosition(handlePos,handleGeoErr,{{enableHighAccuracy:true,timeout:15000}});
+  navigator.geolocation.watchPosition(handlePos,handleGeoErr,{{enableHighAccuracy:true,maximumAge:4000,timeout:20000}});
 }}
 
-/* ── ETA calculation ── */
-/* Finds nearest upcoming stop to user, estimates time based on bus→stop distance at 30 km/h */
-function calcETA(){{
-  if(busLat===null||youLat===null) return;
+function handlePos(pos){{
+  const lat=pos.coords.latitude, lng=pos.coords.longitude, acc=pos.coords.accuracy;
+  youLat=lat; youLng=lng;
 
-  /* Find closest stop to user */
-  let nearestStop=null, minDist=Infinity;
-  STOPS.forEach(s=>{{
-    const d=hav(youLat,youLng,s.lat,s.lng);
-    if(d<minDist){{ minDist=d; nearestStop=s; }}
-  }});
-  if(!nearestStop) return;
-
-  /* Distance from bus to that stop */
-  const busToStop = hav(busLat,busLng,nearestStop.lat,nearestStop.lng);
-  /* Bus avg speed ~30 km/h in Cayman */
-  const etaMin = Math.round(busToStop/30*60);
-  const youToStop = Math.round(minDist*1000); /* metres */
-
-  const etaEl = document.getElementById('eta-val');
-  const subEl = document.getElementById('eta-sub');
-
-  if(busToStop<0.05){{ /* bus is basically AT the stop */
-    etaEl.textContent='Now';
-    etaEl.style.color='#4ade80';
-    subEl.textContent='Bus arriving!';
-  }} else if(etaMin<=1){{
-    etaEl.textContent='~1 min';
-    etaEl.style.color='#fb923c';
-    subEl.textContent=nearestStop.n.slice(0,18);
-  }} else {{
-    etaEl.textContent=etaMin+' min';
-    etaEl.style.color='#F5C518';
-    subEl.textContent=nearestStop.n.slice(0,18);
+  /* push to server */
+  if(IS_LIVE&&TOKEN){{
+    fetch('/api/tracking/update',{{method:'POST',
+      headers:{{'Content-Type':'application/json'}},
+      body:JSON.stringify({{token:TOKEN,lat,lng}})}});
   }}
 
-  document.getElementById('coords-txt').textContent =
-    '📍 You: '+youLat.toFixed(4)+', '+youLng.toFixed(4)+
-    ' | '+youToStop+'m to '+nearestStop.n.split(' ')[0];
+  if(!youMarker){{
+    youCircle=L.circle([lat,lng],{{color:'#0ea5e9',fillColor:'#0ea5e9',fillOpacity:.1,weight:1.5,radius:Math.max(20,acc)}}).addTo(map);
+    youMarker=L.marker([lat,lng],{{icon:youIco,zIndexOffset:500}}).addTo(map)
+      .bindTooltip('{username} — you',{{permanent:true,direction:'top',offset:[0,-22]}});
+    /* pan map to show both you and bus if available */
+    if(busLat!==null){{
+      const bounds=L.latLngBounds([[lat,lng],[busLat,busLng]]);
+      map.fitBounds(bounds,{{padding:[60,60],maxZoom:15}});
+    }}else{{
+      map.setView([lat,lng],15,{{animate:true}});
+    }}
+    geoStarted=true;
+  }}else{{
+    youMarker.setLatLng([lat,lng]);
+    youCircle.setLatLng([lat,lng]);
+    youCircle.setRadius(Math.max(20,acc));
+  }}
+  document.getElementById('coords-txt').textContent=
+    '📍 You: '+lat.toFixed(5)+', '+lng.toFixed(5)+' (±'+Math.round(acc)+'m)';
+  calcETA();
 }}
 
-/* ── Boot ── */
-startGeo();
+function handleGeoErr(e){{
+  const m={{1:'Location blocked — tap the lock icon in your browser and allow location',
+           2:'GPS signal unavailable — try moving outside',
+           3:'GPS timed out — retrying…'}};
+  document.getElementById('coords-txt').textContent=m[e.code]||'GPS error '+e.code;
+  document.getElementById('eta-stop').textContent='enable GPS to see ETA';
+}}
+
+/* ── ETA ── */
+function calcETA(){{
+  if(youLat===null)return;
+
+  /* nearest stop to user */
+  let nearest=null,minD=Infinity;
+  STOPS.forEach(s=>{{const d=hav(youLat,youLng,s.lat,s.lng);if(d<minD){{minD=d;nearest=s;}}}});
+  if(!nearest)return;
+
+  const youToStop=Math.round(minD*1000); /* metres from you to stop */
+  const etaEl=document.getElementById('eta-val');
+  const subEl=document.getElementById('eta-stop');
+
+  if(busLat!==null){{
+    /* bus is online — use bus→stop distance */
+    const busToStop=hav(busLat,busLng,nearest.lat,nearest.lng);
+    const etaMin=Math.max(0,Math.round(busToStop/30*60)); /* 30 km/h */
+    if(etaMin===0){{
+      etaEl.textContent='Now'; etaEl.style.color='#16a34a';
+      subEl.textContent='Bus arriving!';
+    }}else if(etaMin===1){{
+      etaEl.textContent='1 min'; etaEl.style.color='#ea580c';
+      subEl.textContent=nearest.n;
+    }}else{{
+      etaEl.textContent=etaMin+' min'; etaEl.style.color='#F5C518';
+      subEl.textContent=nearest.n;
+    }}
+  }}else{{
+    /* no bus online — show walking distance to nearest stop */
+    const walkMin=Math.round(youToStop/80); /* ~80m/min walking */
+    etaEl.textContent=walkMin<1?'<1':walkMin+' min';
+    etaEl.style.color='#94a3b8';
+    subEl.textContent='walk to '+nearest.n;
+  }}
+}}
+
+/* ── boot ── */
 fetchBus();
-if(IS_LIVE) setInterval(fetchBus, 8000);
+startGeo();
+if(IS_LIVE) setInterval(fetchBus,8000);
 </script>
 </body>
 </html>"""
