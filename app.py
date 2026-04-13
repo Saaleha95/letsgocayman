@@ -2300,7 +2300,7 @@ def admin_sms_alerts():
         icon, color, label = TYPE_LABELS.get(l.message_type, ('💬', '#818cf8', l.message_type))
         sent_at      = l.created_at.strftime('%d %b %Y, %H:%M')
         status_color = '#4ade80' if l.sent else '#ef4444'
-        status_label = '✓ Sent'   if l.sent else '✗ Failed'
+        status_label = '✓ Sent'  if l.sent else '✗ Failed'
         status_bg    = 'rgba(74,222,128,.1)' if l.sent else 'rgba(239,68,68,.1)'
         maps_url     = f'https://maps.google.com/?q={l.lat},{l.lng}' if l.lat and l.lng else ''
         gps_cell     = (
@@ -2343,10 +2343,13 @@ def admin_sms_alerts():
             </span>
           </td>
           <td class="date-cell">{sent_at}</td>
+          <td>
+            <button class="btn btn-danger" style="font-size:11px;padding:4px 10px" onclick="confirmDeleteSMS({l.id})">Delete</button>
+          </td>
         </tr>"""
 
     if not rows:
-        rows = '<tr><td colspan="11" style="text-align:center;padding:48px;color:#484f58">No SMS alerts logged yet.</td></tr>'
+        rows = '<tr><td colspan="12" style="text-align:center;padding:48px;color:#484f58">No SMS alerts logged yet.</td></tr>'
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -2370,7 +2373,10 @@ def admin_sms_alerts():
       <h1>💬 SMS Alerts</h1>
       <p>All outbound SMS — offline reminders, journey shares, and SOS alerts</p>
     </div>
-    <span class="badge" id="sms-total-count">{len(logs)} total</span>
+    <div style="display:flex;gap:10px;align-items:center">
+      <button class="btn btn-danger" onclick="confirmDeleteAllFailed()">Delete All Failed</button>
+      <span class="badge" id="sms-total-count">{len(logs)} total</span>
+    </div>
   </div>
 
   <!-- STAT CARDS -->
@@ -2414,6 +2420,7 @@ def admin_sms_alerts():
             <th>GPS</th>
             <th>Status</th>
             <th>Sent At</th>
+            <th>Action</th>
           </tr>
         </thead>
         <tbody id="sms-tbody">{rows}</tbody>
@@ -2422,9 +2429,89 @@ def admin_sms_alerts():
   </div>
 </div>
 
+<!-- Delete single modal -->
+<div class="overlay" id="sms-del-overlay">
+  <div class="modal">
+    <h3>🗑 Delete SMS Log</h3>
+    <p id="sms-del-msg">Delete this SMS log entry permanently?</p>
+    <div class="modal-btns">
+      <button class="btn btn-ghost" onclick="closeModal('sms-del-overlay')">Cancel</button>
+      <button class="btn btn-danger" id="sms-del-confirm-btn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete all failed modal -->
+<div class="overlay" id="sms-del-all-overlay">
+  <div class="modal">
+    <h3>🗑 Delete All Failed Logs</h3>
+    <p>This will permanently remove all <strong>✗ Failed</strong> SMS log entries. Sent logs will be kept.</p>
+    <div class="modal-btns">
+      <button class="btn btn-ghost" onclick="closeModal('sms-del-all-overlay')">Cancel</button>
+      <button class="btn btn-danger" onclick="deleteAllFailed()">Delete Failed</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 {ADMIN_JS}
 <script>
+let pendingSMSDeleteId = null;
+
+function confirmDeleteSMS(id) {{
+  pendingSMSDeleteId = id;
+  document.getElementById('sms-del-msg').textContent = `Delete SMS log #${{id}} permanently?`;
+  openModal('sms-del-overlay');
+}}
+
+document.getElementById('sms-del-confirm-btn').addEventListener('click', async () => {{
+  if (!pendingSMSDeleteId) return;
+  closeModal('sms-del-overlay');
+  try {{
+    const res  = await fetch(`/api/sms/log/${{pendingSMSDeleteId}}`, {{ method: 'DELETE' }});
+    const data = await res.json();
+    if (res.ok) {{
+      document.getElementById(`sms-row-${{pendingSMSDeleteId}}`).remove();
+      showToast('✓ Log entry deleted');
+      updateCount();
+    }} else {{
+      showToast('✗ ' + (data.message || 'Delete failed'), 'error');
+    }}
+  }} catch (e) {{
+    showToast('✗ Request failed', 'error');
+  }}
+  pendingSMSDeleteId = null;
+}});
+
+function confirmDeleteAllFailed() {{
+  openModal('sms-del-all-overlay');
+}}
+
+async function deleteAllFailed() {{
+  closeModal('sms-del-all-overlay');
+  try {{
+    const res  = await fetch('/api/sms/log/failed', {{ method: 'DELETE' }});
+    const data = await res.json();
+    if (res.ok) {{
+      document.querySelectorAll('#sms-tbody tr').forEach(row => {{
+        const statusSpan = row.querySelector('td:nth-child(10) span');
+        if (statusSpan && statusSpan.textContent.includes('Failed')) row.remove();
+      }});
+      showToast(`✓ ${{data.deleted}} failed log(s) removed`);
+      updateCount();
+    }} else {{
+      showToast('✗ ' + (data.message || 'Delete failed'), 'error');
+    }}
+  }} catch (e) {{
+    showToast('✗ Request failed', 'error');
+  }}
+}}
+
+function updateCount() {{
+  const count = document.querySelectorAll('#sms-tbody tr[id]').length;
+  document.getElementById('sms-total-count').textContent = count + ' total';
+}}
+
 async function refreshSMS() {{
   try {{
     const res  = await fetch('/api/admin/sms-alerts');
@@ -2439,7 +2526,7 @@ async function refreshSMS() {{
     }};
 
     if (!data.logs || data.logs.length === 0) {{
-      tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:48px;color:#484f58">No SMS alerts logged yet.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:48px;color:#484f58">No SMS alerts logged yet.</td></tr>';
       document.getElementById('sms-total-count').textContent = '0 total';
       return;
     }}
@@ -2464,9 +2551,7 @@ async function refreshSMS() {{
             👤 ${{l.username || '—'}}
           </div>
         </td>
-        <td>
-          <div style="font-family:monospace;font-size:12px;color:#e6edf3">${{l.toPhone}}</div>
-        </td>
+        <td><div style="font-family:monospace;font-size:12px;color:#e6edf3">${{l.toPhone}}</div></td>
         <td>
           <span style="display:inline-flex;align-items:center;gap:5px;background:${{color}}18;color:${{color}};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid ${{color}}33">
             ${{icon}} ${{label}}
@@ -2486,6 +2571,9 @@ async function refreshSMS() {{
           </span>
         </td>
         <td class="date-cell">${{l.createdAt}}</td>
+        <td>
+          <button class="btn btn-danger" style="font-size:11px;padding:4px 10px" onclick="confirmDeleteSMS(${{l.id}})">Delete</button>
+        </td>
       </tr>`;
     }}).join('');
 
@@ -2502,6 +2590,28 @@ setInterval(refreshSMS, 15000);
 </html>"""
 
 
+# ── Delete single SMS log entry ────────────────────────────
+@app.route('/api/sms/log/<int:log_id>', methods=['DELETE'])
+@require_admin
+def delete_sms_log(log_id):
+    log = db.session.get(SMSLog, log_id)
+    if not log:
+        return jsonify({'message': 'Log entry not found'}), 404
+    db.session.delete(log)
+    db.session.commit()
+    return jsonify({'message': f'Log #{log_id} deleted'}), 200
+
+
+# ── Delete all failed SMS logs ─────────────────────────────
+@app.route('/api/sms/log/failed', methods=['DELETE'])
+@require_admin
+def delete_failed_sms_logs():
+    failed = SMSLog.query.filter_by(sent=False).all()
+    count  = len(failed)
+    for log in failed:
+        db.session.delete(log)
+    db.session.commit()
+    return jsonify({'message': f'{count} failed log(s) deleted', 'deleted': count}), 200
 # ═══════════════════════════════════════════════════════════
 # ADMIN SOS JSON API  (for auto-refresh)
 # ═══════════════════════════════════════════════════════════
