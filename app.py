@@ -2652,6 +2652,22 @@ def api_admin_sos_alerts():
     })
 
 
+#### play a sound ####
+
+@app.route('/trigger-sound', methods=['POST'])
+def trigger():
+    global pending
+    pending = True
+    return jsonify({'status': 'queued'})
+
+@app.route('/poll', methods=['GET'])
+def poll():
+    global pending
+    if pending:
+        pending = False
+        return jsonify({'play': True})
+    return jsonify({'play': False})
+
 
 
 # ═══════════════════════════════════════════════════════════
