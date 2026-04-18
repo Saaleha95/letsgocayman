@@ -667,7 +667,7 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
   <div class="love-banner reveal"><div class="love-text">Made with <span class="gold">love</span> in the Cayman Islands &#127472;&#127486;</div><div class="love-sub">GRAND CAYMAN · CAYMAN BRAC · LITTLE CAYMAN</div></div>
   <footer>
     <div class="footer-logo">&#128652; LetsGo</div>
-    <div class="footer-links"><a href="#" onclick="showPage('home')">Home</a><a href="#" onclick="showPage('team')">Team</a></div>
+    <div class="footer-links"><a href="#" onclick="showPage('home')">Home</a><a href="#" onclick="showPage('team')">Team</a><a href="/demo">Demo</a></div>
     <div class="footer-copy">&#169; 2026 LetsGo · Cayman Islands</div>
     <a href="/admin/login" class="footer-admin">Admin</a>
   </footer>
@@ -769,6 +769,122 @@ def admin_login():
 def admin_logout():
     session.pop('admin_logged_in', None)
     return redirect('/admin/login')
+
+@app.route('/demo')
+def demo():
+    return """
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LetsGo Cayman — How It Works</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #0a0a0a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+            color: white;
+            padding: 20px;
+        }
+        .logo { font-size: 32px; font-weight: bold; color: #00C853; margin-bottom: 8px; }
+        .tagline { color: #aaa; font-size: 14px; margin-bottom: 6px; }
+        .subtitle { color: #00C853; font-size: 18px; font-weight: bold; margin-bottom: 24px; }
+        .video-container {
+            width: 100%;
+            max-width: 800px;
+            aspect-ratio: 16/9;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 0 40px rgba(0,200,83,0.3);
+            margin-bottom: 40px;
+        }
+        iframe { width: 100%; height: 100%; border: none; }
+        .steps {
+            width: 100%;
+            max-width: 800px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 40px;
+        }
+        .step {
+            background: #1a1a1a;
+            border: 1px solid #00C853;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+        .step .icon { font-size: 32px; margin-bottom: 10px; }
+        .step h3 { color: #00C853; font-size: 16px; margin-bottom: 8px; }
+        .step p { color: #aaa; font-size: 13px; line-height: 1.5; }
+        .cta {
+            background: #00C853;
+            color: black;
+            font-weight: bold;
+            font-size: 16px;
+            padding: 14px 32px;
+            border-radius: 30px;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="logo">🚌 LetsGo Cayman</div>
+    <div class="tagline">The first AI-powered smart bus platform in the Cayman Islands</div>
+    <div class="subtitle">Here is how it works</div>
+
+    <div class="video-container">
+        <iframe
+            src="https://www.youtube.com/embed/GA60zCK3Ei8?autoplay=1&rel=0"
+            allow="autoplay; encrypted-media"
+            allowfullscreen>
+        </iframe>
+    </div>
+
+    <div class="steps">
+        <div class="step">
+            <div class="icon">📍</div>
+            <h3>Track Your Bus</h3>
+            <p>See exactly where your bus is in real time. AI predicts arrival in under 60 seconds.</p>
+        </div>
+        <div class="step">
+            <div class="icon">📲</div>
+            <h3>Tap To Pay</h3>
+            <p>Load your wallet once. Tap your phone or card and board in under 1 second. No cash needed.</p>
+        </div>
+        <div class="step">
+            <div class="icon">🔔</div>
+            <h3>Smart Reminders</h3>
+            <p>We learn your commute and alert you when your bus is 5 minutes away. Never wait again.</p>
+        </div>
+        <div class="step">
+            <div class="icon">🆘</div>
+            <h3>Family SOS</h3>
+            <p>One tap sends your GPS, bus ID and route to emergency contacts. Works fully offline.</p>
+        </div>
+        <div class="step">
+            <div class="icon">📶</div>
+            <h3>Works Offline</h3>
+            <p>No signal? No problem. Dead reckoning and SMS fallback keep you connected anywhere.</p>
+        </div>
+        <div class="step">
+            <div class="icon">🚩</div>
+            <h3>Community Reports</h3>
+            <p>Flag delays, overcrowding or safety issues instantly. Reports escalate to the transit authority.</p>
+        </div>
+    </div>
+
+    <a class="cta" href="https://www.letsgocayman.com">Try It Yourself →</a>
+
+</body>
+</html>
+"""
 
 @app.route('/privacy')
 def privacy():
