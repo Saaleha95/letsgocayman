@@ -456,14 +456,13 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
     <li><a href="#" onclick="showPage('home')">Home</a></li>
     <li><a href="#" onclick="showPage('home');setTimeout(()=>document.getElementById('features').scrollIntoView({behavior:'smooth'}),200)">Features</a></li>
     <li><a href="#" onclick="showPage('team')">Our Team</a></li>
-    <li><a href="#" onclick="showPage('demo')">Demo</a></li>
+    <li><a href="/demo">Demo</a></li>
   </ul>
   <a href="#dl" class="nav-dl" onclick="showPage('home')">Download App</a>
 </nav>
 <div class="page-nav">
   <button class="pnav-btn active" id="tab-home" onclick="showPage('home')">Home</button>
   <button class="pnav-btn" id="tab-team" onclick="showPage('team')">Meet Our Team</button>
-  <button class="pnav-btn" id="tab-team" onclick="showPage('demo')">Demo</button>
 </div>
 <div class="page active" id="page-home">
   <section class="hero">
