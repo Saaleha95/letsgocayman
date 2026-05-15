@@ -3098,37 +3098,35 @@ CAYMAN_ROUTES = [
 
 @app.route('/api/buses/coordinates', methods=['GET'])
 def buses_coordinates():
-    # ── Get live coordinates from Raspberry Pi for CaymanBus ─────────
-    session = TrackingSession.query.filter_by(
-        active=True, route_id='CaymanBus'
-    ).order_by(TrackingSession.updated_at.desc()).first()
+    # ── Get ALL active tracking sessions (not just CaymanBus) ────────
+    active_sessions = TrackingSession.query.filter_by(active=True).all()
 
-    if session:
+    # Build a dict keyed by route_id for quick lookup
+    live_locations_by_route = {}
+    for session in active_sessions:
         try:
-            live_location = {
+            live_locations_by_route[session.route_id] = {
                 "lat": float(session.lat),
                 "lng": float(session.lng),
                 "busId": session.bus_id,
                 "updatedAt": session.updated_at.isoformat() if session.updated_at else None,
             }
         except (ValueError, TypeError):
-            live_location = None
-    else:
-        live_location = None
+            continue  # Skip malformed sessions
 
     # ── Build all routes from CAYMAN_ROUTES ──────────────────────────
     all_routes = []
 
     for route in CAYMAN_ROUTES:
-        stops = []
-
-        for i, (name, lat, lng) in enumerate(route['stops']):
-            stops.append({
+        stops = [
+            {
                 "id": f"{route['route_number']}-S{i + 1:02}",
                 "name": name,
                 "lat": lat,
                 "lng": lng,
-            })
+            }
+            for i, (name, lat, lng) in enumerate(route['stops'])
+        ]
 
         route_data = {
             "route": route['route_number'],
@@ -3137,11 +3135,9 @@ def buses_coordinates():
             "frequency": route['frequency'],
             "description": route['description'],
             "stops": stops,
+            # Attach live location if this route has an active session, else None
+            "liveLocation": live_locations_by_route.get(route['route_number']),
         }
-
-        # Attach live Pi coordinates only to CaymanBus
-        if route['route_number'] == 'CaymanBus':
-            route_data['liveLocation'] = live_location
 
         all_routes.append(route_data)
 
@@ -3149,6 +3145,7 @@ def buses_coordinates():
         "routes": all_routes,
         "totalRoutes": len(all_routes),
         "totalStops": sum(len(r["stops"]) for r in all_routes),
+        "liveRoutesCount": len(live_locations_by_route),  # bonus: how many are live
         "generatedAt": datetime.utcnow().isoformat() + "Z",
     }), 200
 
