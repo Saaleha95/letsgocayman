@@ -2794,31 +2794,39 @@ def bus_location():
     if not data or 'lat' not in data or 'lng' not in data:
         return jsonify({"error": "Missing lat/lng"}), 400
 
+    # Accept any bus identity from the payload, with CaymanBus as fallback
+    bus_id   = (data.get('busId')   or 'CaymanBus').strip()
+    route_id = (data.get('routeId') or bus_id).strip()
+    bus_name = (data.get('busName') or bus_id).strip()
+
     session = TrackingSession.query.filter_by(
-        bus_id='CaymanBus', active=True
+        bus_id=bus_id, active=True
     ).first()
 
     if not session:
         session = TrackingSession(
-            bus_id='CaymanBus',
-            route_id='CaymanBus',
-            bus_name='Cayman Bus',
+            bus_id=bus_id,
+            route_id=route_id,
+            bus_name=bus_name,
             username='pi',
             phone_number='',
             contact_name='',
             contact_phone='',
             active=True,
-            token=uuid.uuid4().hex,  # 32 chars, no dashes
+            token=uuid.uuid4().hex,
         )
         db.session.add(session)
+    else:
+        # Update name/route in case they changed
+        session.bus_name = bus_name
+        session.route_id = route_id
 
     session.lat = data['lat']
     session.lng = data['lng']
     session.updated_at = datetime.utcnow()
     db.session.commit()
 
-    return jsonify({"status": "ok"}), 200
-
+    return jsonify({"status": "ok", "busId": bus_id, "routeId": route_id}), 200
 
 @app.route('/api/tracking/start', methods=['POST'])
 def start_tracking():
