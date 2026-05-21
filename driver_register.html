@@ -622,12 +622,16 @@ async function submitForm() {
     frequency: frequency,
     description: routeDesc,
     stops: stops.map(function(s, i) {
-      return {
-        order: i + 1,
-        name: s.name,
-        lat: s.lat !== null ? parseFloat(s.lat) : null,
-        lng: s.lng !== null ? parseFloat(s.lng) : null
-      };
+    var idPrefix = (routeId === 'custom')
+      ? (routeName || 'custom').replace(/\s+/g, '-').toLowerCase()
+      : routeId;
+    return {
+      id: idPrefix + '-S' + String(i + 1).padStart(2, '0'),
+      order: i + 1,
+      name: s.name,
+      lat: s.lat !== null ? parseFloat(s.lat) : null,
+      lng: s.lng !== null ? parseFloat(s.lng) : null
+    };
     })
   };
 
