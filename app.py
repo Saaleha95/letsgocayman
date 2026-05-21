@@ -2659,26 +2659,33 @@ def buses_coordinates():
 
     # ── POST: update live location for a bus ─────────────────────────────
     if request.method == 'POST':
-        data = request.get_json(force=True, silent=True) or {}
+        data   = request.get_json(force=True, silent=True) or {}
         bus_id = (data.get('busId') or '').strip()
-        lat    = data.get('lat')
-        lng    = data.get('lng')
+        active = data.get('active', True)
 
-        if not bus_id or lat is None or lng is None:
-            return jsonify({'error': 'busId, lat and lng are required'}), 400
+        if not bus_id:
+            return jsonify({'error': 'busId is required'}), 400
 
+        lat = data.get('lat')
+        lng = data.get('lng')
+
+        # Coords are required when going online, optional when going offline
         try:
             lat = float(lat)
             lng = float(lng)
-        except (ValueError, TypeError):
-            return jsonify({'error': 'lat and lng must be numeric'}), 400
+        except (TypeError, ValueError):
+            if active:
+                return jsonify({'error': 'lat and lng are required when active=true'}), 400
+            lat = lng = None
 
-        # Find existing active session for this bus
-        sess = TrackingSession.query.filter_by(bus_id=bus_id, active=True).first()
+        # Find existing session (active or inactive) for this bus
+        sess = TrackingSession.query.filter_by(bus_id=bus_id).first()
 
         if sess:
-            sess.lat        = str(lat)
-            sess.lng        = str(lng)
+            if lat is not None:
+                sess.lat = str(lat)
+                sess.lng = str(lng)
+            sess.active     = active
             sess.updated_at = datetime.utcnow()
         else:
             # No session yet — create one
@@ -2688,21 +2695,22 @@ def buses_coordinates():
                 bus_name    = data.get('busName') or bus_id,
                 username    = data.get('username') or bus_id,
                 phone_number= data.get('phoneNumber') or '',
-                lat         = str(lat),
-                lng         = str(lng),
-                active      = True,
+                lat         = str(lat) if lat is not None else '0',
+                lng         = str(lng) if lng is not None else '0',
+                active      = active,
             )
             db.session.add(sess)
 
         db.session.commit()
 
-        live_location = {
+        return jsonify({
+            'ok':        True,
             'busId':     bus_id,
+            'online':    active,
             'lat':       lat,
             'lng':       lng,
             'updatedAt': sess.updated_at.isoformat(),
-        }
-        return jsonify(live_location), 200
+        }), 200
 
     # ── GET: return all routes (or filter by ?busId=) ─────────────────────
     bus_id_filter = request.args.get('busId', '').strip()
