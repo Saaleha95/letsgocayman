@@ -3973,20 +3973,23 @@ def register_driver():
     print(f"[DEBUG] register_driver payload: {data}")
     print(f"[DEBUG] stops received: {data.get('stops')}")
 
-    # ... rest of your code
-    stops_json = json.dumps(data.get('stops', [])),
-
     if not all([data.get('driverName'), data.get('driverPhone'),
                 data.get('driverUsername'), data.get('routeId')]):
         return jsonify({'message': 'Missing required fields'}), 400
+
+    raw_route_id = data['routeId']
+    route_name   = (data.get('routeName') or '').strip() or raw_route_id
+    # If driver selected "custom", use the route name as the actual ID
+    effective_route_id = route_name if raw_route_id == 'custom' else raw_route_id
+    effective_bus_id   = (data.get('busId') or '').strip() or effective_route_id
 
     route = DriverRoute(
         driver_name=data['driverName'],
         driver_phone=data['driverPhone'],
         username=data['driverUsername'],
-        bus_id=data.get('busId') or data['routeId'],
-        route_id=data['routeId'],
-        route_name=data.get('routeName', data['routeId']),
+        bus_id=effective_bus_id,
+        route_id=effective_route_id,
+        route_name=route_name,
         route_color=data.get('routeColor', '#F5C518'),
         frequency=data.get('frequency', 'Every 15 minutes'),
         description=data.get('description', ''),
@@ -3998,9 +4001,9 @@ def register_driver():
     sess = TrackingSession(
         username=data['driverUsername'],
         phone_number=data['driverPhone'],
-        route_id=data['routeId'],
-        bus_id=data.get('busId') or data['routeId'],
-        bus_name=data.get('routeName', data['routeId']),
+        route_id=effective_route_id,
+        bus_id=effective_bus_id,
+        bus_name=route_name,
         active=True,
     )
     db.session.add(sess)
