@@ -2421,7 +2421,603 @@ def buses_coordinates():
         "liveRoutesCount": len([r for r in all_routes if r.get("liveLocation")]),
         "generatedAt":     datetime.utcnow().isoformat() + "Z",
     }), 200
-    
+
+@app.route('/support')
+def support():
+    return """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Support — LetsGo Cayman</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0f1e;
+    --surface: #111827;
+    --surface2: #1a2235;
+    --accent: #00d4aa;
+    --accent2: #0099ff;
+    --gold: #F5C518;
+    --red: #ef4444;
+    --text: #e8edf5;
+    --text-muted: #8fa0b8;
+    --border: rgba(0, 212, 170, 0.15);
+    --gradient: linear-gradient(135deg, #00d4aa 0%, #0099ff 100%);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 300;
+    line-height: 1.8;
+    font-size: 16px;
+  }
+
+  /* ── Topbar ── */
+  .topbar {
+    background: rgba(10, 15, 30, 0.95);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 20px;
+    background: var(--gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .back-link {
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: opacity 0.2s;
+  }
+  .back-link:hover { opacity: 0.7; }
+
+  /* ── Hero ── */
+  .hero {
+    padding: 80px 40px 60px;
+    max-width: 860px;
+    margin: 0 auto;
+    position: relative;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -10%;
+    width: 500px; height: 350px;
+    background: radial-gradient(ellipse, rgba(0, 212, 170, 0.07) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-tag {
+    display: inline-block;
+    background: rgba(0, 212, 170, 0.1);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    border-radius: 2px;
+    margin-bottom: 28px;
+  }
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: clamp(36px, 6vw, 60px);
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    margin-bottom: 20px;
+  }
+  h1 span {
+    background: var(--gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero p {
+    font-size: 17px;
+    color: var(--text-muted);
+    max-width: 560px;
+    line-height: 1.75;
+  }
+
+  /* ── Main ── */
+  .container {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 0 40px 100px;
+  }
+
+  /* ── Contact card ── */
+  .contact-hero {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 40px;
+    margin-bottom: 60px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    align-items: center;
+  }
+  .contact-hero-text h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 12px;
+  }
+  .contact-hero-text p {
+    color: var(--text-muted);
+    font-size: 15px;
+    line-height: 1.7;
+  }
+  .contact-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .contact-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    border-radius: 4px;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    transition: opacity 0.2s;
+  }
+  .contact-btn:hover { opacity: 0.85; }
+  .contact-btn-primary {
+    background: var(--gradient);
+    color: #0a0f1e;
+  }
+  .contact-btn-secondary {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  .contact-btn .icon { font-size: 18px; flex-shrink: 0; }
+
+  /* ── Section headers ── */
+  .section-eyebrow {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    display: block;
+  }
+  h2.section-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 26px;
+    letter-spacing: -0.01em;
+    margin-bottom: 24px;
+  }
+
+  /* ── FAQ ── */
+  .faq-list { display: flex; flex-direction: column; gap: 2px; margin-bottom: 60px; }
+  .faq-item {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .faq-q {
+    width: 100%;
+    background: var(--surface);
+    border: none;
+    padding: 18px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    text-align: left;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text);
+    transition: background 0.2s;
+  }
+  .faq-q:hover { background: var(--surface2); }
+  .faq-q .arrow {
+    font-size: 12px;
+    color: var(--accent);
+    transition: transform 0.25s;
+    flex-shrink: 0;
+    margin-left: 16px;
+  }
+  .faq-q.open .arrow { transform: rotate(180deg); }
+  .faq-a {
+    display: none;
+    padding: 0 24px 18px;
+    background: var(--surface);
+    font-size: 14.5px;
+    color: var(--text-muted);
+    line-height: 1.75;
+    border-top: 1px solid rgba(0,212,170,0.08);
+  }
+  .faq-a.open { display: block; }
+  .faq-a a { color: var(--accent); text-decoration: none; }
+  .faq-a a:hover { text-decoration: underline; }
+
+  /* ── Troubleshooting steps ── */
+  .steps-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+    margin-bottom: 60px;
+  }
+  .step-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 24px;
+  }
+  .step-card .step-icon { font-size: 28px; margin-bottom: 12px; }
+  .step-card h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+  .step-card ol {
+    list-style: none;
+    counter-reset: step-counter;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .step-card ol li {
+    counter-increment: step-counter;
+    font-size: 13px;
+    color: var(--text-muted);
+    padding-left: 22px;
+    position: relative;
+    line-height: 1.5;
+  }
+  .step-card ol li::before {
+    content: counter(step-counter) '.';
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 11px;
+  }
+
+  /* ── Info strip ── */
+  .info-strip {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 28px 32px;
+    display: flex;
+    gap: 40px;
+    flex-wrap: wrap;
+    margin-bottom: 60px;
+    align-items: flex-start;
+  }
+  .info-item { flex: 1; min-width: 160px; }
+  .info-item strong {
+    display: block;
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .info-item span { font-size: 14px; color: var(--text-muted); }
+  .info-item a { color: var(--accent); text-decoration: none; }
+  .info-item a:hover { text-decoration: underline; }
+
+  /* ── Legal links ── */
+  .legal-row {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    padding-top: 32px;
+    border-top: 1px solid var(--border);
+    margin-bottom: 40px;
+  }
+  .legal-row a {
+    color: var(--text-muted);
+    font-size: 13px;
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  .legal-row a:hover { color: var(--accent); }
+
+  /* ── Footer ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 32px 40px;
+    text-align: center;
+    font-size: 13px;
+    color: var(--text-muted);
+    max-width: 860px;
+    margin: 0 auto;
+  }
+  footer strong {
+    background: var(--gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  @media (max-width: 640px) {
+    .topbar { padding: 16px 20px; }
+    .hero { padding: 50px 20px 40px; }
+    .container { padding: 0 20px 80px; }
+    .contact-hero { grid-template-columns: 1fr; padding: 24px; }
+    footer { padding: 24px 20px; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="topbar">
+  <div class="logo">LetsGo</div>
+  <a href="https://www.letsgocayman.com" class="back-link">← letsgocayman.com</a>
+</nav>
+
+<header class="hero">
+  <div class="hero-tag">Help &amp; Support</div>
+  <h1>How can we<br><span>help you?</span></h1>
+  <p>Get answers to common questions, troubleshoot issues, or reach our team directly. We typically respond within one business day.</p>
+</header>
+
+<main class="container">
+
+  <!-- ── Contact ── -->
+  <div class="contact-hero">
+    <div class="contact-hero-text">
+      <h2>Reach our team</h2>
+      <p>Have a question that isn't answered below? Send us an email and we'll get back to you within <strong>1&ndash;2 business days</strong>. For urgent safety concerns, use the in-app SOS feature or call 911.</p>
+    </div>
+    <div class="contact-actions">
+      <a href="mailto:support@letsgocayman.com?subject=LetsGo%20App%20Support%20Request" class="contact-btn contact-btn-primary">
+        <span class="icon">✉</span>
+        Email support@letsgocayman.com
+      </a>
+      <a href="https://www.letsgocayman.com" class="contact-btn contact-btn-secondary">
+        <span class="icon">🌐</span>
+        Visit letsgocayman.com
+      </a>
+    </div>
+  </div>
+
+  <!-- ── Info strip ── -->
+  <div class="info-strip">
+    <div class="info-item">
+      <strong>Support email</strong>
+      <span><a href="mailto:support@letsgocayman.com">support@letsgocayman.com</a></span>
+    </div>
+    <div class="info-item">
+      <strong>Response time</strong>
+      <span>1&ndash;2 business days</span>
+    </div>
+    <div class="info-item">
+      <strong>Emergency (in-app)</strong>
+      <span>Use the SOS button or call 911</span>
+    </div>
+    <div class="info-item">
+      <strong>App version</strong>
+      <span>iOS &amp; Android — Cayman Islands</span>
+    </div>
+  </div>
+
+  <!-- ── FAQ ── -->
+  <span class="section-eyebrow">Frequently asked questions</span>
+  <h2 class="section-title">Common questions</h2>
+
+  <div class="faq-list">
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        How do I track my bus in real time?
+        <span class="arrow">▼</span>
+      </button>
+      <div class="faq-a">
+        Open the app and tap <strong>Track</strong> on the home screen. Select your route from the list of all 9 Grand Cayman routes. A live map will appear showing the bus location and an estimated arrival time updated every few seconds. GPS must be enabled on your device for the best accuracy.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        How does offline tracking work when I lose signal?
+        <span class="arrow">▼</span>
+      </button>
+      <div class="faq-a">
+        When your phone loses internet connectivity, LetsGo automatically switches to <strong>SMS-based offline tracking</strong>. The app sends a text message to you and your saved emergency contacts with your last GPS position and the bus ETA. You will see a banner in the app when offline mode is active. To use this feature, ensure your emergency contacts are saved in the app's Safety settings.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        How do I pay for a ride using NFC?
+        <span class="arrow">▼</span>
+      </button>
+      <div class="faq-a">
+        Load credit into your LetsGo wallet from the <strong>Wallet</strong> tab using a debit or credit card. When you board the bus, hold your phone near the NFC reader (the yellow device near the driver). The app will deduct the fare automatically. NFC payments work even without an internet connection — your wallet balance is stored securely on your device.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        How does the SOS feature work?
+        <span class="arrow">▼</span>
+      </button>
+      <div class="faq-a">
+        Press and hold the red <strong>SOS</strong> button in the app for 2 seconds to trigger an emergency alert. Your exact GPS coordinates, bus ID, and route are immediately sent by SMS to all emergency contacts saved in your profile. A direct link to call 911 is also surfaced on screen. SOS alerts work even if your internet is offline. To set up emergency contacts, go to <strong>Profile → Emergency Contacts</strong>.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        How do I add or change my emergency contacts?
+        <span class="arrow">▼</span>
+      </button>
+      <div class="faq-a">
+        Go to <strong>Profile → Emergency Contacts</strong> in the app. Tap <em>Add Contact</em> to enter a name and phone number. You can save multiple contacts. When you press SOS or enable Live Share, all saved contacts receive an SMS notification. Contacts can be removed at any time — their information is deleted from our servers immediately.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        What are Community Reports and how do I submit one?
+        <span class="arrow">▼</span>
+      </button>
+      <div class="faq-a">
+        Community Reports let riders flag issues like overcrowding, broken bus stops, long delays, or safety concerns. Tap the <strong>Report</strong> button on the home screen, choose a category, select the stop or route, and describe the issue. Other riders can upvote your report. Our team reviews all reports and aims to resolve critical issues quickly.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <button class="faq-q" onclick="toggleFaq(this)">
+        How do I delete my account and personal data?
+        <span class="arrow">▼</span>
+      </button>
+      <div class="faq-a">
+        To delete your account, email <a href="mailto:support@letsgocayman.com?subject=Account%20Deletion%20Request">support@letsgocayman.com</a> with the subject line <em>Account Deletion Request</em> and include your registered username. We will permanently delete your account and associated personal data within 30 days. Payment transaction records may be retained for up to 7 years to comply with financial regulations. See our <a href="/privacy">Privacy Policy</a> for full details.
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Troubleshooting ── -->
+  <span class="section-eyebrow">Troubleshooting</span>
+  <h2 class="section-title">Fix common issues</h2>
+
+  <div class="steps-grid">
+
+    <div class="step-card">
+      <div class="step-icon">📍</div>
+      <h3>GPS not working</h3>
+      <ol>
+        <li>Open device Settings and find LetsGo under app permissions.</li>
+        <li>Set Location to <em>Always</em> or <em>While Using</em>.</li>
+        <li>Ensure Location Services is turned on globally.</li>
+        <li>Step outside — GPS signals are weak indoors.</li>
+        <li>Force-quit and reopen the app.</li>
+      </ol>
+    </div>
+
+    <div class="step-card">
+      <div class="step-icon">💳</div>
+      <h3>NFC payment failing</h3>
+      <ol>
+        <li>Check your wallet balance in the <em>Wallet</em> tab.</li>
+        <li>Go to Settings → NFC and ensure it is enabled.</li>
+        <li>Hold the centre of your phone flat against the reader.</li>
+        <li>Remove your phone case if it contains metal.</li>
+        <li>Restart the app and try again.</li>
+      </ol>
+    </div>
+
+    <div class="step-card">
+      <div class="step-icon">🆘</div>
+      <h3>SOS not sending</h3>
+      <ol>
+        <li>Make sure emergency contacts are saved in <em>Profile → Emergency Contacts</em>.</li>
+        <li>Check that your phone number is correct in your account settings.</li>
+        <li>Ensure SMS permissions are granted for LetsGo.</li>
+        <li>In an emergency, call 911 directly.</li>
+      </ol>
+    </div>
+
+    <div class="step-card">
+      <div class="step-icon">🔄</div>
+      <h3>App crashing or freezing</h3>
+      <ol>
+        <li>Update LetsGo to the latest version in the App Store or Google Play.</li>
+        <li>Restart your phone.</li>
+        <li>Uninstall and reinstall the app (your account and wallet data are saved).</li>
+        <li>Email us with your device model and iOS/Android version.</li>
+      </ol>
+    </div>
+
+    <div class="step-card">
+      <div class="step-icon">📵</div>
+      <h3>Offline mode not activating</h3>
+      <ol>
+        <li>Confirm SMS is enabled on your SIM — the feature uses text messages.</li>
+        <li>Add at least one emergency contact in the app.</li>
+        <li>Turn mobile data off to test that offline mode activates.</li>
+        <li>Contact support if it still doesn't trigger after 60 seconds offline.</li>
+      </ol>
+    </div>
+
+    <div class="step-card">
+      <div class="step-icon">🔐</div>
+      <h3>Can't log in</h3>
+      <ol>
+        <li>Check your username — it is case-sensitive.</li>
+        <li>Tap <em>Forgot password</em> on the login screen.</li>
+        <li>Ensure you have an internet connection.</li>
+        <li>Email us if you no longer have access to your registered phone number.</li>
+      </ol>
+    </div>
+
+  </div>
+
+  <!-- ── Legal ── -->
+  <div class="legal-row">
+    <a href="/privacy">Privacy Policy</a>
+    <a href="mailto:support@letsgocayman.com">Contact Support</a>
+    <a href="https://www.letsgocayman.com">LetsGo Home</a>
+    <a href="mailto:support@letsgocayman.com?subject=Account%20Deletion%20Request">Request Account Deletion</a>
+  </div>
+
+</main>
+
+<footer>
+  <p>© 2026 <strong>LetsGo Cayman</strong> · Grand Cayman, Cayman Islands</p>
+  <p style="margin-top: 6px; font-size: 12px;">
+    For urgent safety emergencies, call 911 directly or use the SOS button in the app.
+  </p>
+</footer>
+
+<script>
+function toggleFaq(btn) {
+  const answer = btn.nextElementSibling;
+  const isOpen = answer.classList.contains('open');
+  document.querySelectorAll('.faq-a.open').forEach(a => a.classList.remove('open'));
+  document.querySelectorAll('.faq-q.open').forEach(q => q.classList.remove('open'));
+  if (!isOpen) {
+    answer.classList.add('open');
+    btn.classList.add('open');
+  }
+}
+</script>
+</body>
+</html>"""
+
 @app.route('/api/safety/sos/<token>/resolve', methods=['POST'])
 def resolve_sos(token):
     sos = SOSAlert.query.filter_by(token=token).first()
