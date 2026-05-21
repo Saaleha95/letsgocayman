@@ -45,6 +45,22 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
+class DriverRoute(db.Model):
+    id             = db.Column(db.Integer, primary_key=True)
+    driver_name    = db.Column(db.String(120), nullable=False)
+    driver_phone   = db.Column(db.String(30), nullable=False)
+    username       = db.Column(db.String(80), nullable=False)
+    bus_id         = db.Column(db.String(40), nullable=False)
+    route_id       = db.Column(db.String(20), nullable=False)
+    route_name     = db.Column(db.String(120), nullable=False)
+    route_color    = db.Column(db.String(10), default='#F5C518')
+    frequency      = db.Column(db.String(40), default='Every 15 minutes')
+    description    = db.Column(db.Text, default='')
+    stops_json     = db.Column(db.Text, default='[]')   # JSON array
+    created_at     = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+
 class CommunityReport(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     category = db.Column(db.String(50), nullable=False)
@@ -233,6 +249,7 @@ def nav_html(active='users'):
       <div class="nav-links">
         <a href="/users" class="{'active' if active == 'users' else ''}">Users</a>
         <a href="/community-reports" class="{'active' if active == 'community' else ''}">Community Reports</a>
+        <a href="/admin/drivers" class="driver-link {'active' if active == 'drivers' else ''}">🚌 Drivers</a>
         <a href="/admin/sos-alerts" class="sos-link {'active' if active == 'sos' else ''}">🆘 SOS Alerts</a>
         <a href="/admin/sms-alerts" class="sms-link {'active' if active == 'sms' else ''}">💬 SMS Alerts</a>
         <a href="/admin/settings" class="{'active' if active == 'settings' else ''}">Settings</a>
@@ -432,6 +449,13 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
 .reveal-delay-1{transition-delay:.1s}
 .reveal-delay-2{transition-delay:.2s}
 .reveal-delay-3{transition-delay:.3s}
+
+.dl-btns{display:flex;justify-content:center;gap:32px;flex-wrap:wrap}
+.qr-card{display:flex;flex-direction:column;align-items:center;gap:10px;background:rgba(11,31,58,0.6);border:1.5px solid rgba(245,197,24,0.3);border-radius:20px;padding:24px 28px;transition:transform .2s,box-shadow .2s;backdrop-filter:blur(6px)}
+.qr-card:hover{transform:translateY(-6px);box-shadow:0 20px 48px rgba(245,197,24,.2);border-color:var(--gold)}
+.qr-label{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700;color:var(--navy);letter-spacing:.5px}
+.qr-img{width:160px;height:160px;border-radius:12px;display:block;border:3px solid rgba(255,255,255,.15)}
+.qr-hint{font-size:11px;font-weight:600;color:rgba(11,31,58,0.6);letter-spacing:1px;text-transform:uppercase}
 @media(max-width:900px){
   nav{padding:0 20px}
   .page-nav{overflow-x:auto}
@@ -456,7 +480,6 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
     <li><a href="#" onclick="showPage('home')">Home</a></li>
     <li><a href="#" onclick="showPage('home');setTimeout(()=>document.getElementById('features').scrollIntoView({behavior:'smooth'}),200)">Features</a></li>
     <li><a href="#" onclick="showPage('team')">Our Team</a></li>
-    <li><a href="/demo">Demo</a></li>
   </ul>
   <a href="#dl" class="nav-dl" onclick="showPage('home')">Download App</a>
 </nav>
@@ -610,7 +633,7 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
       <div class="step-card reveal reveal-delay-3"><div class="step-num">4</div><div class="step-title">Track &amp; Ride</div><div class="step-desc">Watch your bus approach in real time. Get notified before it arrives. Sit back, relax.</div></div>
     </div>
   </section>
-   <section class="dl-section" id="dl">
+  <section class="dl-section" id="dl">
     <p class="section-eyebrow" style="color:rgba(11,31,58,.5)">Free to download</p>
     <h2 class="dl-title">GET ON<br>THE BUS</h2>
     <p class="dl-sub">Available on iOS and Android. Ride smarter across Grand Cayman starting today.</p>
@@ -668,7 +691,7 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
   <div class="love-banner reveal"><div class="love-text">Made with <span class="gold">love</span> in the Cayman Islands &#127472;&#127486;</div><div class="love-sub">GRAND CAYMAN · CAYMAN BRAC · LITTLE CAYMAN</div></div>
   <footer>
     <div class="footer-logo">&#128652; LetsGo</div>
-    <div class="footer-links"><a href="#" onclick="showPage('home')">Home</a><a href="#" onclick="showPage('team')">Team</a><a href="/demo">Demo</a></div>
+    <div class="footer-links"><a href="#" onclick="showPage('home')">Home</a><a href="#" onclick="showPage('team')">Team</a></div>
     <div class="footer-copy">&#169; 2026 LetsGo · Cayman Islands</div>
     <a href="/admin/login" class="footer-admin">Admin</a>
   </footer>
@@ -770,877 +793,6 @@ def admin_login():
 def admin_logout():
     session.pop('admin_logged_in', None)
     return redirect('/admin/login')
-
-@app.route('/demo')
-def demo():
-    return """
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LetsGo Cayman — How It Works</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            background: #0a0a0a;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            font-family: Arial, sans-serif;
-            color: white;
-            padding: 20px;
-        }
-        .logo { font-size: 32px; font-weight: bold; color: #00C853; margin-bottom: 8px; }
-        .tagline { color: #aaa; font-size: 14px; margin-bottom: 6px; }
-        .subtitle { color: #00C853; font-size: 18px; font-weight: bold; margin-bottom: 24px; }
-        .video-container {
-            width: 100%;
-            max-width: 800px;
-            aspect-ratio: 16/9;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 0 40px rgba(0,200,83,0.3);
-            margin-bottom: 40px;
-        }
-        iframe { width: 100%; height: 100%; border: none; }
-        .steps {
-            width: 100%;
-            max-width: 800px;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-            margin-bottom: 40px;
-        }
-        .step {
-            background: #1a1a1a;
-            border: 1px solid #00C853;
-            border-radius: 12px;
-            padding: 20px;
-            text-align: center;
-        }
-        .step .icon { font-size: 32px; margin-bottom: 10px; }
-        .step h3 { color: #00C853; font-size: 16px; margin-bottom: 8px; }
-        .step p { color: #aaa; font-size: 13px; line-height: 1.5; }
-        .cta {
-            background: #00C853;
-            color: black;
-            font-weight: bold;
-            font-size: 16px;
-            padding: 14px 32px;
-            border-radius: 30px;
-            text-decoration: none;
-        }
-    </style>
-</head>
-<body>
-    <div class="logo">🚌 LetsGo Cayman</div>
-    <div class="tagline">The first AI-powered smart bus platform in the Cayman Islands</div>
-    <div class="subtitle">Here is how it works</div>
-
-    <div class="video-container">
-        <iframe
-            src="https://drive.google.com/file/d/1Bb2MaT2q9UAfM0NdsCOlixSa5tLiZc9D/view?usp=sharing"
-            allow="autoplay; encrypted-media"
-            allowfullscreen>
-        </iframe>
-    </div>
-
-    <div class="steps">
-        <div class="step">
-            <div class="icon">📍</div>
-            <h3>Track Your Bus</h3>
-            <p>See exactly where your bus is in real time. AI predicts arrival in under 60 seconds.</p>
-        </div>
-        <div class="step">
-            <div class="icon">📲</div>
-            <h3>Tap To Pay</h3>
-            <p>Load your wallet once. Tap your phone or card and board in under 1 second. No cash needed.</p>
-        </div>
-        <div class="step">
-            <div class="icon">🔔</div>
-            <h3>Smart Reminders</h3>
-            <p>We learn your commute and alert you when your bus is 5 minutes away. Never wait again.</p>
-        </div>
-        <div class="step">
-            <div class="icon">🆘</div>
-            <h3>Family SOS</h3>
-            <p>One tap sends your GPS, bus ID and route to emergency contacts. Works fully offline.</p>
-        </div>
-        <div class="step">
-            <div class="icon">📶</div>
-            <h3>Works Offline</h3>
-            <p>No signal? No problem. Dead reckoning and SMS fallback keep you connected anywhere.</p>
-        </div>
-        <div class="step">
-            <div class="icon">🚩</div>
-            <h3>Community Reports</h3>
-            <p>Flag delays, overcrowding or safety issues instantly. Reports escalate to the transit authority.</p>
-        </div>
-    </div>
-
-    <a class="cta" href="https://www.letsgocayman.com">Try It Yourself →</a>
-
-</body>
-</html>
-"""
-
-@app.route('/privacy')
-def privacy():
-    return """<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Privacy Policy — LetsGo Cayman</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --bg: #0a0f1e;
-    --surface: #111827;
-    --surface2: #1a2235;
-    --accent: #00d4aa;
-    --accent2: #0099ff;
-    --cayman-blue: #0e7fd4;
-    --text: #e8edf5;
-    --text-muted: #8fa0b8;
-    --border: rgba(0, 212, 170, 0.15);
-    --gradient: linear-gradient(135deg, #00d4aa 0%, #0099ff 100%);
-  }
-
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'DM Sans', sans-serif;
-    font-weight: 300;
-    line-height: 1.8;
-    font-size: 16px;
-  }
-
-  /* Top bar */
-  .topbar {
-    background: rgba(10, 15, 30, 0.95);
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid var(--border);
-    padding: 18px 40px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-  }
-
-  .logo {
-    font-family: 'Syne', sans-serif;
-    font-weight: 800;
-    font-size: 20px;
-    background: var(--gradient);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-  }
-
-  .back-link {
-    color: var(--accent);
-    text-decoration: none;
-    font-size: 14px;
-    font-weight: 500;
-    letter-spacing: 0.05em;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    transition: opacity 0.2s;
-  }
-  .back-link:hover { opacity: 0.7; }
-
-  /* Hero */
-  .hero {
-    padding: 80px 40px 60px;
-    max-width: 900px;
-    margin: 0 auto;
-    position: relative;
-  }
-
-  .hero::before {
-    content: '';
-    position: absolute;
-    top: 0; left: -20%;
-    width: 600px; height: 400px;
-    background: radial-gradient(ellipse, rgba(0, 212, 170, 0.08) 0%, transparent 70%);
-    pointer-events: none;
-  }
-
-  .hero-tag {
-    display: inline-block;
-    background: rgba(0, 212, 170, 0.1);
-    border: 1px solid var(--accent);
-    color: var(--accent);
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    padding: 6px 14px;
-    border-radius: 2px;
-    margin-bottom: 28px;
-  }
-
-  h1 {
-    font-family: 'Syne', sans-serif;
-    font-weight: 800;
-    font-size: clamp(36px, 6vw, 60px);
-    line-height: 1.08;
-    letter-spacing: -0.02em;
-    margin-bottom: 24px;
-  }
-
-  h1 span {
-    background: var(--gradient);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
-  .hero-meta {
-    display: flex;
-    gap: 32px;
-    flex-wrap: wrap;
-    margin-top: 32px;
-    padding-top: 32px;
-    border-top: 1px solid var(--border);
-  }
-
-  .meta-item {
-    font-size: 13px;
-    color: var(--text-muted);
-    letter-spacing: 0.03em;
-  }
-
-  .meta-item strong {
-    color: var(--text);
-    font-weight: 500;
-    display: block;
-    margin-bottom: 2px;
-  }
-
-  /* Main layout */
-  .container {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 0 40px 100px;
-  }
-
-  /* Quick nav */
-  .quick-nav {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 28px 32px;
-    margin-bottom: 60px;
-  }
-
-  .quick-nav-title {
-    font-family: 'Syne', sans-serif;
-    font-size: 11px;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: var(--accent);
-    font-weight: 700;
-    margin-bottom: 16px;
-  }
-
-  .quick-nav ol {
-    list-style: none;
-    columns: 2;
-    gap: 12px;
-  }
-
-  .quick-nav ol li {
-    margin-bottom: 8px;
-    font-size: 14px;
-    counter-increment: nav-counter;
-  }
-
-  .quick-nav ol li::before {
-    content: counter(nav-counter, decimal-leading-zero) " ";
-    color: var(--accent);
-    font-family: 'Syne', sans-serif;
-    font-weight: 700;
-    font-size: 11px;
-    margin-right: 6px;
-  }
-
-  .quick-nav a {
-    color: var(--text-muted);
-    text-decoration: none;
-    transition: color 0.2s;
-  }
-
-  .quick-nav a:hover { color: var(--accent); }
-
-  /* Sections */
-  section {
-    margin-bottom: 60px;
-    padding-top: 20px;
-    border-top: 1px solid var(--border);
-  }
-
-  .section-number {
-    font-family: 'Syne', sans-serif;
-    font-size: 11px;
-    letter-spacing: 0.15em;
-    color: var(--accent);
-    font-weight: 700;
-    text-transform: uppercase;
-    margin-bottom: 10px;
-    display: block;
-  }
-
-  h2 {
-    font-family: 'Syne', sans-serif;
-    font-weight: 700;
-    font-size: 26px;
-    letter-spacing: -0.01em;
-    margin-bottom: 20px;
-    color: var(--text);
-  }
-
-  h3 {
-    font-family: 'Syne', sans-serif;
-    font-weight: 600;
-    font-size: 17px;
-    margin-top: 32px;
-    margin-bottom: 12px;
-    color: var(--text);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  h3::before {
-    content: '';
-    display: inline-block;
-    width: 18px;
-    height: 2px;
-    background: var(--gradient);
-    flex-shrink: 0;
-  }
-
-  p {
-    color: var(--text-muted);
-    margin-bottom: 16px;
-    font-size: 15.5px;
-  }
-
-  p strong {
-    color: var(--text);
-    font-weight: 500;
-  }
-
-  /* Data table */
-  .data-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 24px 0;
-    font-size: 14px;
-  }
-
-  .data-table th {
-    text-align: left;
-    font-family: 'Syne', sans-serif;
-    font-weight: 700;
-    font-size: 11px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--accent);
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .data-table td {
-    padding: 14px 16px;
-    border-bottom: 1px solid rgba(255,255,255,0.04);
-    color: var(--text-muted);
-    vertical-align: top;
-  }
-
-  .data-table tr:last-child td { border-bottom: none; }
-  .data-table tr:hover td { background: rgba(0, 212, 170, 0.03); }
-
-  .data-table td:first-child {
-    color: var(--text);
-    font-weight: 500;
-    white-space: nowrap;
-  }
-
-  /* Pill tags */
-  .pill {
-    display: inline-block;
-    padding: 3px 10px;
-    border-radius: 2px;
-    font-size: 12px;
-    font-weight: 500;
-    letter-spacing: 0.04em;
-  }
-
-  .pill-green { background: rgba(0, 212, 170, 0.1); color: var(--accent); }
-  .pill-blue { background: rgba(0, 153, 255, 0.1); color: var(--accent2); }
-  .pill-orange { background: rgba(255, 160, 0, 0.1); color: #ffa000; }
-
-  /* Callout boxes */
-  .callout {
-    border-left: 3px solid var(--accent);
-    background: rgba(0, 212, 170, 0.05);
-    padding: 20px 24px;
-    margin: 24px 0;
-    border-radius: 0 4px 4px 0;
-  }
-
-  .callout-warning {
-    border-left-color: #ffa000;
-    background: rgba(255, 160, 0, 0.05);
-  }
-
-  .callout p { margin: 0; font-size: 14.5px; }
-  .callout strong { color: var(--accent); }
-  .callout-warning strong { color: #ffa000; }
-
-  /* List styling */
-  ul {
-    list-style: none;
-    margin: 12px 0 20px;
-  }
-
-  ul li {
-    color: var(--text-muted);
-    font-size: 15px;
-    padding: 6px 0 6px 20px;
-    position: relative;
-  }
-
-  ul li::before {
-    content: '→';
-    position: absolute;
-    left: 0;
-    color: var(--accent);
-    font-size: 12px;
-  }
-
-  /* Contact section */
-  .contact-card {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 36px;
-    margin-top: 24px;
-  }
-
-  .contact-card a {
-    color: var(--accent);
-    text-decoration: none;
-  }
-
-  .contact-card a:hover { text-decoration: underline; }
-
-  /* Footer */
-  footer {
-    border-top: 1px solid var(--border);
-    padding: 32px 40px;
-    text-align: center;
-    font-size: 13px;
-    color: var(--text-muted);
-    max-width: 900px;
-    margin: 0 auto;
-  }
-
-  footer strong {
-    background: var(--gradient);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
-  @media (max-width: 600px) {
-    .topbar { padding: 16px 20px; }
-    .hero { padding: 50px 20px 40px; }
-    .container { padding: 0 20px 80px; }
-    .quick-nav ol { columns: 1; }
-    footer { padding: 24px 20px; }
-    .data-table { font-size: 13px; }
-    .data-table th, .data-table td { padding: 10px 10px; }
-  }
-</style>
-</head>
-<body>
-
-<nav class="topbar">
-  <div class="logo">LetsGo</div>
-  <a href="https://www.letsgocayman.com" class="back-link">← letsgocayman.com</a>
-</nav>
-
-<header class="hero">
-  <div class="hero-tag">Legal · Privacy</div>
-  <h1>Privacy<br><span>Policy</span></h1>
-  <p style="color:var(--text-muted); font-size:17px; max-width:600px;">We believe transparency is the foundation of trust. Here's exactly how LetsGo Cayman collects, uses, and protects your personal data.</p>
-  <div class="hero-meta">
-    <div class="meta-item">
-      <strong>Effective Date</strong>
-      April 16, 2026
-    </div>
-    <div class="meta-item">
-      <strong>Last Updated</strong>
-      April 16, 2026
-    </div>
-    <div class="meta-item">
-      <strong>Jurisdiction</strong>
-      Cayman Islands
-    </div>
-    <div class="meta-item">
-      <strong>App Platforms</strong>
-      iOS · Android
-    </div>
-  </div>
-</header>
-
-<main class="container">
-
-  <div class="quick-nav">
-    <div class="quick-nav-title">Table of Contents</div>
-    <ol>
-      <li><a href="#overview">Overview & Scope</a></li>
-      <li><a href="#data-collected">Data We Collect</a></li>
-      <li><a href="#how-used">How We Use Your Data</a></li>
-      <li><a href="#sharing">Data Sharing & Disclosure</a></li>
-      <li><a href="#location">Location Data</a></li>
-      <li><a href="#payments">Payment Data</a></li>
-      <li><a href="#sos">SOS & Emergency Features</a></li>
-      <li><a href="#retention">Data Retention</a></li>
-      <li><a href="#security">Security</a></li>
-      <li><a href="#children">Children's Privacy</a></li>
-      <li><a href="#rights">Your Rights & Choices</a></li>
-      <li><a href="#contact">Contact Us</a></li>
-    </ol>
-  </div>
-
-  <!-- 1. Overview -->
-  <section id="overview">
-    <span class="section-number">01 — Overview</span>
-    <h2>Overview &amp; Scope</h2>
-    <p>This Privacy Policy applies to <strong>LetsGo Cayman</strong> ("LetsGo," "we," "our," or "us"), operated by the LetsGo Cayman team based in the Cayman Islands. It governs how we collect, use, store, and share information through our mobile applications (iOS and Android), our website at <a href="https://www.letsgocayman.com" style="color:var(--accent);">letsgocayman.com</a>, and any related services (collectively, the "Service").</p>
-    <p>By downloading or using the LetsGo app, you agree to the practices described in this Policy. If you do not agree, please do not use the Service.</p>
-    <div class="callout">
-      <p><strong>Our commitment:</strong> We collect only the data necessary to operate, improve, and keep your transit experience safe. We never sell your personal data to third parties.</p>
-    </div>
-  </section>
-
-  <!-- 2. Data Collected -->
-  <section id="data-collected">
-    <span class="section-number">02 — Data Collected</span>
-    <h2>Data We Collect</h2>
-    <p>The following table summarises what we collect, why, and on what legal basis:</p>
-
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>Data Type</th>
-          <th>What It Includes</th>
-          <th>Purpose</th>
-          <th>Basis</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>Account Information</td>
-          <td>Name, email address, phone number</td>
-          <td>Account creation, notifications, receipts</td>
-          <td><span class="pill pill-green">Contract</span></td>
-        </tr>
-        <tr>
-          <td>Location Data</td>
-          <td>GPS coordinates (real-time and trip history)</td>
-          <td>Live bus tracking, route planning, SOS dispatch</td>
-          <td><span class="pill pill-green">Contract</span> <span class="pill pill-blue">Consent</span></td>
-        </tr>
-        <tr>
-          <td>Payment Data</td>
-          <td>NFC tap events, transaction history, wallet balance; card details processed by our payment provider</td>
-          <td>Fare payment, pass management</td>
-          <td><span class="pill pill-green">Contract</span></td>
-        </tr>
-        <tr>
-          <td>Emergency Contacts</td>
-          <td>Names and phone numbers you voluntarily add</td>
-          <td>SOS alerts, live journey sharing</td>
-          <td><span class="pill pill-blue">Consent</span></td>
-        </tr>
-        <tr>
-          <td>Community Reports</td>
-          <td>Stop condition reports, overcrowding flags, delay notifications</td>
-          <td>Network quality improvement</td>
-          <td><span class="pill pill-blue">Consent</span></td>
-        </tr>
-        <tr>
-          <td>Device &amp; Usage Data</td>
-          <td>Device model, OS version, app version, crash logs, feature interactions</td>
-          <td>Performance monitoring, bug fixes</td>
-          <td><span class="pill pill-orange">Legitimate Interest</span></td>
-        </tr>
-        <tr>
-          <td>SMS Data (Offline Mode)</td>
-          <td>Automated SMS messages for bus tracking when no internet is available</td>
-          <td>Offline GPS tracking continuity</td>
-          <td><span class="pill pill-blue">Consent</span></td>
-        </tr>
-      </tbody>
-    </table>
-
-    <h3>Data You Provide Directly</h3>
-    <p>When you register for an account, make a payment, add emergency contacts, or submit a community report, you provide data directly to us.</p>
-
-    <h3>Data Collected Automatically</h3>
-    <p>When you use the app, we automatically collect device identifiers, app usage analytics, crash reports, and — with your permission — location data.</p>
-  </section>
-
-  <!-- 3. How We Use -->
-  <section id="how-used">
-    <span class="section-number">03 — Use of Data</span>
-    <h2>How We Use Your Data</h2>
-    <p>We use the information we collect to:</p>
-    <ul>
-      <li>Operate the LetsGo app and provide real-time bus tracking on all 9 Grand Cayman routes</li>
-      <li>Process NFC tap payments and manage your in-app wallet and monthly passes</li>
-      <li>Send you fare receipts, service alerts, and account notifications</li>
-      <li>Enable the SOS feature — instantly sharing your GPS location with emergency contacts and 911</li>
-      <li>Power offline SMS tracking when you lose internet connectivity on coastal and remote roads</li>
-      <li>Analyse aggregated community reports to improve route reliability and stop conditions</li>
-      <li>Diagnose crashes and bugs, and improve app performance</li>
-      <li>Comply with applicable Cayman Islands laws and regulations</li>
-    </ul>
-    <p>We use <strong>AI and machine learning</strong> models to predict bus arrival times and optimise route scheduling. These models process aggregated, de-identified location data — not individual profiles.</p>
-  </section>
-
-  <!-- 4. Sharing -->
-  <section id="sharing">
-    <span class="section-number">04 — Sharing</span>
-    <h2>Data Sharing &amp; Disclosure</h2>
-    <p>We do not sell, rent, or trade your personal data. We share information only in the following limited circumstances:</p>
-
-    <h3>Service Providers</h3>
-    <p>We work with third-party vendors who help us operate the Service — including cloud hosting, payment processing, analytics, and push notification services. These providers are contractually bound to use your data only to perform services on our behalf and to maintain appropriate security standards.</p>
-
-    <h3>Emergency Services</h3>
-    <p>When you activate the SOS feature, your real-time GPS location is shared with the emergency contacts you have designated and, where integrated, with 911 dispatch. This sharing is initiated by you and is essential to the safety feature's function.</p>
-
-    <h3>Journey Sharing</h3>
-    <p>If you use the "Live Share" feature, your real-time journey data is shared with individuals you explicitly choose to share it with. You can revoke this at any time within the app.</p>
-
-    <h3>Legal Obligations</h3>
-    <p>We may disclose your information if required to do so by law, court order, or governmental authority in the Cayman Islands or another applicable jurisdiction, or to protect the rights, safety, or property of LetsGo, our users, or the public.</p>
-
-    <h3>Business Transfers</h3>
-    <p>If LetsGo is acquired, merged, or its assets transferred, user data may be part of the transferred assets. We will notify you of any such change and your choices regarding your data.</p>
-  </section>
-
-  <!-- 5. Location -->
-  <section id="location">
-    <span class="section-number">05 — Location</span>
-    <h2>Location Data</h2>
-    <p>Location is central to how LetsGo works. Here's exactly how we handle it:</p>
-
-    <h3>Foreground Location</h3>
-    <p>When the app is open, we collect your GPS coordinates to show nearby buses, provide live ETAs, and display your position on the route map. This requires your explicit permission, which your device's operating system will request on first use.</p>
-
-    <h3>Background Location</h3>
-    <p>If you enable Live Share or SOS tracking, the app may collect location data while running in the background. You will be clearly informed when background location is active. You can disable this at any time in your device settings.</p>
-
-    <h3>Offline SMS Tracking</h3>
-    <p>When internet connectivity is unavailable, our AI-powered system may switch to offline SMS-based tracking. This transmits your approximate location via SMS to maintain service continuity. SMS-based tracking requires your consent and can be disabled in app settings.</p>
-
-    <h3>Retention of Location Data</h3>
-    <p>Trip location history is retained for <strong>90 days</strong> to enable journey history features. After 90 days, trip data is aggregated and anonymised for network analytics. Raw GPS logs are not retained beyond this period.</p>
-  </section>
-
-  <!-- 6. Payments -->
-  <section id="payments">
-    <span class="section-number">06 — Payments</span>
-    <h2>Payment Data</h2>
-    <p>LetsGo processes payments through a <strong>PCI-DSS compliant payment processor</strong>. When you tap your phone at an NFC reader on a bus or load your wallet:</p>
-    <ul>
-      <li>Full card numbers are never stored on LetsGo servers or on your device by LetsGo</li>
-      <li>We store a tokenised reference provided by our payment processor</li>
-      <li>Transaction records (amount, date, route, fare type) are retained for 7 years to comply with financial record-keeping requirements</li>
-      <li>Wallet balance and pass status are stored in our system to enable offline payment functionality</li>
-    </ul>
-    <div class="callout">
-      <p><strong>Offline payments:</strong> To support payments without internet connectivity, a cryptographically signed token representing your wallet balance is stored locally on your device. This token does not contain your card details.</p>
-    </div>
-  </section>
-
-  <!-- 7. SOS -->
-  <section id="sos">
-    <span class="section-number">07 — SOS &amp; Safety</span>
-    <h2>SOS &amp; Emergency Features</h2>
-    <p>Your safety is our highest priority. The SOS feature works as follows:</p>
-    <ul>
-      <li>When you press SOS, your <strong>exact GPS coordinates</strong> are immediately sent to all emergency contacts you have saved in the app</li>
-      <li>A direct link to call <strong>911</strong> is surfaced instantly</li>
-      <li>Your location continues to update every 30 seconds until you manually end the SOS session or an emergency contact dismisses it</li>
-      <li>SOS events are logged in our system for <strong>30 days</strong> to help us investigate any safety incidents at your request</li>
-    </ul>
-    <div class="callout callout-warning">
-      <p><strong>Important:</strong> Emergency contacts you add have no access to your location data outside of an active SOS or Live Share session. Adding a contact to the app does not share your location with them automatically.</p>
-    </div>
-    <p>Emergency contact names and phone numbers are stored on our servers solely to enable the SOS and Live Share features. You may remove any contact at any time in app settings, which will immediately delete their information from our servers.</p>
-  </section>
-
-  <!-- 8. Retention -->
-  <section id="retention">
-    <span class="section-number">08 — Retention</span>
-    <h2>Data Retention</h2>
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>Data Category</th>
-          <th>Retention Period</th>
-          <th>Reason</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>Account data</td>
-          <td>Until account deletion + 30 days</td>
-          <td>Account recovery grace period</td>
-        </tr>
-        <tr>
-          <td>Raw GPS trip logs</td>
-          <td>90 days</td>
-          <td>Journey history feature</td>
-        </tr>
-        <tr>
-          <td>Aggregated location analytics</td>
-          <td>Indefinitely (anonymised)</td>
-          <td>Network improvement</td>
-        </tr>
-        <tr>
-          <td>Payment transaction records</td>
-          <td>7 years</td>
-          <td>Financial compliance</td>
-        </tr>
-        <tr>
-          <td>Emergency contacts</td>
-          <td>Until deleted by user</td>
-          <td>SOS functionality</td>
-        </tr>
-        <tr>
-          <td>SOS event logs</td>
-          <td>30 days</td>
-          <td>Safety incident review</td>
-        </tr>
-        <tr>
-          <td>Community reports</td>
-          <td>12 months (anonymised after 30 days)</td>
-          <td>Network analytics</td>
-        </tr>
-        <tr>
-          <td>Crash &amp; error logs</td>
-          <td>90 days</td>
-          <td>Bug resolution</td>
-        </tr>
-      </tbody>
-    </table>
-    <p>After the applicable retention period, data is securely deleted or irreversibly anonymised.</p>
-  </section>
-
-  <!-- 9. Security -->
-  <section id="security">
-    <span class="section-number">09 — Security</span>
-    <h2>Security</h2>
-    <p>We take reasonable and industry-standard technical and organisational measures to protect your data, including:</p>
-    <ul>
-      <li>Encryption of data in transit using TLS 1.2 or higher</li>
-      <li>Encryption of sensitive data at rest (including payment tokens and location logs)</li>
-      <li>Access controls limiting data access to authorised personnel only</li>
-      <li>Regular security reviews of our systems and third-party providers</li>
-      <li>Cryptographically signed offline wallet tokens to prevent fraud</li>
-    </ul>
-    <p>No system is perfectly secure. If you suspect unauthorised access to your account, please contact us immediately at <a href="mailto:privacy@letsgocayman.com" style="color:var(--accent);">privacy@letsgocayman.com</a> and change your password.</p>
-    <p>In the event of a data breach that materially affects your personal information, we will notify affected users in accordance with applicable law.</p>
-  </section>
-
-  <!-- 10. Children -->
-  <section id="children">
-    <span class="section-number">10 — Children</span>
-    <h2>Children's Privacy</h2>
-    <div class="callout callout-warning">
-      <p><strong>Ages 13 and under:</strong> The LetsGo app is not directed at children under the age of 13. We do not knowingly collect personal information from children under 13. If you are a parent or guardian and believe your child has provided us with personal information, please contact us immediately at <a href="mailto:privacy@letsgocayman.com" style="color:#ffa000;">privacy@letsgocayman.com</a> and we will delete that information promptly.</p>
-    </div>
-    <p>Users between the ages of <strong>13 and 17</strong> may use the Service with the knowledge and consent of a parent or guardian. The Live Share and SOS features are recommended for all young riders as a safety tool.</p>
-    <p>If we become aware that we have collected personal data from a child under 13 without verifiable parental consent, we will take steps to delete that information from our servers as quickly as possible.</p>
-  </section>
-
-  <!-- 11. Rights -->
-  <section id="rights">
-    <span class="section-number">11 — Your Rights</span>
-    <h2>Your Rights &amp; Choices</h2>
-    <p>Depending on your location, you may have the following rights with respect to your personal data:</p>
-
-    <h3>Access</h3>
-    <p>You may request a copy of the personal data we hold about you. We will respond within 30 days.</p>
-
-    <h3>Correction</h3>
-    <p>You may correct inaccurate personal data through the app's account settings or by contacting us directly.</p>
-
-    <h3>Deletion</h3>
-    <p>You may request deletion of your account and associated personal data. Note that some data may be retained for the periods specified above due to legal or financial obligations (e.g., payment transaction records).</p>
-
-    <h3>Portability</h3>
-    <p>You may request an export of your personal data in a common machine-readable format.</p>
-
-    <h3>Withdraw Consent</h3>
-    <p>Where processing is based on your consent (e.g., background location, Live Share), you may withdraw consent at any time through app settings or your device's permission controls without affecting the lawfulness of prior processing.</p>
-
-    <h3>Location Permissions</h3>
-    <p>You can modify location permissions at any time in your device settings (iOS: Settings → LetsGo; Android: Settings → Apps → LetsGo → Permissions). Disabling location will affect real-time tracking features.</p>
-
-    <h3>Push Notifications</h3>
-    <p>You can opt out of push notifications in your device settings or within the app's notification preferences.</p>
-
-    <p>To exercise any of your rights, contact us at <a href="mailto:privacy@letsgocayman.com" style="color:var(--accent);">privacy@letsgocayman.com</a>. We will respond within 30 days and may need to verify your identity before fulfilling a request.</p>
-  </section>
-
-  <!-- 12. Contact -->
-  <section id="contact">
-    <span class="section-number">12 — Contact</span>
-    <h2>Contact Us</h2>
-    <p>If you have any questions, concerns, or requests regarding this Privacy Policy or the way we handle your data, please reach out:</p>
-    <div class="contact-card">
-      <p><strong>LetsGo Cayman — Privacy Team</strong></p>
-      <p style="margin-top:16px;">📧 <a href="mailto:privacy@letsgocayman.com">privacy@letsgocayman.com</a></p>
-      <p>🌐 <a href="https://www.letsgocayman.com">www.letsgocayman.com</a></p>
-      <p>📍 Grand Cayman, Cayman Islands</p>
-      <p style="margin-top:20px; font-size:14px; color:var(--text-muted);">We aim to respond to all privacy-related enquiries within <strong style="color:var(--text);">5 business days</strong>. For urgent safety concerns, please use the in-app SOS feature or call 911 directly.</p>
-    </div>
-
-    <h3>Changes to This Policy</h3>
-    <p>We may update this Privacy Policy from time to time. When we make material changes, we will notify you via a push notification or a prominent notice in the app at least <strong>14 days</strong> before the changes take effect. Continued use of the Service after the effective date constitutes acceptance of the updated policy.</p>
-    <p>The version history is maintained at <a href="https://www.letsgocayman.com/privacy" style="color:var(--accent);">letsgocayman.com/privacy</a>.</p>
-  </section>
-
-</main>
-
-<footer>
-  <p>© 2026 <strong>LetsGo Cayman</strong> · All rights reserved · <a href="https://www.letsgocayman.com" style="color:var(--accent); text-decoration:none;">letsgocayman.com</a></p>
-  <p style="margin-top:8px; font-size:12px;">This document is published in satisfaction of Google Play Store and Apple App Store privacy policy requirements.</p>
-</footer>
-
-</body>
-</html>"""
 
 
 # ═══════════════════════════════════════════════════════════
@@ -2324,43 +1476,6 @@ def update_user(user_id):
     }}), 200
 
 
-@app.route('/api/sms/debug', methods=['GET'])
-@require_admin
-def sms_debug():
-    """Temporary debug route — remove after fixing."""
-    current_twilio = {**TWILIO_CONFIG, **_twilio_override}
-    
-    # Check what's actually stored
-    sid    = current_twilio.get('accountSid', '')
-    token  = current_twilio.get('authToken', '')
-    from_n = current_twilio.get('fromNumber', '')
-    
-    # Check last 5 SMS logs
-    logs = SMSLog.query.order_by(SMSLog.created_at.desc()).limit(5).all()
-    
-    return jsonify({
-        'twilio': {
-            'accountSid_set':  bool(sid),
-            'accountSid_prefix': sid[:6] if sid else 'EMPTY',
-            'authToken_set':   bool(token),
-            'fromNumber':      from_n or 'EMPTY',
-        },
-        'last_5_sms_logs': [{
-            'id':       l.id,
-            'username': l.username,
-            'to_phone': l.to_phone,
-            'sent':     l.sent,
-            'detail':   l.twilio_detail,
-            'type':     l.message_type,
-            'time':     l.created_at.isoformat(),
-        } for l in logs],
-        'env_vars': {
-            'TWILIO_ACCOUNT_SID': 'set' if os.environ.get('TWILIO_ACCOUNT_SID') else 'MISSING',
-            'TWILIO_AUTH_TOKEN':  'set' if os.environ.get('TWILIO_AUTH_TOKEN')  else 'MISSING',
-            'TWILIO_FROM_NUMBER': os.environ.get('TWILIO_FROM_NUMBER', 'MISSING'),
-        }
-    })
-
 @app.route('/api/community/reports/', methods=['GET', 'POST'])
 def community_reports():
     if request.method == 'GET':
@@ -2794,39 +1909,31 @@ def bus_location():
     if not data or 'lat' not in data or 'lng' not in data:
         return jsonify({"error": "Missing lat/lng"}), 400
 
-    # Accept any bus identity from the payload, with CaymanBus as fallback
-    bus_id   = (data.get('busId')   or 'CaymanBus').strip()
-    route_id = (data.get('routeId') or bus_id).strip()
-    bus_name = (data.get('busName') or bus_id).strip()
-
     session = TrackingSession.query.filter_by(
-        bus_id=bus_id, active=True
+        bus_id='CaymanBus', active=True
     ).first()
 
     if not session:
         session = TrackingSession(
-            bus_id=bus_id,
-            route_id=route_id,
-            bus_name=bus_name,
+            bus_id='CaymanBus',
+            route_id='CaymanBus',
+            bus_name='Cayman Bus',
             username='pi',
             phone_number='',
             contact_name='',
             contact_phone='',
             active=True,
-            token=uuid.uuid4().hex,
+            token=uuid.uuid4().hex,  # 32 chars, no dashes
         )
         db.session.add(session)
-    else:
-        # Update name/route in case they changed
-        session.bus_name = bus_name
-        session.route_id = route_id
 
     session.lat = data['lat']
     session.lng = data['lng']
     session.updated_at = datetime.utcnow()
     db.session.commit()
 
-    return jsonify({"status": "ok", "busId": bus_id, "routeId": route_id}), 200
+    return jsonify({"status": "ok"}), 200
+
 
 @app.route('/api/tracking/start', methods=['POST'])
 def start_tracking():
@@ -3106,10 +2213,9 @@ CAYMAN_ROUTES = [
 
 @app.route('/api/buses/coordinates', methods=['GET'])
 def buses_coordinates():
-    # ── Get ALL active tracking sessions (not just CaymanBus) ────────
+    # ── Get ALL active tracking sessions ─────────────────────────────────
     active_sessions = TrackingSession.query.filter_by(active=True).all()
 
-    # Build a dict keyed by route_id for quick lookup
     live_locations_by_route = {}
     for session in active_sessions:
         try:
@@ -3120,43 +2226,143 @@ def buses_coordinates():
                 "updatedAt": session.updated_at.isoformat() if session.updated_at else None,
             }
         except (ValueError, TypeError):
-            continue  # Skip malformed sessions
+            continue
 
-    # ── Build all routes from CAYMAN_ROUTES ──────────────────────────
+    # ── Pull latest driver row per route_id from DB ───────────────────────
+    db_stops_by_route = {}
+    db_meta_by_route  = {}
+
+    for driver in DriverRoute.query.order_by(DriverRoute.created_at.desc()).all():
+        if driver.route_id in db_stops_by_route:
+            continue
+
+        # DEBUG — log raw stops_json so you can see exactly what is stored
+        print(f"[DEBUG] route_id={driver.route_id} stops_json={driver.stops_json!r}")
+
+        try:
+            raw = json.loads(driver.stops_json or '[]')
+        except (json.JSONDecodeError, TypeError):
+            raw = []
+
+        parsed = []
+        for s in raw:
+            try:
+                # Handle every possible shape the frontend might send:
+                # 1. {"name": "X", "lat": 1.23, "lng": 4.56}
+                # 2. {"name": "X", "latitude": 1.23, "longitude": 4.56}
+                # 3. {"stopName": "X", "lat": 1.23, "lng": 4.56}
+                # 4. ["Stop Name", 1.23, 4.56]   (tuple serialised as array)
+                if isinstance(s, (list, tuple)):
+                    name = str(s[0]) if len(s) > 0 else "Stop"
+                    lat  = float(s[1]) if len(s) > 1 else 0.0
+                    lng  = float(s[2]) if len(s) > 2 else 0.0
+                elif isinstance(s, dict):
+                    name = (
+                        s.get("name") or
+                        s.get("stopName") or
+                        s.get("stop_name") or
+                        "Stop"
+                    )
+                    lat  = float(
+                        s.get("lat") or
+                        s.get("latitude") or
+                        s.get("Lat") or 0
+                    )
+                    lng  = float(
+                        s.get("lng") or
+                        s.get("lon") or
+                        s.get("longitude") or
+                        s.get("Lng") or 0
+                    )
+                else:
+                    continue
+
+                if lat == 0.0 and lng == 0.0:
+                    print(f"[DEBUG] skipping stop with zero coords: {s!r}")
+                    continue
+
+                parsed.append({"name": name, "lat": lat, "lng": lng})
+
+            except (ValueError, TypeError, IndexError) as e:
+                print(f"[DEBUG] failed to parse stop {s!r}: {e}")
+                continue
+
+        print(f"[DEBUG] route_id={driver.route_id} parsed {len(parsed)} stops")
+
+        db_stops_by_route[driver.route_id] = parsed
+        db_meta_by_route[driver.route_id]  = driver
+
+    # ── Build routes from static CAYMAN_ROUTES ────────────────────────────
     all_routes = []
+    seen_route_ids = set()
 
     for route in CAYMAN_ROUTES:
+        rid = route['route_number']
+        seen_route_ids.add(rid)
+
+        if rid in db_stops_by_route and db_stops_by_route[rid]:
+            source_stops = db_stops_by_route[rid]
+        else:
+            source_stops = [
+                {"name": name, "lat": lat, "lng": lng}
+                for name, lat, lng in route['stops']
+            ]
+
         stops = [
             {
-                "id": f"{route['route_number']}-S{i + 1:02}",
-                "name": name,
-                "lat": lat,
-                "lng": lng,
+                "id":   f"{rid}-S{i + 1:02}",
+                "name": s["name"],
+                "lat":  s["lat"],
+                "lng":  s["lng"],
             }
-            for i, (name, lat, lng) in enumerate(route['stops'])
+            for i, s in enumerate(source_stops)
         ]
 
-        route_data = {
-            "route": route['route_number'],
-            "routeName": route['name'],
-            "color": route['color'],
-            "frequency": route['frequency'],
-            "description": route['description'],
-            "stops": stops,
-            # Attach live location if this route has an active session, else None
-            "liveLocation": live_locations_by_route.get(route['route_number']),
-        }
+        all_routes.append({
+            "route":        rid,
+            "routeName":    route['name'],
+            "color":        route['color'],
+            "frequency":    route['frequency'],
+            "description":  route['description'],
+            "stops":        stops,
+            "liveLocation": live_locations_by_route.get(rid),
+        })
 
-        all_routes.append(route_data)
+    # ── Append pure DB-only routes ────────────────────────────────────────
+    for rid, driver in db_meta_by_route.items():
+        if rid in seen_route_ids:
+            continue
+
+        raw_stops = db_stops_by_route.get(rid, [])
+        stops = [
+            {
+                "id":   f"{rid}-S{i + 1:02}",
+                "name": s["name"],
+                "lat":  s["lat"],
+                "lng":  s["lng"],
+            }
+            for i, s in enumerate(raw_stops)
+        ]
+
+        all_routes.append({
+            "route":        rid,
+            "routeName":    driver.route_name,
+            "color":        driver.route_color or "#F5C518",
+            "frequency":    driver.frequency   or "Every 15 minutes",
+            "description":  driver.description or "",
+            "stops":        stops,
+            "liveLocation": live_locations_by_route.get(rid),
+            "driverName":   driver.driver_name,
+            "busId":        driver.bus_id,
+        })
 
     return jsonify({
-        "routes": all_routes,
-        "totalRoutes": len(all_routes),
-        "totalStops": sum(len(r["stops"]) for r in all_routes),
-        "liveRoutesCount": len(live_locations_by_route),  # bonus: how many are live
-        "generatedAt": datetime.utcnow().isoformat() + "Z",
+        "routes":          all_routes,
+        "totalRoutes":     len(all_routes),
+        "totalStops":      sum(len(r["stops"]) for r in all_routes),
+        "liveRoutesCount": len(live_locations_by_route),
+        "generatedAt":     datetime.utcnow().isoformat() + "Z",
     }), 200
-
 
 @app.route('/api/safety/sos/<token>/resolve', methods=['POST'])
 def resolve_sos(token):
@@ -3191,7 +2397,7 @@ def admin_sms_alerts():
         icon, color, label = TYPE_LABELS.get(l.message_type, ('💬', '#818cf8', l.message_type))
         sent_at      = l.created_at.strftime('%d %b %Y, %H:%M')
         status_color = '#4ade80' if l.sent else '#ef4444'
-        status_label = '✓ Sent'  if l.sent else '✗ Failed'
+        status_label = '✓ Sent'   if l.sent else '✗ Failed'
         status_bg    = 'rgba(74,222,128,.1)' if l.sent else 'rgba(239,68,68,.1)'
         maps_url     = f'https://maps.google.com/?q={l.lat},{l.lng}' if l.lat and l.lng else ''
         gps_cell     = (
@@ -3234,13 +2440,10 @@ def admin_sms_alerts():
             </span>
           </td>
           <td class="date-cell">{sent_at}</td>
-          <td>
-            <button class="btn btn-danger" style="font-size:11px;padding:4px 10px" onclick="confirmDeleteSMS({l.id})">Delete</button>
-          </td>
         </tr>"""
 
     if not rows:
-        rows = '<tr><td colspan="12" style="text-align:center;padding:48px;color:#484f58">No SMS alerts logged yet.</td></tr>'
+        rows = '<tr><td colspan="11" style="text-align:center;padding:48px;color:#484f58">No SMS alerts logged yet.</td></tr>'
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -3264,10 +2467,7 @@ def admin_sms_alerts():
       <h1>💬 SMS Alerts</h1>
       <p>All outbound SMS — offline reminders, journey shares, and SOS alerts</p>
     </div>
-    <div style="display:flex;gap:10px;align-items:center">
-      <button class="btn btn-danger" onclick="confirmDeleteAllFailed()">Delete All Failed</button>
-      <span class="badge" id="sms-total-count">{len(logs)} total</span>
-    </div>
+    <span class="badge" id="sms-total-count">{len(logs)} total</span>
   </div>
 
   <!-- STAT CARDS -->
@@ -3311,7 +2511,6 @@ def admin_sms_alerts():
             <th>GPS</th>
             <th>Status</th>
             <th>Sent At</th>
-            <th>Action</th>
           </tr>
         </thead>
         <tbody id="sms-tbody">{rows}</tbody>
@@ -3320,89 +2519,9 @@ def admin_sms_alerts():
   </div>
 </div>
 
-<!-- Delete single modal -->
-<div class="overlay" id="sms-del-overlay">
-  <div class="modal">
-    <h3>🗑 Delete SMS Log</h3>
-    <p id="sms-del-msg">Delete this SMS log entry permanently?</p>
-    <div class="modal-btns">
-      <button class="btn btn-ghost" onclick="closeModal('sms-del-overlay')">Cancel</button>
-      <button class="btn btn-danger" id="sms-del-confirm-btn">Delete</button>
-    </div>
-  </div>
-</div>
-
-<!-- Delete all failed modal -->
-<div class="overlay" id="sms-del-all-overlay">
-  <div class="modal">
-    <h3>🗑 Delete All Failed Logs</h3>
-    <p>This will permanently remove all <strong>✗ Failed</strong> SMS log entries. Sent logs will be kept.</p>
-    <div class="modal-btns">
-      <button class="btn btn-ghost" onclick="closeModal('sms-del-all-overlay')">Cancel</button>
-      <button class="btn btn-danger" onclick="deleteAllFailed()">Delete Failed</button>
-    </div>
-  </div>
-</div>
-
 <div class="toast" id="toast"></div>
 {ADMIN_JS}
 <script>
-let pendingSMSDeleteId = null;
-
-function confirmDeleteSMS(id) {{
-  pendingSMSDeleteId = id;
-  document.getElementById('sms-del-msg').textContent = `Delete SMS log #${{id}} permanently?`;
-  openModal('sms-del-overlay');
-}}
-
-document.getElementById('sms-del-confirm-btn').addEventListener('click', async () => {{
-  if (!pendingSMSDeleteId) return;
-  closeModal('sms-del-overlay');
-  try {{
-    const res  = await fetch(`/api/sms/log/${{pendingSMSDeleteId}}`, {{ method: 'DELETE' }});
-    const data = await res.json();
-    if (res.ok) {{
-      document.getElementById(`sms-row-${{pendingSMSDeleteId}}`).remove();
-      showToast('✓ Log entry deleted');
-      updateCount();
-    }} else {{
-      showToast('✗ ' + (data.message || 'Delete failed'), 'error');
-    }}
-  }} catch (e) {{
-    showToast('✗ Request failed', 'error');
-  }}
-  pendingSMSDeleteId = null;
-}});
-
-function confirmDeleteAllFailed() {{
-  openModal('sms-del-all-overlay');
-}}
-
-async function deleteAllFailed() {{
-  closeModal('sms-del-all-overlay');
-  try {{
-    const res  = await fetch('/api/sms/log/failed', {{ method: 'DELETE' }});
-    const data = await res.json();
-    if (res.ok) {{
-      document.querySelectorAll('#sms-tbody tr').forEach(row => {{
-        const statusSpan = row.querySelector('td:nth-child(10) span');
-        if (statusSpan && statusSpan.textContent.includes('Failed')) row.remove();
-      }});
-      showToast(`✓ ${{data.deleted}} failed log(s) removed`);
-      updateCount();
-    }} else {{
-      showToast('✗ ' + (data.message || 'Delete failed'), 'error');
-    }}
-  }} catch (e) {{
-    showToast('✗ Request failed', 'error');
-  }}
-}}
-
-function updateCount() {{
-  const count = document.querySelectorAll('#sms-tbody tr[id]').length;
-  document.getElementById('sms-total-count').textContent = count + ' total';
-}}
-
 async function refreshSMS() {{
   try {{
     const res  = await fetch('/api/admin/sms-alerts');
@@ -3417,7 +2536,7 @@ async function refreshSMS() {{
     }};
 
     if (!data.logs || data.logs.length === 0) {{
-      tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:48px;color:#484f58">No SMS alerts logged yet.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:48px;color:#484f58">No SMS alerts logged yet.</td></tr>';
       document.getElementById('sms-total-count').textContent = '0 total';
       return;
     }}
@@ -3442,7 +2561,9 @@ async function refreshSMS() {{
             👤 ${{l.username || '—'}}
           </div>
         </td>
-        <td><div style="font-family:monospace;font-size:12px;color:#e6edf3">${{l.toPhone}}</div></td>
+        <td>
+          <div style="font-family:monospace;font-size:12px;color:#e6edf3">${{l.toPhone}}</div>
+        </td>
         <td>
           <span style="display:inline-flex;align-items:center;gap:5px;background:${{color}}18;color:${{color}};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid ${{color}}33">
             ${{icon}} ${{label}}
@@ -3462,9 +2583,6 @@ async function refreshSMS() {{
           </span>
         </td>
         <td class="date-cell">${{l.createdAt}}</td>
-        <td>
-          <button class="btn btn-danger" style="font-size:11px;padding:4px 10px" onclick="confirmDeleteSMS(${{l.id}})">Delete</button>
-        </td>
       </tr>`;
     }}).join('');
 
@@ -3481,28 +2599,344 @@ setInterval(refreshSMS, 15000);
 </html>"""
 
 
-# ── Delete single SMS log entry ────────────────────────────
-@app.route('/api/sms/log/<int:log_id>', methods=['DELETE'])
-@require_admin
-def delete_sms_log(log_id):
-    log = db.session.get(SMSLog, log_id)
-    if not log:
-        return jsonify({'message': 'Log entry not found'}), 404
-    db.session.delete(log)
-    db.session.commit()
-    return jsonify({'message': f'Log #{log_id} deleted'}), 200
+@app.route('/driver')
+def driver_page():
+    with open('driver_register.html', 'r') as f:
+        return f.read()
 
 
-# ── Delete all failed SMS logs ─────────────────────────────
-@app.route('/api/sms/log/failed', methods=['DELETE'])
+@app.route('/admin/drivers')
 @require_admin
-def delete_failed_sms_logs():
-    failed = SMSLog.query.filter_by(sent=False).all()
-    count  = len(failed)
-    for log in failed:
-        db.session.delete(log)
+def admin_drivers():
+    drivers = DriverRoute.query.order_by(DriverRoute.created_at.desc()).all()
+
+    rows = ''
+    for d in drivers:
+        stops = json.loads(d.stops_json or '[]')
+        stop_count = len(stops)
+        registered = d.created_at.strftime('%d %b %Y, %H:%M')
+        initials = ''.join(w[0].upper() for w in d.driver_name.split()[:2])
+        color_dot = f'<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:{d.route_color};border:1px solid rgba(255,255,255,.2);flex-shrink:0"></span>'
+
+        # check if driver has an active tracking session
+        sess = TrackingSession.query.filter_by(username=d.username, active=True).first()
+        live_badge = (
+            '<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(34,197,94,.12);'
+            'border:1px solid rgba(34,197,94,.3);color:#4ade80;padding:2px 8px;border-radius:20px;'
+            'font-size:10px;font-weight:700">'
+            '<span style="width:5px;height:5px;border-radius:50%;background:#4ade80;animation:blink_ 1s infinite"></span>'
+            'LIVE</span>'
+        ) if sess else (
+            '<span style="background:#21262d;color:#6e7681;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600">offline</span>'
+        )
+
+        rows += f"""
+        <tr id="drv-row-{d.id}">
+          <td><div class="avatar">{initials}</div></td>
+          <td>
+            <div style="font-weight:600;color:#f0f6fc">{d.driver_name}</div>
+            <div style="font-size:11px;color:#6e7681;margin-top:2px;font-family:monospace">{d.driver_phone}</div>
+          </td>
+          <td style="font-family:monospace;font-size:12px;color:#8b949e">{d.username}</td>
+          <td style="font-family:monospace;font-size:12px;color:#8b949e">{d.bus_id}</td>
+          <td>
+            <div style="display:flex;align-items:center;gap:6px">
+              {color_dot}
+              <div>
+                <div style="font-weight:600;color:#f0f6fc;font-size:13px">{d.route_id}</div>
+                <div style="font-size:11px;color:#6e7681">{d.route_name[:30] + ('…' if len(d.route_name) > 30 else '')}</div>
+              </div>
+            </div>
+          </td>
+          <td style="font-size:12px;color:#8b949e">{d.frequency}</td>
+          <td>
+            <span style="background:rgba(245,197,24,.1);color:var(--gold);padding:2px 9px;border-radius:20px;font-size:12px;font-weight:600">{stop_count} stop{'s' if stop_count != 1 else ''}</span>
+          </td>
+          <td>{live_badge}</td>
+          <td class="date-cell">{registered}</td>
+          <td>
+            <button class="btn btn-ghost" style="font-size:12px;padding:5px 10px"
+              onclick="viewStops({d.id}, '{d.driver_name.replace(chr(39), '')}', '{d.route_id}')">Stops</button>
+            <button class="btn btn-danger" style="font-size:12px;padding:5px 10px;margin-left:4px"
+              onclick="confirmDrvDelete({d.id}, '{d.driver_name.replace(chr(39), '')}')">Delete</button>
+          </td>
+        </tr>"""
+
+    if not rows:
+        rows = '<tr><td colspan="10" style="text-align:center;padding:48px;color:#484f58">No drivers registered yet. <a href="/driver" style="color:var(--gold)">Register one →</a></td></tr>'
+
+    stat_live = sum(1 for d in drivers if TrackingSession.query.filter_by(username=d.username, active=True).first())
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Drivers — LetsGo Admin</title>
+{ADMIN_STYLE}
+<style>
+  table td{{max-width:200px;overflow:hidden;text-overflow:ellipsis}}
+  .stat-card{{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:18px 22px;display:flex;align-items:center;gap:16px}}
+  .sc-icon{{font-size:20px;width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}}
+  .sc-num{{font-size:24px;font-weight:700;color:#f0f6fc;line-height:1}}
+  .sc-lbl{{font-size:12px;color:#6e7681;margin-top:3px}}
+</style>
+</head>
+<body>
+{nav_html('drivers')}
+<div class="admin-main">
+  <div class="page-header">
+    <div>
+      <h1>🚌 Registered Drivers</h1>
+      <p>Bus drivers who registered via the LetsGo Driver Portal</p>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <a href="/driver" target="_blank" class="btn btn-primary">+ Register Driver</a>
+      <span class="badge" id="drv-count">{len(drivers)} driver(s)</span>
+    </div>
+  </div>
+
+  <!-- Stat cards -->
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px">
+    <div class="stat-card">
+      <div class="sc-icon" style="background:rgba(245,197,24,.1)">🚌</div>
+      <div><div class="sc-num">{len(drivers)}</div><div class="sc-lbl">Total Drivers</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="sc-icon" style="background:rgba(52,211,153,.1)">📡</div>
+      <div><div class="sc-num" style="color:#34d399">{stat_live}</div><div class="sc-lbl">Live Now</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="sc-icon" style="background:rgba(245,197,24,.1)">🛣</div>
+      <div><div class="sc-num">{len(set(d.route_id for d in drivers))}</div><div class="sc-lbl">Unique Routes</div></div>
+    </div>
+  </div>
+
+  <div class="refresh-bar">Auto-refreshes every 15s &nbsp;|&nbsp; <span id="drv-last-updated">Updated just now</span></div>
+
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th></th>
+            <th>Driver</th>
+            <th>Username</th>
+            <th>Bus ID</th>
+            <th>Route</th>
+            <th>Frequency</th>
+            <th>Stops</th>
+            <th>Status</th>
+            <th>Registered</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="drv-tbody">{rows}</tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Stops Modal -->
+<div class="overlay" id="stops-overlay">
+  <div class="modal" style="max-width:560px;max-height:80vh;overflow-y:auto">
+    <h3 id="stops-modal-title">🚏 Bus Stops</h3>
+    <p id="stops-modal-sub" style="margin-bottom:16px"></p>
+    <div id="stops-list-inner" style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px"></div>
+    <div class="modal-btns">
+      <button class="btn btn-primary" onclick="closeModal('stops-overlay')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Modal -->
+<div class="overlay" id="drv-del-overlay">
+  <div class="modal">
+    <h3>🗑 Delete Driver</h3>
+    <p id="drv-del-msg">Delete this driver registration?</p>
+    <div class="modal-btns">
+      <button class="btn btn-ghost" onclick="closeModal('drv-del-overlay')">Cancel</button>
+      <button class="btn btn-danger" id="confirm-drv-del-btn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+{ADMIN_JS}
+<script>
+let pendingDrvDeleteId = null;
+const driverStops = {{}};
+
+// Pre-load stops data from server rows
+{'; '.join([f"driverStops[{d.id}]={json.dumps(json.loads(d.stops_json or '[]'))}" for d in drivers])}
+
+function viewStops(id, name, routeId) {{
+  document.getElementById('stops-modal-title').textContent = '🚏 ' + name + ' — Route ' + routeId;
+  const stops = driverStops[id] || [];
+  const inner = document.getElementById('stops-list-inner');
+  document.getElementById('stops-modal-sub').textContent = stops.length + ' stop' + (stops.length !== 1 ? 's' : '') + ' registered';
+  if (!stops.length) {{
+    inner.innerHTML = '<div style="color:#484f58;text-align:center;padding:20px">No stops added</div>';
+  }} else {{
+    inner.innerHTML = stops.map((s, i) => {{
+      const hasLoc = s.lat && s.lng;
+      const mapsLink = hasLoc ? `<a href="https://maps.google.com/?q=${{s.lat}},${{s.lng}}" target="_blank" style="color:var(--gold);font-size:11px">📍 Map</a>` : '<span style="color:#484f58;font-size:11px">No GPS</span>';
+      return `<div style="display:flex;align-items:center;gap:12px;background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:10px 14px">
+        <div style="width:26px;height:26px;border-radius:50%;background:rgba(245,197,24,.12);border:1px solid rgba(245,197,24,.3);color:var(--gold);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${{i+1}}</div>
+        <div style="flex:1">
+          <div style="font-weight:600;color:#f0f6fc;font-size:13px">${{s.name || 'Unnamed stop'}}</div>
+          ${{hasLoc ? `<div style="font-family:monospace;font-size:10px;color:#6e7681;margin-top:2px">${{parseFloat(s.lat).toFixed(5)}}, ${{parseFloat(s.lng).toFixed(5)}}</div>` : ''}}
+        </div>
+        ${{mapsLink}}
+      </div>`;
+    }}).join('');
+  }}
+  openModal('stops-overlay');
+}}
+
+function confirmDrvDelete(id, name) {{
+  pendingDrvDeleteId = id;
+  document.getElementById('drv-del-msg').textContent = `Delete driver "${{name}}"? This cannot be undone.`;
+  openModal('drv-del-overlay');
+}}
+
+document.getElementById('confirm-drv-del-btn').addEventListener('click', async () => {{
+  if (!pendingDrvDeleteId) return;
+  closeModal('drv-del-overlay');
+  try {{
+    const res = await fetch(`/api/driver/${{pendingDrvDeleteId}}`, {{ method: 'DELETE' }});
+    const data = await res.json();
+    if (res.ok) {{
+      document.getElementById(`drv-row-${{pendingDrvDeleteId}}`).remove();
+      showToast('✓ ' + data.message);
+    }} else {{
+      showToast('✗ ' + data.message, 'error');
+    }}
+  }} catch (e) {{ showToast('✗ Delete failed', 'error'); }}
+  pendingDrvDeleteId = null;
+}});
+
+async function refreshDrivers() {{
+  try {{
+    const res = await fetch('/api/admin/drivers');
+    const data = await res.json();
+    document.getElementById('drv-count').textContent = data.total + ' driver(s)';
+    document.getElementById('drv-last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+    // Re-populate stops cache
+    (data.drivers || []).forEach(d => {{ driverStops[d.id] = d.stops; }});
+  }} catch (e) {{ console.error(e); }}
+}}
+setInterval(refreshDrivers, 15000);
+</script>
+</body>
+</html>"""
+
+
+# ═══════════════════════════════════════════════════════════
+# ★ NEW: DRIVER API ENDPOINTS
+# ═══════════════════════════════════════════════════════════
+
+@app.route('/maps', methods=['POST'])
+def maps_register():
+    """Alias endpoint — driver registration form posts here."""
+    return register_driver()
+
+
+@app.route('/api/driver/register', methods=['POST'])
+def register_driver():
+    data = request.get_json(force=True, silent=True) or {}
+    print(f"[DEBUG] register_driver payload: {data}")
+    print(f"[DEBUG] stops received: {data.get('stops')}")
+
+    # ... rest of your code
+    stops_json = json.dumps(data.get('stops', [])),
+
+    if not all([data.get('driverName'), data.get('driverPhone'),
+                data.get('driverUsername'), data.get('routeId')]):
+        return jsonify({'message': 'Missing required fields'}), 400
+
+    route = DriverRoute(
+        driver_name=data['driverName'],
+        driver_phone=data['driverPhone'],
+        username=data['driverUsername'],
+        bus_id=data.get('busId') or data['routeId'],
+        route_id=data['routeId'],
+        route_name=data.get('routeName', data['routeId']),
+        route_color=data.get('routeColor', '#F5C518'),
+        frequency=data.get('frequency', 'Every 15 minutes'),
+        description=data.get('description', ''),
+        stops_json=json.dumps(data.get('stops', [])),
+    )
+    db.session.add(route)
+
+    # Also start a live tracking session
+    sess = TrackingSession(
+        username=data['driverUsername'],
+        phone_number=data['driverPhone'],
+        route_id=data['routeId'],
+        bus_id=data.get('busId') or data['routeId'],
+        bus_name=data.get('routeName', data['routeId']),
+        active=True,
+    )
+    db.session.add(sess)
     db.session.commit()
-    return jsonify({'message': f'{count} failed log(s) deleted', 'deleted': count}), 200
+
+    return jsonify({'success': True, 'routeId': route.id,
+                    'message': 'Driver registered and now live on the map!'}), 201
+
+
+@app.route('/api/driver/<int:driver_id>', methods=['DELETE'])
+def delete_driver(driver_id):
+    driver = db.session.get(DriverRoute, driver_id)
+    if not driver:
+        return jsonify({'message': 'Driver not found'}), 404
+    name = driver.driver_name
+    db.session.delete(driver)
+    db.session.commit()
+    return jsonify({'message': f'Driver {name} deleted successfully'}), 200
+
+
+@app.route('/api/driver/<int:driver_id>', methods=['PATCH'])
+def update_driver(driver_id):
+    driver = db.session.get(DriverRoute, driver_id)
+    if not driver:
+        return jsonify({'message': 'Driver not found'}), 404
+    data = request.get_json(force=True, silent=True) or {}
+    for field, col in [('driverName', 'driver_name'), ('driverPhone', 'driver_phone'),
+                       ('username', 'username'), ('busId', 'bus_id'),
+                       ('routeId', 'route_id'), ('routeName', 'route_name'),
+                       ('routeColor', 'route_color'), ('frequency', 'frequency'),
+                       ('description', 'description')]:
+        if field in data:
+            setattr(driver, col, data[field])
+    db.session.commit()
+    return jsonify({'message': 'Driver updated'}), 200
+
+
+@app.route('/api/admin/drivers')
+@require_admin
+def api_admin_drivers():
+    drivers = DriverRoute.query.order_by(DriverRoute.created_at.desc()).all()
+    return jsonify({
+        'total': len(drivers),
+        'drivers': [{
+            'id': d.id,
+            'driverName': d.driver_name,
+            'driverPhone': d.driver_phone,
+            'username': d.username,
+            'busId': d.bus_id,
+            'routeId': d.route_id,
+            'routeName': d.route_name,
+            'routeColor': d.route_color,
+            'frequency': d.frequency,
+            'description': d.description,
+            'stops': json.loads(d.stops_json or '[]'),
+            'stopCount': len(json.loads(d.stops_json or '[]')),
+            'isLive': bool(TrackingSession.query.filter_by(username=d.username, active=True).first()),
+            'createdAt': d.created_at.strftime('%d %b %Y, %H:%M'),
+        } for d in drivers]
+    })
+
+
 # ═══════════════════════════════════════════════════════════
 # ADMIN SOS JSON API  (for auto-refresh)
 # ═══════════════════════════════════════════════════════════
@@ -3528,22 +2962,6 @@ def api_admin_sos_alerts():
         } for a in alerts]
     })
 
-
-#### play a sound ####
-
-@app.route('/trigger-sound', methods=['POST'])
-def trigger():
-    global pending
-    pending = True
-    return jsonify({'status': 'queued'})
-
-@app.route('/poll', methods=['GET'])
-def poll():
-    global pending
-    if pending:
-        pending = False
-        return jsonify({'play': True})
-    return jsonify({'play': False})
 
 
 
@@ -4122,7 +3540,6 @@ L.circle([{lat},{lng}],{{color:'#ef4444',fillColor:'#ef4444',fillOpacity:.07,wei
 @app.route('/')
 @app.route('/home')
 @app.route('/team')
-@app.route('/demo')
 def landing():
     return LANDING_HTML
 
