@@ -2211,8 +2211,57 @@ CAYMAN_ROUTES = [
 ]
 
 
-@app.route('/api/buses/coordinates', methods=['GET'])
+@app.route('/api/buses/coordinates', methods=['GET', 'POST'])
 def buses_coordinates():
+
+    # ── POST: update live location for a bus ─────────────────────────────
+    if request.method == 'POST':
+        data = request.get_json(force=True, silent=True) or {}
+        bus_id = (data.get('busId') or '').strip()
+        lat    = data.get('lat')
+        lng    = data.get('lng')
+
+        if not bus_id or lat is None or lng is None:
+            return jsonify({'error': 'busId, lat and lng are required'}), 400
+
+        try:
+            lat = float(lat)
+            lng = float(lng)
+        except (ValueError, TypeError):
+            return jsonify({'error': 'lat and lng must be numeric'}), 400
+
+        # Find existing active session for this bus
+        sess = TrackingSession.query.filter_by(bus_id=bus_id, active=True).first()
+
+        if sess:
+            sess.lat        = str(lat)
+            sess.lng        = str(lng)
+            sess.updated_at = datetime.utcnow()
+        else:
+            # No session yet — create one
+            sess = TrackingSession(
+                bus_id      = bus_id,
+                route_id    = data.get('routeId') or bus_id,
+                bus_name    = data.get('busName') or bus_id,
+                username    = data.get('username') or bus_id,
+                phone_number= data.get('phoneNumber') or '',
+                lat         = str(lat),
+                lng         = str(lng),
+                active      = True,
+            )
+            db.session.add(sess)
+
+        db.session.commit()
+
+        live_location = {
+            'busId':     bus_id,
+            'lat':       lat,
+            'lng':       lng,
+            'updatedAt': sess.updated_at.isoformat(),
+        }
+        return jsonify(live_location), 200
+
+    # ── GET: return all routes (or filter by ?busId=) ─────────────────────
     bus_id_filter = request.args.get('busId', '').strip()
 
     # ── Get ALL active tracking sessions ─────────────────────────────────
@@ -2222,9 +2271,9 @@ def buses_coordinates():
     for session in active_sessions:
         try:
             live_locations_by_route[session.route_id] = {
-                "lat": float(session.lat),
-                "lng": float(session.lng),
-                "busId": session.bus_id,
+                "lat":       float(session.lat),
+                "lng":       float(session.lng),
+                "busId":     session.bus_id,
                 "updatedAt": session.updated_at.isoformat() if session.updated_at else None,
             }
         except (ValueError, TypeError):
