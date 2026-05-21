@@ -2664,60 +2664,232 @@ def update_bus_location():
     return buses_registered()
     
 
-@app.route('/api/buses/coordinates', methods=['GET'])
+@app.route('/api/buses/coordinates', methods=['GET', 'POST'])
 def buses_coordinates():
-    # ── Get live coordinates from Raspberry Pi for CaymanBus ─────────
-    session = TrackingSession.query.filter_by(
+
+    # ── POST: driver app pushes lat/lng ───────────────────────────────────
+    if request.method == 'POST':
+        data   = request.get_json(force=True, silent=True) or {}
+        bus_id = (data.get('busId') or '').strip()
+        active = data.get('active', True)
+
+        if not bus_id:
+            return jsonify({'error': 'busId is required'}), 400
+
+        lat = data.get('lat')
+        lng = data.get('lng')
+
+        try:
+            lat = float(lat)
+            lng = float(lng)
+        except (TypeError, ValueError):
+            if active:
+                return jsonify({'error': 'lat and lng are required when active=true'}), 400
+            lat = lng = None
+
+        sess = TrackingSession.query.filter_by(bus_id=bus_id).first()
+        if sess is None:
+            sess = TrackingSession(
+                bus_id       = bus_id,
+                route_id     = data.get('routeId') or bus_id,
+                bus_name     = data.get('busName') or bus_id,
+                username     = data.get('username') or bus_id,
+                phone_number = data.get('phoneNumber') or '',
+                lat          = str(lat) if lat is not None else '0',
+                lng          = str(lng) if lng is not None else '0',
+                active       = active,
+            )
+            db.session.add(sess)
+        else:
+            if lat is not None:
+                sess.lat = str(lat)
+                sess.lng = str(lng)
+            sess.active     = active
+            sess.updated_at = datetime.utcnow()
+
+        db.session.commit()
+
+        return jsonify({
+            'ok':        True,
+            'busId':     bus_id,
+            'online':    active,
+            'lat':       lat,
+            'lng':       lng,
+            'updatedAt': sess.updated_at.isoformat(),
+        }), 200
+
+    # ── GET ───────────────────────────────────────────────────────────────
+
+    # ── 1. Raspberry Pi live location for CaymanBus (unchanged) ──────────
+    pi_session = TrackingSession.query.filter_by(
         active=True, route_id='CaymanBus'
     ).order_by(TrackingSession.updated_at.desc()).first()
 
-    if session:
+    cayman_bus_live = None
+    if pi_session:
         try:
-            live_location = {
-                "lat": float(session.lat),
-                "lng": float(session.lng),
-                "busId": session.bus_id,
-                "updatedAt": session.updated_at.isoformat() if session.updated_at else None,
+            cayman_bus_live = {
+                'lat':       float(pi_session.lat),
+                'lng':       float(pi_session.lng),
+                'busId':     pi_session.bus_id,
+                'updatedAt': pi_session.updated_at.isoformat() if pi_session.updated_at else None,
             }
         except (ValueError, TypeError):
-            live_location = None
-    else:
-        live_location = None
+            cayman_bus_live = None
 
-    # ── Build all routes from CAYMAN_ROUTES ──────────────────────────
-    all_routes = []
+    # ── 2. All active sessions keyed by route_id and bus_id ──────────────
+    active_sessions = TrackingSession.query.filter_by(active=True).all()
+    live_by_route = {}
+    live_by_bus   = {}
+    for s in active_sessions:
+        try:
+            loc = {
+                'lat':       float(s.lat),
+                'lng':       float(s.lng),
+                'busId':     s.bus_id,
+                'updatedAt': s.updated_at.isoformat() if s.updated_at else None,
+            }
+            if s.route_id:
+                live_by_route[s.route_id] = loc
+            live_by_bus[s.bus_id] = loc
+        except (ValueError, TypeError):
+            continue
+
+    # ── 3. Pull registered buses from DriverRoute ─────────────────────────
+    from sqlalchemy import func
+
+    latest_ids = (
+        db.session.query(func.max(DriverRoute.id))
+        .group_by(DriverRoute.bus_id)
+        .all()
+    )
+    latest_id_list = [row[0] for row in latest_ids if row[0] is not None]
+
+    registered_drivers = (
+        DriverRoute.query
+        .filter(DriverRoute.id.in_(latest_id_list))
+        .order_by(DriverRoute.route_name)
+        .all()
+    )
+
+    # Index registered buses by route_id so CAYMAN_ROUTES can check overlap
+    registered_by_route = {d.route_id: d for d in registered_drivers if d.route_id}
+    registered_by_bus   = {d.bus_id:   d for d in registered_drivers}
+
+    def parse_stops(stops_json, route_id):
+        try:
+            raw = json.loads(stops_json or '[]')
+        except (json.JSONDecodeError, TypeError):
+            return []
+        parsed = []
+        for i, s in enumerate(raw):
+            try:
+                if isinstance(s, (list, tuple)):
+                    name = str(s[0]) if len(s) > 0 else 'Stop'
+                    lat  = float(s[1]) if len(s) > 1 else 0.0
+                    lng  = float(s[2]) if len(s) > 2 else 0.0
+                elif isinstance(s, dict):
+                    name = (s.get('name') or s.get('stopName') or
+                            s.get('stop_name') or 'Stop')
+                    lat  = float(s.get('lat') or s.get('latitude') or
+                                 s.get('Lat') or 0)
+                    lng  = float(s.get('lng') or s.get('lon') or
+                                 s.get('longitude') or s.get('Lng') or 0)
+                else:
+                    continue
+                if lat == 0.0 and lng == 0.0:
+                    continue
+                parsed.append({
+                    'id':   f"{route_id}-S{i + 1:02}",
+                    'name': name,
+                    'lat':  lat,
+                    'lng':  lng,
+                })
+            except (ValueError, TypeError, IndexError):
+                continue
+        return parsed
+
+    # ── 4. Build CAYMAN_ROUTES (static) ───────────────────────────────────
+    all_routes    = []
+    seen_route_ids = set()
 
     for route in CAYMAN_ROUTES:
-        stops = []
+        rid = route['route_number']
+        seen_route_ids.add(rid)
 
-        for i, (name, lat, lng) in enumerate(route['stops']):
-            stops.append({
-                "id": f"{route['route_number']}-S{i + 1:02}",
-                "name": name,
-                "lat": lat,
-                "lng": lng,
-            })
+        # Prefer DB stops for this route if a registered driver has them
+        db_driver = registered_by_route.get(rid)
+        if db_driver and db_driver.stops_json:
+            stops = parse_stops(db_driver.stops_json, rid)
+        else:
+            stops = [
+                {
+                    'id':   f"{rid}-S{i + 1:02}",
+                    'name': name,
+                    'lat':  lat,
+                    'lng':  lng,
+                }
+                for i, (name, lat, lng) in enumerate(route['stops'])
+            ]
+
+        # CaymanBus always uses the Pi session; others use active sessions
+        if rid == 'CaymanBus':
+            live = cayman_bus_live
+        else:
+            live = live_by_route.get(rid) or (
+                live_by_bus.get(db_driver.bus_id) if db_driver else None
+            )
 
         route_data = {
-            "route": route['route_number'],
-            "routeName": route['name'],
-            "color": route['color'],
-            "frequency": route['frequency'],
-            "description": route['description'],
-            "stops": stops,
+            'route':       rid,
+            'routeName':   route['name'],
+            'color':       route['color'],
+            'frequency':   route['frequency'],
+            'description': route['description'],
+            'stops':       stops,
+            'totalStops':  len(stops),
+            'liveLocation': live,
+            'online':      live is not None,
         }
-
-        # Attach live Pi coordinates only to CaymanBus
-        if route['route_number'] == 'CaymanBus':
-            route_data['liveLocation'] = live_location
+        if db_driver:
+            route_data['busId']      = db_driver.bus_id
+            route_data['driverName'] = db_driver.driver_name
+            route_data['registeredAt'] = (
+                db_driver.created_at.isoformat() if db_driver.created_at else None
+            )
 
         all_routes.append(route_data)
 
+    # ── 5. Append registered buses NOT in CAYMAN_ROUTES ───────────────────
+    for d in registered_drivers:
+        if d.route_id in seen_route_ids:
+            continue  # already handled above
+
+        stops     = parse_stops(d.stops_json, d.route_id or d.bus_id)
+        live      = live_by_bus.get(d.bus_id) or live_by_route.get(d.route_id)
+        is_online = live is not None
+
+        all_routes.append({
+            'route':        d.route_id or d.bus_id,
+            'routeName':    d.route_name,
+            'color':        d.route_color or '#F5C518',
+            'frequency':    d.frequency   or 'Every 15 minutes',
+            'description':  d.description or '',
+            'stops':        stops,
+            'totalStops':   len(stops),
+            'liveLocation': live,
+            'online':       is_online,
+            'busId':        d.bus_id,
+            'driverName':   d.driver_name,
+            'registeredAt': d.created_at.isoformat() if d.created_at else None,
+        })
+
     return jsonify({
-        "routes": all_routes,
-        "totalRoutes": len(all_routes),
-        "totalStops": sum(len(r["stops"]) for r in all_routes),
-        "generatedAt": datetime.utcnow().isoformat() + "Z",
+        'routes':          all_routes,
+        'totalRoutes':     len(all_routes),
+        'totalStops':      sum(len(r['stops']) for r in all_routes),
+        'liveRoutesCount': sum(1 for r in all_routes if r.get('online')),
+        'generatedAt':     datetime.utcnow().isoformat() + 'Z',
     }), 200
 
 
