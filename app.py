@@ -2603,6 +2603,54 @@ def buses_registered():
         'onlineCount': sum(1 for r in results if r['online']),
         'buses':       results,
     }), 200
+
+
+# ── NEW: Update live location / online status ──────────────────────────────
+@app.route('/api/buses/location', methods=['POST'])
+def update_bus_location():
+    """
+    Upserts the live location for a bus in the TrackingSession table.
+
+    Expected JSON body:
+      { "busId": "WestBayBus", "lat": 12.34, "lng": 56.78, "active": true }
+
+    Pass active=false to take the bus offline (stops it appearing in liveLocation).
+    """
+    data   = request.get_json(force=True) or {}
+    bus_id = (data.get('busId') or '').strip()
+    active = data.get('active', True)
+
+    if not bus_id:
+        return jsonify({'error': 'busId is required'}), 400
+
+    # Validate coords when going online
+    try:
+        lat = float(data['lat'])
+        lng = float(data['lng'])
+    except (KeyError, TypeError, ValueError):
+        if active:
+            return jsonify({'error': 'lat and lng are required when active=true'}), 400
+        lat = lng = None
+
+    session = TrackingSession.query.filter_by(bus_id=bus_id).first()
+    if session is None:
+        session = TrackingSession(bus_id=bus_id)
+        db.session.add(session)
+
+    if lat is not None:
+        session.lat = lat
+        session.lng = lng
+    session.active     = active
+    session.updated_at = datetime.utcnow()
+    db.session.commit()
+
+    return jsonify({
+        'ok':     True,
+        'busId':  bus_id,
+        'online': active,
+        'lat':    lat,
+        'lng':    lng,
+    }), 200
     
 
 @app.route('/api/buses/coordinates', methods=['GET', 'POST'])
