@@ -2473,8 +2473,61 @@ CAYMAN_ROUTES = [
 ]
 
 
-@app.route('/api/buses/registered', methods=['GET'])
+@app.route('/api/buses/registered', methods=['GET', 'POST'])
 def buses_registered():
+
+    # ── POST: driver app pushes lat/lng ───────────────────────────────────
+    if request.method == 'POST':
+        data   = request.get_json(force=True, silent=True) or {}
+        bus_id = (data.get('busId') or '').strip()
+        active = data.get('active', True)
+
+        if not bus_id:
+            return jsonify({'error': 'busId is required'}), 400
+
+        lat = data.get('lat')
+        lng = data.get('lng')
+
+        try:
+            lat = float(lat)
+            lng = float(lng)
+        except (TypeError, ValueError):
+            if active:
+                return jsonify({'error': 'lat and lng are required when active=true'}), 400
+            lat = lng = None
+
+        sess = TrackingSession.query.filter_by(bus_id=bus_id).first()
+        if sess is None:
+            sess = TrackingSession(
+                bus_id      = bus_id,
+                route_id    = data.get('routeId') or bus_id,
+                bus_name    = data.get('busName') or bus_id,
+                username    = data.get('username') or bus_id,
+                phone_number= data.get('phoneNumber') or '',
+                lat         = str(lat) if lat is not None else '0',
+                lng         = str(lng) if lng is not None else '0',
+                active      = active,
+            )
+            db.session.add(sess)
+        else:
+            if lat is not None:
+                sess.lat = str(lat)
+                sess.lng = str(lng)
+            sess.active     = active
+            sess.updated_at = datetime.utcnow()
+
+        db.session.commit()
+
+        return jsonify({
+            'ok':        True,
+            'busId':     bus_id,
+            'online':    active,
+            'lat':       lat,
+            'lng':       lng,
+            'updatedAt': sess.updated_at.isoformat(),
+        }), 200
+
+    # ── GET ───────────────────────────────────────────────────────────────
     """
     Returns every bus/route row saved in the DriverRoute table,
     each enriched with its current live location (if active).
@@ -2500,8 +2553,7 @@ def buses_registered():
         except (ValueError, TypeError):
             continue
 
-    # ── 2. Fetch latest DriverRoute row per (bus_id, route_id) pair ───────
-    # Subquery: for each bus_id take the most-recently created row
+    # ── 2. Fetch latest DriverRoute row per bus_id ────────────────────────
     from sqlalchemy import func
 
     latest_ids = (
@@ -2576,9 +2628,9 @@ def buses_registered():
     # ── 5. Build response ─────────────────────────────────────────────────
     results = []
     for d in drivers:
-        stops       = parse_stops(d.stops_json, d.route_id or d.bus_id)
-        live        = live_by_bus.get(d.bus_id)
-        is_online   = live is not None
+        stops     = parse_stops(d.stops_json, d.route_id or d.bus_id)
+        live      = live_by_bus.get(d.bus_id)
+        is_online = live is not None
 
         results.append({
             'busId':        d.bus_id,
@@ -2606,52 +2658,10 @@ def buses_registered():
     }), 200
 
 
-# ── NEW: Update live location / online status ──────────────────────────────
+# ── Standalone location endpoint (still works too) ────────────────────────
 @app.route('/api/buses/location', methods=['POST'])
 def update_bus_location():
-    """
-    Upserts the live location for a bus in the TrackingSession table.
-
-    Expected JSON body:
-      { "busId": "WestBayBus", "lat": 12.34, "lng": 56.78, "active": true }
-
-    Pass active=false to take the bus offline (stops it appearing in liveLocation).
-    """
-    data   = request.get_json(force=True) or {}
-    bus_id = (data.get('busId') or '').strip()
-    active = data.get('active', True)
-
-    if not bus_id:
-        return jsonify({'error': 'busId is required'}), 400
-
-    # Validate coords when going online
-    try:
-        lat = float(data['lat'])
-        lng = float(data['lng'])
-    except (KeyError, TypeError, ValueError):
-        if active:
-            return jsonify({'error': 'lat and lng are required when active=true'}), 400
-        lat = lng = None
-
-    session = TrackingSession.query.filter_by(bus_id=bus_id).first()
-    if session is None:
-        session = TrackingSession(bus_id=bus_id)
-        db.session.add(session)
-
-    if lat is not None:
-        session.lat = lat
-        session.lng = lng
-    session.active     = active
-    session.updated_at = datetime.utcnow()
-    db.session.commit()
-
-    return jsonify({
-        'ok':     True,
-        'busId':  bus_id,
-        'online': active,
-        'lat':    lat,
-        'lng':    lng,
-    }), 200
+    return buses_registered()
     
 
 @app.route('/api/buses/coordinates', methods=['GET'])
