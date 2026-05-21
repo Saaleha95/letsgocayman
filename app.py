@@ -40,7 +40,7 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     full_name = db.Column(db.String(120), nullable=False)
-    phone_number = db.Column(db.String(20), nullable=False)
+    phone_number = db.Column(db.String(20), nullable=True, default='')
     password = db.Column(db.String(200), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -1372,24 +1372,24 @@ setInterval(refreshAlerts,10000);
 def ping():
     return jsonify({'status': 'ok'}), 200
 
-
 @app.route('/api/auth/signup/', methods=['POST'])
 def signup():
     data = request.get_json()
-    full_name = data.get('fullName')
-    username = data.get('username')
-    phone_number = data.get('phoneNumber')
-    password = data.get('password')
+    full_name = data.get('fullName', '').strip()
+    username = data.get('username', '').strip()
+    phone_number = data.get('phoneNumber', '').strip()  # optional
+    password = data.get('password', '')
 
-    if not all([full_name, username, phone_number, password]):
-        return jsonify({'message': 'All fields are required'}), 400
+    if not all([full_name, username, password]):
+        return jsonify({'message': 'Full name, username, and password are required'}), 400
+
     if User.query.filter_by(username=username).first():
         return jsonify({'message': 'Username already exists'}), 409
 
     new_user = User(
         username=username,
         full_name=full_name,
-        phone_number=phone_number,
+        phone_number=phone_number,  # stored if provided, empty string if not
         password=generate_password_hash(password)
     )
     db.session.add(new_user)
@@ -1419,6 +1419,267 @@ def login():
         'fullName': user.full_name,
         'phoneNumber': user.phone_number,
     }}), 200
+
+
+@app.route('/api/auth/delete-account', methods=['POST'])
+def delete_own_account():
+    data = request.get_json(force=True, silent=True) or {}
+    username = (data.get('username') or '').strip()
+    password = (data.get('password') or '')
+
+    if not username or not password:
+        return jsonify({'message': 'Username and password are required'}), 400
+
+    user = User.query.filter_by(username=username).first()
+    if not user or not check_password_hash(user.password, password):
+        return jsonify({'message': 'Incorrect username or password'}), 401
+
+    # ── Delete all associated data ────────────────────────
+    EmergencyContact.query.filter_by(username=username).delete()
+    TrackingSession.query.filter_by(username=username).delete()
+    SOSAlert.query.filter_by(username=username).delete()
+    SMSLog.query.filter_by(username=username).delete()
+    CommunityReport.query.filter_by(username=username).delete()
+    db.session.delete(user)
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'message': 'Account and all associated data permanently deleted.'
+    }), 200
+
+
+@app.route('/delete-account', methods=['GET', 'POST'])
+def delete_account_page():
+    error = ''
+    success = False
+
+    if request.method == 'POST':
+        username = (request.form.get('username') or '').strip()
+        password = request.form.get('password') or ''
+        confirm = request.form.get('confirm') or ''
+
+        if confirm != 'DELETE':
+            error = 'Type DELETE in the confirmation box to proceed.'
+        elif not username or not password:
+            error = 'Username and password are required.'
+        else:
+            user = User.query.filter_by(username=username).first()
+            if not user or not check_password_hash(user.password, password):
+                error = 'Incorrect username or password.'
+            else:
+                EmergencyContact.query.filter_by(username=username).delete()
+                TrackingSession.query.filter_by(username=username).delete()
+                SOSAlert.query.filter_by(username=username).delete()
+                SMSLog.query.filter_by(username=username).delete()
+                CommunityReport.query.filter_by(username=username).delete()
+                db.session.delete(user)
+                db.session.commit()
+                success = True
+
+    return """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Delete Account — LetsGo Cayman</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {{
+    --bg:#0a0f1e;--surface:#111827;--surface2:#1a2235;
+    --accent:#00d4aa;--red:#ef4444;--red-bg:rgba(239,68,68,.08);
+    --red-border:rgba(239,68,68,.25);
+    --text:#e8edf5;--text-muted:#8fa0b8;--border:rgba(0,212,170,0.15);
+    --gradient:linear-gradient(135deg,#00d4aa 0%,#0099ff 100%);
+  }}
+  *,*::before,*::after{{box-sizing:border-box;margin:0;padding:0}}
+  body{{
+    font-family:'DM Sans',sans-serif;font-weight:300;
+    background:var(--bg);color:var(--text);
+    min-height:100vh;display:flex;flex-direction:column;
+  }}
+  .topbar{{
+    background:rgba(10,15,30,.95);backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--border);
+    padding:18px 40px;display:flex;align-items:center;
+    justify-content:space-between;
+  }}
+  .logo{{
+    font-family:'Syne',sans-serif;font-weight:800;font-size:20px;
+    background:var(--gradient);-webkit-background-clip:text;
+    -webkit-text-fill-color:transparent;background-clip:text;
+    letter-spacing:.04em;text-transform:uppercase;
+  }}
+  .back{{color:var(--accent);text-decoration:none;font-size:14px;font-weight:500}}
+  .back:hover{{opacity:.7}}
+
+  main{{
+    flex:1;display:flex;align-items:center;justify-content:center;
+    padding:48px 20px;
+  }}
+
+  .card{{
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:16px;padding:40px;width:100%;max-width:460px;
+  }}
+
+  /* ── warning banner ── */
+  .warn-banner{{
+    background:var(--red-bg);border:1px solid var(--red-border);
+    border-radius:10px;padding:16px 18px;
+    display:flex;align-items:flex-start;gap:12px;margin-bottom:28px;
+  }}
+  .warn-icon{{font-size:20px;flex-shrink:0;line-height:1}}
+  .warn-title{{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--red);margin-bottom:4px}}
+  .warn-body{{font-size:13px;color:#f87171;line-height:1.6}}
+
+  h1{{
+    font-family:'Syne',sans-serif;font-size:22px;font-weight:800;
+    margin-bottom:6px;color:var(--text);
+  }}
+  .subtitle{{font-size:14px;color:var(--text-muted);margin-bottom:28px;line-height:1.6}}
+
+  /* ── form fields ── */
+  .field{{margin-bottom:16px}}
+  .field label{{
+    display:block;font-size:11px;font-weight:600;
+    color:var(--text-muted);text-transform:uppercase;
+    letter-spacing:.7px;margin-bottom:7px;
+  }}
+  .field input{{
+    width:100%;background:#0d1117;border:1px solid #30363d;
+    border-radius:8px;padding:11px 14px;font-size:14px;
+    color:var(--text);outline:none;font-family:'DM Sans',sans-serif;
+    transition:border-color .2s;
+  }}
+  .field input:focus{{border-color:var(--accent)}}
+  .field input.danger:focus{{border-color:var(--red)}}
+  .field .hint{{font-size:12px;color:var(--text-muted);margin-top:6px}}
+
+  /* ── error / success ── */
+  .error-box{{
+    background:var(--red-bg);border:1px solid var(--red-border);
+    color:#f87171;padding:11px 14px;border-radius:8px;
+    font-size:13px;margin-bottom:20px;display:flex;align-items:center;gap:8px;
+  }}
+  .success-wrap{{text-align:center;padding:16px 0}}
+  .success-icon{{font-size:52px;margin-bottom:16px}}
+  .success-title{{
+    font-family:'Syne',sans-serif;font-size:20px;font-weight:800;
+    color:var(--accent);margin-bottom:10px;
+  }}
+  .success-body{{font-size:14px;color:var(--text-muted);line-height:1.7;max-width:320px;margin:0 auto}}
+
+  /* ── buttons ── */
+  .btn-delete{{
+    width:100%;background:var(--red);color:#fff;border:none;
+    border-radius:10px;padding:13px;font-size:15px;font-weight:700;
+    font-family:'Syne',sans-serif;cursor:pointer;margin-top:8px;
+    transition:background .2s;letter-spacing:.03em;
+  }}
+  .btn-delete:hover{{background:#dc2626}}
+  .btn-delete:disabled{{background:#374151;cursor:not-allowed;color:#6b7280}}
+
+  .cancel-link{{
+    display:block;text-align:center;margin-top:16px;
+    font-size:13px;color:var(--text-muted);text-decoration:none;
+  }}
+  .cancel-link:hover{{color:var(--text)}}
+
+  /* ── data list ── */
+  .data-list{{
+    background:#0d1117;border-radius:8px;
+    padding:14px 16px;margin-bottom:20px;
+  }}
+  .data-list-title{{
+    font-size:11px;font-weight:600;color:var(--text-muted);
+    text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px;
+  }}
+  .data-list ul{{list-style:none;display:flex;flex-direction:column;gap:6px}}
+  .data-list li{{font-size:13px;color:#f87171;padding-left:16px;position:relative}}
+  .data-list li::before{{content:'×';position:absolute;left:0;color:var(--red);font-weight:700}}
+
+  footer{{
+    text-align:center;padding:24px 20px;
+    font-size:12px;color:var(--text-muted);
+    border-top:1px solid var(--border);
+  }}
+  footer a{{color:var(--accent);text-decoration:none}}
+</style>
+</head>
+<body>
+<nav class="topbar">
+  <div class="logo">LetsGo</div>
+  <a href="/" class="back">← Back to site</a>
+</nav>
+
+<main>
+  <div class="card">
+
+    {'<!-- SUCCESS STATE -->' if success else ''}
+    {'<div class="success-wrap"><div class="success-icon">✅</div><div class="success-title">Account deleted</div><p class="success-body">Your account and all associated data have been permanently removed from LetsGo Cayman. This cannot be undone.<br><br>Thank you for riding with us.</p></div>' if success else f'''
+    <!-- FORM STATE -->
+    <div class="warn-banner">
+      <div class="warn-icon">⚠️</div>
+      <div>
+        <div class="warn-title">This action is permanent</div>
+        <div class="warn-body">Your account cannot be recovered once deleted.</div>
+      </div>
+    </div>
+
+    <h1>Delete your account</h1>
+    <p class="subtitle">Enter your credentials to permanently delete your LetsGo account and all data associated with it.</p>
+
+    <div class="data-list">
+      <div class="data-list-title">Data that will be deleted</div>
+      <ul>
+        <li>Account profile and login credentials</li>
+        <li>Emergency contacts</li>
+        <li>Journey and tracking history</li>
+        <li>SOS alert records</li>
+        <li>Community reports</li>
+        <li>SMS alert logs</li>
+      </ul>
+    </div>
+
+    {"f'<div class=\\'error-box\\'>⚠ " + error + "</div>'" if error else ""}
+    {"'<div class=\\'error-box\\'>⚠ ' + error + '</div>'" if error else ""}
+
+    <form method="POST">
+      <div class="field">
+        <label>Username</label>
+        <input type="text" name="username" autocomplete="username"
+               placeholder="your username" required>
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" name="password" autocomplete="current-password"
+               placeholder="••••••••" required>
+      </div>
+      <div class="field">
+        <label>Type DELETE to confirm</label>
+        <input type="text" name="confirm" class="danger"
+               placeholder="DELETE" autocomplete="off" required
+               oninput="document.getElementById(\\'del-btn\\').disabled = this.value !== \\'DELETE\\'">
+        <div class="hint">Must be typed in all caps exactly as shown.</div>
+      </div>
+      <button type="submit" class="btn-delete" id="del-btn" disabled>
+        Permanently Delete My Account
+      </button>
+    </form>
+    <a href="/" class="cancel-link">Cancel — keep my account</a>
+    '''}
+
+  </div>
+</main>
+
+<footer>
+  Questions? <a href="mailto:support@letsgocayman.com">support@letsgocayman.com</a>
+  &nbsp;·&nbsp; <a href="/privacy">Privacy Policy</a>
+  &nbsp;·&nbsp; <a href="/support">Help &amp; Support</a>
+</footer>
+</body>
+</html>"""
 
 
 @app.route('/api/users', methods=['GET'])
@@ -2801,7 +3062,8 @@ def support():
       <p>Have a question that isn't answered below? Send us an email and we'll get back to you within <strong>1&ndash;2 business days</strong>. For urgent safety concerns, use the in-app SOS feature or call 911.</p>
     </div>
     <div class="contact-actions">
-      <a href="mailto:support@letsgocayman.com?subject=LetsGo%20App%20Support%20Request" class="contact-btn contact-btn-primary">
+      <a href="mailto:sally@letsgocayman.com?subject=LetsGo%20App%20Support%20Request" class="contact-btn contact-btn-primary">
+      <a href="/delete-account">Delete your account</a>
         <span class="icon">✉</span>
         Email support@letsgocayman.com
       </a>
