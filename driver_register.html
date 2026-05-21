@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LetsGo — Driver Registration</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root {
+  --gold:#F5C518; --gold2:#E8B400; --navy:#0B1F3A;
+  --bg:#0d1117; --surface:#161b22; --surface2:#1c2330;
+  --border:#30363d; --border2:#21262d;
+  --text:#e6edf3; --muted:#8b949e; --dim:#484f58;
+  --red:#ef4444; --green:#22c55e; --teal:#00897B;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 700px 500px at 20% 10%,rgba(245,197,24,.05) 0%,transparent 70%),radial-gradient(ellipse 500px 400px at 80% 80%,rgba(0,137,123,.04) 0%,transparent 70%);pointer-events:none;z-index:0}
+
+.nav{position:sticky;top:0;z-index:200;background:rgba(13,17,23,.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 32px;height:58px;display:flex;align-items:center;justify-content:space-between}
+.nav-brand{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--gold);display:flex;align-items:center;gap:8px;text-decoration:none}
+.nav-badge{background:rgba(245,197,24,.1);border:1px solid rgba(245,197,24,.3);color:var(--gold);font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:4px 12px;border-radius:20px}
+
+.hero{position:relative;z-index:1;padding:60px 32px 48px;max-width:860px;margin:0 auto}
+.hero-tag{display:inline-flex;align-items:center;gap:8px;background:rgba(245,197,24,.08);border:1px solid rgba(245,197,24,.25);color:var(--gold);font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:6px 14px;border-radius:20px;margin-bottom:20px}
+.pulse{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.7)}}
+.hero h1{font-family:'Syne',sans-serif;font-size:clamp(36px,6vw,60px);font-weight:800;line-height:1.05;letter-spacing:-1px}
+.hero h1 span{color:var(--gold)}
+.hero p{margin-top:16px;font-size:16px;color:var(--muted);max-width:520px;line-height:1.7}
+
+.form-wrap{position:relative;z-index:1;max-width:860px;margin:0 auto;padding:0 32px 80px}
+
+.progress-bar{height:3px;background:var(--border);border-radius:2px;margin-bottom:32px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--gold),var(--teal));border-radius:2px;transition:width .4s ease;width:0%}
+
+.step-head{display:flex;align-items:center;gap:14px;margin-bottom:20px}
+.step-num{width:36px;height:36px;border-radius:50%;background:rgba(245,197,24,.12);border:1px solid rgba(245,197,24,.35);color:var(--gold);font-family:'Syne',sans-serif;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.step-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:700}
+.step-sub{font-size:13px;color:var(--muted);margin-top:2px}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:visible;margin-bottom:28px}
+.card-body{padding:24px}
+
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.form-group{display:flex;flex-direction:column;gap:7px}
+.form-group.full{grid-column:1/-1}
+label{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
+input[type=text],input[type=tel],input[type=number],select,textarea{background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:11px 14px;font-size:14px;font-family:'DM Sans',sans-serif;color:var(--text);outline:none;transition:border-color .2s,box-shadow .2s;width:100%}
+input:focus,select:focus,textarea:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(245,197,24,.08)}
+select option{background:var(--bg)}
+input::placeholder,textarea::placeholder{color:var(--dim)}
+
+.color-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px}
+.color-swatch{width:32px;height:32px;border-radius:8px;cursor:pointer;border:2px solid transparent;transition:transform .15s,border-color .15s;flex-shrink:0}
+.color-swatch:hover{transform:scale(1.15)}
+.color-swatch.selected{border-color:white;transform:scale(1.1)}
+
+.stops-header{display:flex;align-items:center;justify-content:space-between;padding:18px 24px;border-bottom:1px solid var(--border2);background:var(--surface2);border-radius:14px 14px 0 0}
+.stops-count-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(245,197,24,.12);border:1px solid rgba(245,197,24,.3);color:var(--gold);font-family:'Syne',sans-serif;font-size:13px;font-weight:800;padding:5px 14px;border-radius:20px;transition:all .3s}
+.stops-count-badge.has-stops{background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.35);color:var(--green)}
+
+.btn-add{display:inline-flex;align-items:center;gap:7px;background:var(--gold);color:var(--navy);border:none;border-radius:9px;padding:9px 18px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:background .2s,transform .15s}
+.btn-add:hover{background:var(--gold2);transform:translateY(-1px)}
+
+.stops-list{padding:16px 20px;display:flex;flex-direction:column;gap:12px}
+
+/* FIX: was overflow:hidden which clipped the absolutely-positioned dropdown */
+.stop-item{background:var(--bg);border:1px solid var(--border);border-radius:11px;overflow:visible;animation:slideIn .3s ease;position:relative}
+@keyframes slideIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+.stop-row{display:grid;grid-template-columns:32px 1fr 1fr auto auto;gap:10px;align-items:center;padding:12px 14px}
+.stop-idx{width:28px;height:28px;border-radius:50%;background:var(--surface);border:1px solid var(--border);color:var(--gold);font-family:'Syne',sans-serif;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+.name-wrap{position:relative}
+.stop-name-input{background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;font-size:13px;font-family:'DM Sans',sans-serif;color:var(--text);outline:none;width:100%;transition:border-color .2s}
+.stop-name-input:focus{border-color:var(--gold)}
+
+/* FIX: z-index raised to ensure dropdown renders above sibling stop items */
+.name-dropdown{position:absolute;top:100%;left:0;right:0;background:var(--surface2);border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px;z-index:1000;max-height:180px;overflow-y:auto;display:none}
+.name-dropdown.open{display:block}
+.dd-opt{padding:8px 12px;font-size:13px;color:var(--muted);cursor:pointer;transition:background .15s}
+.dd-opt:hover{background:rgba(245,197,24,.08);color:var(--text)}
+.dd-opt.custom{color:var(--gold);font-style:italic}
+
+.loc-display{display:flex;align-items:center;gap:7px;background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;font-family:'DM Mono',monospace;font-size:11px;color:var(--dim);cursor:pointer;transition:border-color .2s,color .2s;white-space:nowrap;overflow:hidden}
+.loc-display:hover{border-color:var(--teal);color:var(--muted)}
+.loc-display.set{color:var(--green);border-color:rgba(34,197,94,.4)}
+
+.btn-pick{background:rgba(0,137,123,.12);border:1px solid rgba(0,137,123,.3);color:var(--teal);border-radius:8px;padding:8px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .2s;font-family:'DM Sans',sans-serif}
+.btn-pick:hover{background:rgba(0,137,123,.2)}
+.btn-pick.active{background:var(--teal);color:white;border-color:var(--teal)}
+
+.btn-del{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#f87171;border-radius:8px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:14px;transition:background .2s}
+.btn-del:hover{background:rgba(239,68,68,.2)}
+
+.map-picker{display:none;border-top:1px solid var(--border2);padding:14px;background:var(--surface2);border-radius:0 0 11px 11px}
+.map-picker.open{display:block}
+.map-inner{border-radius:9px;overflow:hidden;height:220px;border:1px solid var(--border)}
+.map-hint{text-align:center;font-size:12px;color:var(--muted);margin-top:8px}
+.btn-confirm-loc{float:right;margin-top:10px;background:var(--teal);color:white;border:none;border-radius:8px;padding:8px 18px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity .2s}
+.btn-confirm-loc:hover{opacity:.85}
+.clearfix::after{content:'';display:table;clear:both}
+
+.empty-stops{padding:32px 20px;text-align:center;color:var(--dim);font-size:14px;border-top:1px solid var(--border2)}
+.empty-stops .icon{font-size:28px;display:block;margin-bottom:8px}
+
+.submit-wrap{margin-top:32px;display:flex;gap:14px;align-items:center}
+.btn-submit{flex:1;background:var(--gold);color:var(--navy);border:none;border-radius:11px;padding:16px 28px;font-family:'Syne',sans-serif;font-size:16px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:background .2s,transform .15s}
+.btn-submit:hover{background:var(--gold2);transform:translateY(-2px)}
+.btn-submit:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-reset{background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:11px;padding:16px 22px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:border-color .2s,color .2s}
+.btn-reset:hover{border-color:var(--red);color:var(--red)}
+
+.toast{position:fixed;bottom:28px;right:28px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 20px;font-size:14px;color:var(--text);box-shadow:0 8px 32px rgba(0,0,0,.4);opacity:0;transform:translateY(16px);transition:all .3s;z-index:9999;max-width:360px}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.success{border-color:rgba(34,197,94,.5);color:var(--green)}
+.toast.error{border-color:rgba(239,68,68,.5);color:#f87171}
+
+.leaflet-container{background:#0d1117 !important}
+.leaflet-bar a{background:var(--surface) !important;color:var(--text) !important;border-color:var(--border) !important}
+
+@media(max-width:680px){
+  .hero,.form-wrap{padding-left:16px;padding-right:16px}
+  .form-grid{grid-template-columns:1fr}
+  .stop-row{grid-template-columns:28px 1fr auto;gap:8px}
+  .loc-display{display:none}
+}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="/" class="nav-brand">🚌 LetsGo</a>
+  <span class="nav-badge">Driver Portal</span>
+</nav>
+
+<header class="hero">
+  <div class="hero-tag">
+    <div class="pulse"></div>
+    For Bus Drivers
+  </div>
+  <h1>Are you a<br><span>Driver?</span></h1>
+  <p>Register your route and bus stops. Your live location will appear on the LetsGo rider map the moment you're active.</p>
+</header>
+
+<div class="form-wrap">
+  <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+
+  <!-- STEP 1 -->
+  <div class="step-head">
+    <div class="step-num">1</div>
+    <div>
+      <div class="step-title">Driver Information</div>
+      <div class="step-sub">Your personal details linked to this route</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Full Name</label>
+          <input type="text" id="driverName" placeholder="e.g. James McLean">
+        </div>
+        <div class="form-group">
+          <label>Phone Number</label>
+          <input type="tel" id="driverPhone" placeholder="+1 345 XXX XXXX">
+        </div>
+        <div class="form-group">
+          <label>Username / Driver ID</label>
+          <input type="text" id="driverUsername" placeholder="e.g. james_wb1">
+        </div>
+        <div class="form-group">
+          <label>Bus ID / Plate</label>
+          <input type="text" id="busId" placeholder="e.g. CI-WB1-01">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div class="step-head">
+    <div class="step-num">2</div>
+    <div>
+      <div class="step-title">Route Details</div>
+      <div class="step-sub">Define your route number, name, and map appearance</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Route Number</label>
+          <select id="routeId" onchange="onRouteChange()">
+            <option value="">Select route…</option>
+            <option value="WB1">WB1 — Seven Mile Beach / Northwest Point</option>
+            <option value="WB2">WB2 — Seven Mile Beach / Hell</option>
+            <option value="WB3">WB3 — Industrial Park / Barkers</option>
+            <option value="4A">4A — Walkers Rd / Hospitals</option>
+            <option value="7A">7A — Queens Hwy / East End</option>
+            <option value="7B">7B — South Sound / East End</option>
+            <option value="8A">8A — North Side / Rum Point</option>
+            <option value="8B">8B — Frank Sound / Cayman Kai</option>
+            <option value="9A">9A — Gun Bay / Botanic Park</option>
+            <option value="CaymanBus">CaymanBus — Live Tracked</option>
+            <option value="custom">Other (custom route)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Route Name</label>
+          <input type="text" id="routeName" placeholder="e.g. West Bay Route 1">
+        </div>
+        <div class="form-group">
+          <label>Frequency</label>
+          <select id="frequency">
+            <option>Every 2–5 minutes</option>
+            <option>Every 10 minutes</option>
+            <option>Every 15 minutes</option>
+            <option>Every 30 minutes</option>
+            <option>Hourly</option>
+            <option>On demand</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Route Colour on Map</label>
+          <div class="color-row" id="colorRow">
+            <div class="color-swatch selected" data-color="#F5C518" style="background:#F5C518"></div>
+            <div class="color-swatch" data-color="#4CAF50" style="background:#4CAF50"></div>
+            <div class="color-swatch" data-color="#2196F3" style="background:#2196F3"></div>
+            <div class="color-swatch" data-color="#9C27B0" style="background:#9C27B0"></div>
+            <div class="color-swatch" data-color="#FF5722" style="background:#FF5722"></div>
+            <div class="color-swatch" data-color="#00BCD4" style="background:#00BCD4"></div>
+            <div class="color-swatch" data-color="#E91E63" style="background:#E91E63"></div>
+            <div class="color-swatch" data-color="#FF9800" style="background:#FF9800"></div>
+            <div class="color-swatch" data-color="#009688" style="background:#009688"></div>
+            <div class="color-swatch" data-color="#3F51B5" style="background:#3F51B5"></div>
+          </div>
+          <input type="hidden" id="routeColor" value="#F5C518">
+        </div>
+        <div class="form-group full">
+          <label>Route Description</label>
+          <textarea id="routeDesc" rows="2" placeholder="Key areas covered, e.g. George Town → Seven Mile Beach → West Bay"></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div class="step-head">
+    <div class="step-num">3</div>
+    <div>
+      <div class="step-title">Bus Stops</div>
+      <div class="step-sub">Add stops in order — pick from presets or pin a custom location on the map</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="stops-header">
+      <span class="stops-count-badge" id="stopsBadge">0 stops added</span>
+      <button class="btn-add" onclick="addStop()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add Stop
+      </button>
+    </div>
+    <div id="stopsList">
+      <div class="empty-stops" id="emptyHint">
+        <span class="icon">🚏</span>
+        No stops yet — press <strong style="color:var(--gold)">Add Stop</strong> to begin.
+      </div>
+    </div>
+  </div>
+
+  <div class="submit-wrap">
+    <button class="btn-submit" id="submitBtn" onclick="submitForm()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>
+      Register &amp; Go Live
+    </button>
+    <button class="btn-reset" onclick="resetAll()">Reset</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var stops = [];
+var stopCounter = 0;
+var activeMaps = {};
+var ddTimers = {};
+
+var CAYMAN_CENTER = [19.3065, -81.3846];
+
+var ROUTE_NAMES = {
+  WB1:'Seven Mile Beach – Northwest Point',
+  WB2:'Seven Mile Beach – Watercourse Rd – Hell',
+  WB3:'Owen Roberts Drive – Industrial Park – Barkers',
+  '4A':'Walkers Road – Fairbanks Road – Hospitals',
+  '7A':'Wreck of the Ten Sails – East End',
+  '7B':'Walkers Rd – South Sound – East End',
+  '8A':'Cayman Kai – Starfish Point – Rum Point',
+  '8B':'Walkers Rd – Frank Sound – Cayman Kai',
+  '9A':'Queens Highway – Gun Bay – Botanic Park',
+  CaymanBus:'Cayman Bus – Live Tracked'
+};
+
+// ── Known stop coordinates from CAYMAN_ROUTES ──────────────
+var STOP_COORDS = {
+  'george town depot':           [19.2869, -81.3797],
+  'george town harbour':         [19.2900, -81.3850],
+  'seven mile beach south':      [19.3044, -81.3939],
+  'camana bay':                  [19.3175, -81.3982],
+  'seven mile beach north':      [19.3340, -81.3894],
+  'governors square':            [19.3480, -81.3870],
+  'ed bush stadium':             [19.3560, -81.3820],
+  'cayman turtle centre':        [19.3712, -81.3789],
+  'northwest point':             [19.3800, -81.3900],
+  'hell':                        [19.3744, -81.4028],
+  'west bay square':             [19.3680, -81.3950],
+  'watercourse road':            [19.3550, -81.4050],
+  'owen roberts drive':          [19.2930, -81.3720],
+  'industrial park':             [19.2980, -81.3680],
+  'esterley tibbetts hwy':       [19.3400, -81.4000],
+  'mount pleasant':              [19.3550, -81.4100],
+  'barkers':                     [19.3820, -81.4150],
+  'walkers road':                [19.2800, -81.3650],
+  'fairbanks road':              [19.2750, -81.3500],
+  'health city / hospitals':     [19.2900, -81.3300],
+  'schools complex':             [19.2950, -81.3200],
+  'red bay':                     [19.2920, -81.3400],
+  'prospect':                    [19.2936, -81.3339],
+  'savannah':                    [19.2897, -81.2800],
+  'newlands':                    [19.2850, -81.2500],
+  'bodden town':                 [19.2842, -81.2528],
+  'lookout gardens':             [19.2900, -81.2000],
+  'breakers':                    [19.2819, -81.1747],
+  'frank sound':                 [19.3100, -81.1500],
+  'botanic park':                [19.3200, -81.1300],
+  'east end':                    [19.3036, -81.0914],
+  'lovers wall':                 [19.3000, -81.0700],
+  'the blow holes':              [19.2950, -81.0600],
+  'wreck of the ten sails':      [19.2880, -81.0500],
+  'gun bay':                     [19.2950, -81.0800],
+  'mastic trail':                [19.3300, -81.1600],
+  'smith cove':                  [19.2750, -81.3850],
+  'south sound':                 [19.2700, -81.3700],
+  'south sound dock':            [19.2650, -81.3600],
+  'rex crighton hwy':            [19.2700, -81.3300],
+  'oleander drive':              [19.2800, -81.3000],
+  'queens highway':              [19.3000, -81.1000],
+  'frank sound road':            [19.3289, -81.1444],
+  'north side':                  [19.3669, -81.1533],
+  'hutland':                     [19.3800, -81.1800],
+  'old man bay':                 [19.3900, -81.2200],
+  'rum point':                   [19.4100, -81.2500],
+  'starfish point':              [19.3950, -81.2600],
+  'cayman kai':                  [19.3850, -81.2700],
+  'compass media':               [19.2993, -81.3816],
+  'cayman enterprise city':      [19.3120, -81.3900],
+  'cleander drive':              [19.2800, -81.3000],
+  'owen roberts airport':        [19.2928, -81.3576],
+};
+
+var PRESET_NAMES = [
+  'George Town Depot','George Town Harbour','Owen Roberts Airport',
+  'Camana Bay','Seven Mile Beach South','Seven Mile Beach North',
+  'Governors Square','Ed Bush Stadium','Cayman Turtle Centre',
+  'Northwest Point','Hell','West Bay Square','Watercourse Road',
+  'Esterley Tibbetts Hwy','Industrial Park','Walkers Road',
+  'Smith Cove','South Sound','South Sound Dock','Fairbanks Road',
+  'Health City / Hospitals','Schools Complex','Red Bay','Prospect',
+  'Savannah','Newlands','Bodden Town','Breakers','East End',
+  'Lovers Wall','The Blow Holes','Gun Bay','Wreck of the Ten Sails',
+  'Frank Sound','Botanic Park','Rum Point','Cayman Kai',
+  'Starfish Point','North Side','Old Man Bay','Compass Media',
+  'Cayman Enterprise City','Oleander Drive','Rex Crighton Hwy',
+  'Other (specify name below)'
+];
+
+/* ── colour swatches ── */
+document.getElementById('colorRow').addEventListener('click', function(e) {
+  var sw = e.target.closest('.color-swatch');
+  if (!sw) return;
+  document.querySelectorAll('.color-swatch').forEach(function(s){ s.classList.remove('selected'); });
+  sw.classList.add('selected');
+  document.getElementById('routeColor').value = sw.getAttribute('data-color');
+});
+
+/* ── route select ── */
+function onRouteChange() {
+  var val = document.getElementById('routeId').value;
+  var name = ROUTE_NAMES[val] || '';
+  if (name) document.getElementById('routeName').value = name;
+  updateProgress();
+}
+
+/* ── add stop ── */
+function addStop() {
+  stopCounter++;
+  var id = 'stop' + stopCounter;
+  var idx = stops.length + 1;
+  stops.push({ id: id, name: '', lat: null, lng: null });
+
+  var container = document.getElementById('stopsList');
+  document.getElementById('emptyHint').style.display = 'none';
+
+  var div = document.createElement('div');
+  div.className = 'stop-item';
+  div.id = 'item_' + id;
+
+  div.innerHTML =
+    '<div class="stop-row" style="grid-template-columns:32px 1fr auto">' +
+      '<div class="stop-idx" id="idx_' + id + '">' + idx + '</div>' +
+      '<div class="name-wrap">' +
+        '<input class="stop-name-input" id="name_' + id + '" placeholder="Stop name…" autocomplete="off">' +
+        '<div class="name-dropdown" id="dd_' + id + '"></div>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:8px">' +
+        '<div class="loc-display" id="locDisp_' + id + '" style="min-width:120px">' +
+          '<span>📍</span>' +
+          '<span id="locTxt_' + id + '" style="font-size:11px">No coords</span>' +
+        '</div>' +
+        '<button class="btn-del" onclick="removeStop(\'' + id + '\')" title="Remove">✕</button>' +
+      '</div>' +
+    '</div>';
+
+  container.appendChild(div);
+
+  /* wire up name input events after DOM insertion */
+  var nameInput = document.getElementById('name_' + id);
+  nameInput.addEventListener('input', (function(sid){ return function(){ filterDD(sid, this.value); updateProgress(); }; })(id));
+  nameInput.addEventListener('focus', (function(sid){ return function(){ filterDD(sid, this.value); }; })(id));
+  nameInput.addEventListener('blur',  (function(sid){ return function(){ scheduleCloseDD(sid); updateCoordsFromName(sid); }; })(id));
+
+  updateBadge();
+  updateProgress();
+  nameInput.focus();
+}
+
+/* ── auto-fill coords from known stop name ── */
+function updateCoordsFromName(id) {
+  var inp = document.getElementById('name_' + id);
+  if (!inp) return;
+  var name = inp.value.trim();
+  var key = name.toLowerCase();
+  var s = stops.find(function(x){ return x.id === id; });
+  if (!s) return;
+
+  if (STOP_COORDS[key]) {
+    s.lat = STOP_COORDS[key][0];
+    s.lng = STOP_COORDS[key][1];
+    updateLocDisplay(id, s.lat, s.lng);
+  }
+}
+
+/* ── update the location display chip ── */
+function updateLocDisplay(id, lat, lng) {
+  var disp = document.getElementById('locDisp_' + id);
+  var txt  = document.getElementById('locTxt_' + id);
+  if (lat && lng) {
+    disp.classList.add('set');
+    disp.style.borderColor = 'rgba(34,197,94,.4)';
+    txt.style.color = '#22c55e';
+    txt.textContent = parseFloat(lat).toFixed(4) + ', ' + parseFloat(lng).toFixed(4);
+  } else {
+    disp.classList.remove('set');
+    disp.style.borderColor = '';
+    txt.style.color = '';
+    txt.textContent = 'No coords';
+  }
+}
+
+/* ── dropdown ── */
+function filterDD(id, val) {
+  var dd = document.getElementById('dd_' + id);
+  if (!dd) return;
+  var q = val.toLowerCase();
+  var filtered = PRESET_NAMES.filter(function(s){ return s.toLowerCase().indexOf(q) !== -1 || q === ''; });
+  if (filtered.length === 0) { dd.classList.remove('open'); return; }
+  dd.innerHTML = filtered.slice(0, 8).map(function(s) {
+    var isCustom = s.indexOf('Other') !== -1;
+    var hasCoords = STOP_COORDS[s.toLowerCase()];
+    var coordBadge = hasCoords
+      ? '<span style="font-size:10px;color:#22c55e;margin-left:6px">📍 coords known</span>'
+      : '<span style="font-size:10px;color:#484f58;margin-left:6px">📍 manual</span>';
+    return '<div class="dd-opt' + (isCustom ? ' custom' : '') + '" ' +
+      'onmousedown="cancelCloseDD(\'' + id + '\')" ' +
+      'onclick="pickName(\'' + id + '\', \'' + s.replace(/'/g, "\\'") + '\')">' +
+      s + (isCustom ? '' : coordBadge) + '</div>';
+  }).join('');
+  dd.classList.add('open');
+}
+
+function scheduleCloseDD(id) {
+  ddTimers[id] = setTimeout(function(){
+    var dd = document.getElementById('dd_' + id);
+    if (dd) dd.classList.remove('open');
+    updateCoordsFromName(id);  // also try to fill coords on blur
+  }, 200);
+}
+function cancelCloseDD(id) { clearTimeout(ddTimers[id]); }
+
+function pickName(id, name) {
+  var isOther = name.indexOf('Other') !== -1;
+  var inp = document.getElementById('name_' + id);
+  inp.value = isOther ? '' : name;
+  document.getElementById('dd_' + id).classList.remove('open');
+
+  var s = stops.find(function(x){ return x.id === id; });
+  if (s) {
+    s.name = isOther ? '' : name;
+
+    // ── Auto-fill coords from known stop name ──
+    if (!isOther) {
+      var key = name.toLowerCase();
+      if (STOP_COORDS[key]) {
+        s.lat = STOP_COORDS[key][0];
+        s.lng = STOP_COORDS[key][1];
+        updateLocDisplay(id, s.lat, s.lng);
+      } else {
+        s.lat = null;
+        s.lng = null;
+        updateLocDisplay(id, null, null);
+      }
+    }
+  }
+
+  if (isOther) { inp.placeholder = 'Type custom stop name…'; inp.focus(); }
+  updateProgress();
+}
+
+/* ── remove stop ── */
+function removeStop(id) {
+  stops = stops.filter(function(x){ return x.id !== id; });
+  if (activeMaps[id]) { activeMaps[id].remove(); delete activeMaps[id]; }
+  var el = document.getElementById('item_' + id);
+  if (el) el.remove();
+  /* re-number */
+  document.querySelectorAll('.stop-item').forEach(function(el, i) {
+    var idx = el.querySelector('.stop-idx');
+    if (idx) idx.textContent = i + 1;
+  });
+  if (stops.length === 0) document.getElementById('emptyHint').style.display = '';
+  updateBadge();
+  updateProgress();
+}
+
+/* ── badge ── */
+function updateBadge() {
+  var n = stops.length;
+  var badge = document.getElementById('stopsBadge');
+  badge.textContent = n === 0 ? '0 stops added' : n + ' stop' + (n !== 1 ? 's' : '') + ' added ✓';
+  badge.classList.toggle('has-stops', n > 0);
+}
+
+/* ── progress ── */
+function updateProgress() {
+  stops.forEach(function(s) {
+    var inp = document.getElementById('name_' + s.id);
+    if (inp) s.name = inp.value.trim();
+  });
+  var score = 0;
+  if (document.getElementById('driverName').value.trim())     score++;
+  if (document.getElementById('driverPhone').value.trim())    score++;
+  if (document.getElementById('driverUsername').value.trim()) score++;
+  if (document.getElementById('routeId').value)               score++;
+  if (stops.length > 0)                                        score++;
+  if (stops.some(function(s){ return s.lat; }))               score++;
+  document.getElementById('progressFill').style.width = ((score / 6) * 100) + '%';
+}
+
+['driverName','driverPhone','driverUsername','busId','routeName','routeDesc'].forEach(function(id) {
+  var el = document.getElementById(id);
+  if (el) el.addEventListener('input', updateProgress);
+});
+
+/* ── submit ── */
+async function submitForm() {
+  stops.forEach(function(s) {
+    var inp = document.getElementById('name_' + s.id);
+    if (inp) s.name = inp.value.trim();
+    // Final attempt to fill coords from name if still missing
+    if (s.name && (s.lat === null || s.lng === null)) {
+      var key = s.name.toLowerCase();
+      if (STOP_COORDS[key]) {
+        s.lat = STOP_COORDS[key][0];
+        s.lng = STOP_COORDS[key][1];
+        updateLocDisplay(s.id, s.lat, s.lng);
+      }
+    }
+  });
+
+  var driverName     = document.getElementById('driverName').value.trim();
+  var driverPhone    = document.getElementById('driverPhone').value.trim();
+  var driverUsername = document.getElementById('driverUsername').value.trim();
+  var busId          = document.getElementById('busId').value.trim();
+  var routeId        = document.getElementById('routeId').value;
+  var routeName      = document.getElementById('routeName').value.trim();
+  var routeColor     = document.getElementById('routeColor').value;
+  var frequency      = document.getElementById('frequency').value;
+  var routeDesc      = document.getElementById('routeDesc').value.trim();
+
+  if (!driverName)     { showToast('Please enter your full name', 'error'); return; }
+  if (!driverPhone)    { showToast('Please enter your phone number', 'error'); return; }
+  if (!driverUsername) { showToast('Please enter a username / driver ID', 'error'); return; }
+  if (!routeId)        { showToast('Please select a route', 'error'); return; }
+  if (stops.length === 0) { showToast('Please add at least one bus stop', 'error'); return; }
+  var unnamed = stops.find(function(s){ return !s.name; });
+  if (unnamed) { showToast('Please name all bus stops', 'error'); return; }
+
+  var btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Registering…';
+
+  var payload = {
+    driverName: driverName,
+    driverPhone: driverPhone,
+    driverUsername: driverUsername,
+    busId: busId || routeId,
+    routeId: routeId,
+    routeName: routeName || routeId,
+    routeColor: routeColor,
+    frequency: frequency,
+    description: routeDesc,
+    stops: stops.map(function(s, i) {
+      return {
+        order: i + 1,
+        name: s.name,
+        lat: s.lat !== null ? parseFloat(s.lat) : null,
+        lng: s.lng !== null ? parseFloat(s.lng) : null
+      };
+    })
+  };
+
+  try {
+    var res = await fetch('/api/driver/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (res.ok || res.status === 201) {
+      showToast('🚌 Route registered! You are now live on the map.', 'success');
+      document.getElementById('progressFill').style.width = '100%';
+    } else {
+      var data = await res.json().catch(function(){ return {}; });
+      showToast('Error: ' + (data.message || 'Registration failed'), 'error');
+    }
+  } catch(err) {
+    showToast('Network error — check your connection', 'error');
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg> Register &amp; Go Live';
+}
+
+/* ── reset ── */
+function resetAll() {
+  if (!confirm('Reset all fields?')) return;
+  Object.values(activeMaps).forEach(function(m){ m.remove(); });
+  activeMaps = {}; stops = []; stopCounter = 0;
+  document.getElementById('stopsList').innerHTML =
+    '<div class="empty-stops" id="emptyHint"><span class="icon">🚏</span>No stops yet — press <strong style="color:var(--gold)">Add Stop</strong> to begin.</div>';
+  ['driverName','driverPhone','driverUsername','busId','routeName','routeDesc'].forEach(function(id){
+    var el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('routeId').value = '';
+  document.getElementById('routeColor').value = '#F5C518';
+  document.querySelectorAll('.color-swatch').forEach(function(s,i){ s.classList.toggle('selected', i === 0); });
+  updateBadge(); updateProgress();
+}
+
+/* ── toast ── */
+function showToast(msg, type) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + (type || 'success') + ' show';
+  setTimeout(function(){ t.className = 'toast'; }, 3500);
+}
+</script>
+</body>
+</html>
