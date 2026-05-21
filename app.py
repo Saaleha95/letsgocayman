@@ -2213,6 +2213,8 @@ CAYMAN_ROUTES = [
 
 @app.route('/api/buses/coordinates', methods=['GET'])
 def buses_coordinates():
+    bus_id_filter = request.args.get('busId', '').strip()
+
     # ── Get ALL active tracking sessions ─────────────────────────────────
     active_sessions = TrackingSession.query.filter_by(active=True).all()
 
@@ -2236,7 +2238,6 @@ def buses_coordinates():
         if driver.route_id in db_stops_by_route:
             continue
 
-        # DEBUG — log raw stops_json so you can see exactly what is stored
         print(f"[DEBUG] route_id={driver.route_id} stops_json={driver.stops_json!r}")
 
         try:
@@ -2247,11 +2248,6 @@ def buses_coordinates():
         parsed = []
         for s in raw:
             try:
-                # Handle every possible shape the frontend might send:
-                # 1. {"name": "X", "lat": 1.23, "lng": 4.56}
-                # 2. {"name": "X", "latitude": 1.23, "longitude": 4.56}
-                # 3. {"stopName": "X", "lat": 1.23, "lng": 4.56}
-                # 4. ["Stop Name", 1.23, 4.56]   (tuple serialised as array)
                 if isinstance(s, (list, tuple)):
                     name = str(s[0]) if len(s) > 0 else "Stop"
                     lat  = float(s[1]) if len(s) > 1 else 0.0
@@ -2356,14 +2352,27 @@ def buses_coordinates():
             "busId":        driver.bus_id,
         })
 
+    # ── Filter by busId if provided ───────────────────────────────────────
+    if bus_id_filter:
+        matched = [
+            r for r in all_routes
+            if r.get('busId') == bus_id_filter
+            or r.get('route') == bus_id_filter
+            or (r.get('liveLocation') and r['liveLocation'].get('busId') == bus_id_filter)
+        ]
+        if matched:
+            return jsonify(matched[0]), 200
+        return jsonify({'error': f"No bus found with busId '{bus_id_filter}'"}), 404
+
+    # ── Return all routes ─────────────────────────────────────────────────
     return jsonify({
         "routes":          all_routes,
         "totalRoutes":     len(all_routes),
         "totalStops":      sum(len(r["stops"]) for r in all_routes),
-        "liveRoutesCount": len(live_locations_by_route),
+        "liveRoutesCount": len([r for r in all_routes if r.get("liveLocation")]),
         "generatedAt":     datetime.utcnow().isoformat() + "Z",
     }), 200
-
+    
 @app.route('/api/safety/sos/<token>/resolve', methods=['POST'])
 def resolve_sos(token):
     sos = SOSAlert.query.filter_by(token=token).first()
