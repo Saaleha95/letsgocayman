@@ -2472,6 +2472,139 @@ CAYMAN_ROUTES = [
 ]
 
 
+@app.route('/api/buses/registered', methods=['GET'])
+def buses_registered():
+    """
+    Returns every bus/route row saved in the DriverRoute table,
+    each enriched with its current live location (if active).
+
+    Optional query params:
+      ?busId=WestBayBus   → single bus by busId
+      ?driverName=James   → all buses for one driver
+    """
+    bus_id_filter    = request.args.get('busId',      '').strip()
+    driver_filter    = request.args.get('driverName', '').strip()
+
+    # ── 1. Live locations keyed by bus_id ─────────────────────────────────
+    active_sessions = TrackingSession.query.filter_by(active=True).all()
+    live_by_bus = {}
+    for s in active_sessions:
+        try:
+            live_by_bus[s.bus_id] = {
+                'busId':     s.bus_id,
+                'lat':       float(s.lat),
+                'lng':       float(s.lng),
+                'updatedAt': s.updated_at.isoformat() if s.updated_at else None,
+            }
+        except (ValueError, TypeError):
+            continue
+
+    # ── 2. Fetch latest DriverRoute row per (bus_id, route_id) pair ───────
+    # Subquery: for each bus_id take the most-recently created row
+    from sqlalchemy import func
+
+    latest_ids = (
+        db.session.query(func.max(DriverRoute.id))
+        .group_by(DriverRoute.bus_id)
+        .all()
+    )
+    latest_id_list = [row[0] for row in latest_ids if row[0] is not None]
+
+    drivers = (
+        DriverRoute.query
+        .filter(DriverRoute.id.in_(latest_id_list))
+        .order_by(DriverRoute.route_name)
+        .all()
+    )
+
+    # ── 3. Apply optional filters ─────────────────────────────────────────
+    if bus_id_filter:
+        drivers = [d for d in drivers if d.bus_id == bus_id_filter]
+    if driver_filter:
+        drivers = [
+            d for d in drivers
+            if (d.driver_name or '').lower() == driver_filter.lower()
+        ]
+
+    if not drivers:
+        msg = (
+            f"No bus found with busId '{bus_id_filter}'"
+            if bus_id_filter else
+            f"No buses found for driver '{driver_filter}'"
+            if driver_filter else
+            'No registered buses found'
+        )
+        return jsonify({'error': msg, 'buses': []}), 404
+
+    # ── 4. Parse stops JSON ───────────────────────────────────────────────
+    def parse_stops(stops_json, route_id):
+        try:
+            raw = json.loads(stops_json or '[]')
+        except (json.JSONDecodeError, TypeError):
+            return []
+
+        parsed = []
+        for i, s in enumerate(raw):
+            try:
+                if isinstance(s, (list, tuple)):
+                    name = str(s[0]) if len(s) > 0 else 'Stop'
+                    lat  = float(s[1]) if len(s) > 1 else 0.0
+                    lng  = float(s[2]) if len(s) > 2 else 0.0
+                elif isinstance(s, dict):
+                    name = (s.get('name') or s.get('stopName') or
+                            s.get('stop_name') or 'Stop')
+                    lat  = float(s.get('lat') or s.get('latitude') or 0)
+                    lng  = float(s.get('lng') or s.get('longitude') or 0)
+                else:
+                    continue
+
+                if lat == 0.0 and lng == 0.0:
+                    continue
+
+                parsed.append({
+                    'id':   f"{route_id}-S{i + 1:02}",
+                    'name': name,
+                    'lat':  lat,
+                    'lng':  lng,
+                })
+            except (ValueError, TypeError, IndexError):
+                continue
+
+        return parsed
+
+    # ── 5. Build response ─────────────────────────────────────────────────
+    results = []
+    for d in drivers:
+        stops       = parse_stops(d.stops_json, d.route_id or d.bus_id)
+        live        = live_by_bus.get(d.bus_id)
+        is_online   = live is not None
+
+        results.append({
+            'busId':        d.bus_id,
+            'routeId':      d.route_id,
+            'routeName':    d.route_name,
+            'driverName':   d.driver_name,
+            'color':        d.route_color or '#F5C518',
+            'frequency':    d.frequency   or 'Every 15 minutes',
+            'description':  d.description or '',
+            'stops':        stops,
+            'totalStops':   len(stops),
+            'liveLocation': live,
+            'online':       is_online,
+            'registeredAt': d.created_at.isoformat() if d.created_at else None,
+        })
+
+    # ── 6. Single-bus shortcut ────────────────────────────────────────────
+    if bus_id_filter and len(results) == 1:
+        return jsonify(results[0]), 200
+
+    return jsonify({
+        'total':       len(results),
+        'onlineCount': sum(1 for r in results if r['online']),
+        'buses':       results,
+    }), 200
+    
+
 @app.route('/api/buses/coordinates', methods=['GET', 'POST'])
 def buses_coordinates():
 
