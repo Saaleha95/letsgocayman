@@ -136,6 +136,15 @@ class SMSLog(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
+class DeviceRequest(db.Model):
+    """Driver device connection requests."""
+    id          = db.Column(db.Integer, primary_key=True)
+    username    = db.Column(db.String(80), nullable=False)
+    phone       = db.Column(db.String(30), nullable=False)
+    status      = db.Column(db.String(20), default='pending')   # pending / contacted
+    created_at  = db.Column(db.DateTime, default=datetime.utcnow)
+    
+
 with app.app_context():
     db.create_all()
 
@@ -478,15 +487,17 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
 <nav id="nav">
   <a class="nav-logo" href="#"><span class="dot"></span> LetsGo</a>
   <ul class="nav-links">
-    <li><a href="#" onclick="showPage('home')">Home</a></li>
-    <li><a href="#" onclick="showPage('home');setTimeout(()=>document.getElementById('features').scrollIntoView({behavior:'smooth'}),200)">Features</a></li>
-    <li><a href="#" onclick="showPage('team')">Our Team</a></li>
-  </ul>
+  <li><a href="#" onclick="showPage('home')">Home</a></li>
+  <li><a href="#" onclick="showPage('home');setTimeout(...)">Features</a></li>
+  <li><a href="#" onclick="showPage('team')">Our Team</a></li>
+  <li><a href="/drivers" style="color:var(--gold)">🚌 Drivers</a></li>
+</ul>
   <a href="#dl" class="nav-dl" onclick="showPage('home')">Download App</a>
 </nav>
 <div class="page-nav">
   <button class="pnav-btn active" id="tab-home" onclick="showPage('home')">Home</button>
   <button class="pnav-btn" id="tab-team" onclick="showPage('team')">Meet Our Team</button>
+  <button class="pnav-btn" onclick="window.location.href='/drivers'">For Drivers</button>
 </div>
 <div class="page active" id="page-home">
   <section class="hero">
@@ -3729,6 +3740,279 @@ setInterval(refreshSMS, 15000);
 </html>"""
 
 
+@app.route('/drivers')
+def drivers_page():
+    return """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Drivers — LetsGo Cayman</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --gold:#F5C518;--navy:#0B1F3A;--bg:#0d1117;--surface:#161b22;
+  --border:#30363d;--text:#e6edf3;--muted:#8b949e;--dim:#484f58;
+  --teal:#00897B;--green:#22c55e;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 600px 400px at 20% 10%,rgba(245,197,24,.05),transparent 70%),radial-gradient(ellipse 400px 300px at 80% 80%,rgba(0,137,123,.04),transparent 70%);pointer-events:none;z-index:0}
+
+/* ── nav ── */
+.nav{position:sticky;top:0;z-index:200;background:rgba(13,17,23,.96);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 32px;height:58px;display:flex;align-items:center;justify-content:space-between}
+.nav-brand{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--gold);text-decoration:none;display:flex;align-items:center;gap:8px}
+.nav-back{color:var(--muted);font-size:13px;text-decoration:none;display:flex;align-items:center;gap:6px;transition:color .2s}
+.nav-back:hover{color:var(--gold)}
+
+/* ── hero ── */
+.hero{position:relative;z-index:1;text-align:center;padding:72px 32px 56px}
+.hero-tag{display:inline-flex;align-items:center;gap:8px;background:rgba(245,197,24,.08);border:1px solid rgba(245,197,24,.25);color:var(--gold);font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:6px 16px;border-radius:20px;margin-bottom:22px}
+.hero h1{font-family:'Syne',sans-serif;font-size:clamp(38px,7vw,68px);font-weight:800;line-height:1.05;letter-spacing:-1px;margin-bottom:16px}
+.hero h1 span{color:var(--gold)}
+.hero p{font-size:16px;color:var(--muted);max-width:480px;margin:0 auto;line-height:1.7}
+
+/* ── option cards ── */
+.options{position:relative;z-index:1;max-width:860px;margin:0 auto;padding:0 24px 80px;display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.option-card{background:var(--surface);border:1.5px solid var(--border);border-radius:20px;padding:40px 36px;display:flex;flex-direction:column;align-items:flex-start;cursor:pointer;transition:border-color .25s,transform .25s,box-shadow .25s;position:relative;overflow:hidden}
+.option-card::before{content:'';position:absolute;inset:0;border-radius:20px;opacity:0;transition:opacity .25s}
+.option-card:hover{transform:translateY(-6px);box-shadow:0 24px 64px rgba(0,0,0,.3)}
+.option-card.device-card{border-color:rgba(245,197,24,.3)}
+.option-card.device-card::before{background:radial-gradient(ellipse at 0% 0%,rgba(245,197,24,.07),transparent 60%)}
+.option-card.device-card:hover{border-color:var(--gold);box-shadow:0 24px 64px rgba(245,197,24,.1)}
+.option-card.app-card{border-color:rgba(0,137,123,.3)}
+.option-card.app-card::before{background:radial-gradient(ellipse at 0% 0%,rgba(0,137,123,.07),transparent 60%)}
+.option-card.app-card:hover{border-color:var(--teal);box-shadow:0 24px 64px rgba(0,137,123,.1)}
+.option-card:hover::before{opacity:1}
+
+.card-icon{font-size:44px;margin-bottom:20px}
+.card-badge{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:4px 12px;border-radius:20px;margin-bottom:16px;display:inline-block}
+.device-card .card-badge{background:rgba(245,197,24,.1);color:var(--gold);border:1px solid rgba(245,197,24,.25)}
+.app-card .card-badge{background:rgba(0,137,123,.1);color:var(--teal);border:1px solid rgba(0,137,123,.25)}
+.card-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;margin-bottom:10px}
+.card-desc{font-size:14px;color:var(--muted);line-height:1.7;margin-bottom:28px;flex:1}
+.card-btn{display:inline-flex;align-items:center;gap:8px;padding:12px 24px;border-radius:10px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;letter-spacing:.5px;border:none;cursor:pointer;transition:opacity .2s}
+.device-card .card-btn{background:var(--gold);color:var(--navy)}
+.app-card .card-btn{background:var(--teal);color:#fff}
+.card-btn:hover{opacity:.88}
+.card-btn svg{width:16px;height:16px;flex-shrink:0}
+
+.divider{display:flex;align-items:center;justify-content:center;gap:16px;margin:8px 0}
+.divider span{font-size:11px;font-weight:700;letter-spacing:2px;color:var(--dim);text-transform:uppercase}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* ── panels ── */
+.panel{display:none;position:relative;z-index:1;max-width:560px;margin:0 auto;padding:0 24px 80px}
+.panel.active{display:block}
+.panel-header{display:flex;align-items:center;gap:12px;margin-bottom:28px}
+.back-btn{background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:border-color .2s,color .2s;display:flex;align-items:center;gap:6px}
+.back-btn:hover{border-color:var(--gold);color:var(--gold)}
+.panel-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:800}
+
+.form-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px}
+.field{margin-bottom:20px}
+.field label{display:block;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px}
+.field input{width:100%;background:#0d1117;border:1px solid var(--border);border-radius:9px;padding:12px 14px;font-size:14px;color:var(--text);outline:none;font-family:'DM Sans',sans-serif;transition:border-color .2s}
+.field input:focus{border-color:var(--gold)}
+.field .hint{font-size:12px;color:var(--dim);margin-top:6px}
+
+.submit-btn{width:100%;background:var(--gold);color:var(--navy);border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:700;font-family:'Syne',sans-serif;cursor:pointer;margin-top:8px;transition:background .2s,opacity .2s;display:flex;align-items:center;justify-content:center;gap:8px}
+.submit-btn:hover{background:#e8b400}
+.submit-btn:disabled{opacity:.5;cursor:not-allowed}
+.submit-btn svg{width:18px;height:18px}
+
+/* ── success state ── */
+.success-card{background:var(--surface);border:1px solid rgba(34,197,94,.3);border-radius:16px;padding:40px;text-align:center;display:none}
+.success-card.show{display:block}
+.success-icon{font-size:52px;margin-bottom:16px}
+.success-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--green);margin-bottom:10px}
+.success-body{font-size:14px;color:var(--muted);line-height:1.75;max-width:360px;margin:0 auto}
+.success-note{margin-top:20px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:12px 16px;font-size:13px;color:var(--green);font-weight:500}
+
+/* ── toast ── */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:12px 20px;border-radius:10px;font-size:14px;opacity:0;transform:translateY(16px);transition:all .3s;z-index:999;max-width:340px}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.error{border-color:rgba(239,68,68,.5);color:#f87171}
+.toast.success{border-color:rgba(34,197,94,.5);color:var(--green)}
+
+@media(max-width:680px){
+  .options{grid-template-columns:1fr}
+  .hero{padding:56px 20px 40px}
+  .options,.panel{padding-left:16px;padding-right:16px}
+  .form-card{padding:24px}
+}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="/" class="nav-brand">🚌 LetsGo</a>
+  <a href="/" class="nav-back">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+    Back to home
+  </a>
+</nav>
+
+<!-- ═══════════ MAIN OPTIONS VIEW ═══════════ -->
+<div id="view-options">
+  <header class="hero">
+    <div class="hero-tag">🚌 Driver Portal</div>
+    <h1>Are you a<br><span>Driver?</span></h1>
+    <p>Choose how you'd like to connect. Whether you have a device or prefer the app, we'll get you live on the map.</p>
+  </header>
+
+  <div class="options">
+
+    <!-- Card 1: Device -->
+    <div class="option-card device-card" onclick="showPanel('device')">
+      <div class="card-icon">📡</div>
+      <div class="card-badge">Hardware</div>
+      <div class="card-title">Connect using device</div>
+      <div class="card-desc">
+        We'll install a dedicated GPS tracking device on your bus. 
+        Your location will broadcast automatically every second — no phone needed while driving.
+        <br><br>
+        <strong style="color:var(--text)">Best for:</strong> full-time operators who want hands-free tracking.
+      </div>
+      <button class="card-btn" onclick="showPanel('device');event.stopPropagation()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        Request a device
+      </button>
+    </div>
+
+    <!-- Card 2: App -->
+    <div class="option-card app-card" onclick="window.location.href='/driver'">
+      <div class="card-icon">📱</div>
+      <div class="card-badge">Mobile App</div>
+      <div class="card-title">Connect using app</div>
+      <div class="card-desc">
+        Register your route and stops directly from your phone. 
+        Your live GPS location broadcasts from the LetsGo driver app — quick to set up, no hardware required.
+        <br><br>
+        <strong style="color:var(--text)">Best for:</strong> drivers who want to get started immediately.
+      </div>
+      <button class="card-btn" onclick="window.location.href='/driver';event.stopPropagation()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="5" y="2" width="14" height="20" rx="2"/><circle cx="12" cy="18" r="1" fill="currentColor"/></svg>
+        Register via app
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════ DEVICE REQUEST FORM ═══════════ -->
+<div id="view-device" class="panel">
+  <div class="panel-header">
+    <button class="back-btn" onclick="showOptions()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <div class="panel-title">📡 Request a GPS Device</div>
+  </div>
+
+  <!-- Form -->
+  <div class="form-card" id="device-form-card">
+    <p style="font-size:14px;color:var(--muted);line-height:1.7;margin-bottom:24px">
+      Fill in your details below and our team will reach out to arrange installation of your GPS tracking device — usually within 1–2 business days.
+    </p>
+
+    <div class="field">
+      <label>Full Name / Driver ID</label>
+      <input type="text" id="dev-username" placeholder="e.g. James McLean" autocomplete="name">
+    </div>
+    <div class="field">
+      <label>Phone Number</label>
+      <input type="tel" id="dev-phone" placeholder="+1 345 XXX XXXX" autocomplete="tel">
+      <div class="hint">We'll call or WhatsApp you to schedule the device installation.</div>
+    </div>
+
+    <button class="submit-btn" id="dev-submit-btn" onclick="submitDeviceRequest()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>
+      Submit Request
+    </button>
+  </div>
+
+  <!-- Success -->
+  <div class="success-card" id="device-success">
+    <div class="success-icon">✅</div>
+    <div class="success-title">Request received!</div>
+    <p class="success-body">
+      Our team has been notified and will contact you shortly to arrange your GPS device installation.
+    </p>
+    <div class="success-note">
+      📧 A confirmation has been sent to our team at sally@letsgocayman.com
+    </div>
+    <button class="submit-btn" style="margin-top:24px;background:var(--surface);color:var(--gold);border:1px solid rgba(245,197,24,.3)" onclick="showOptions()">
+      ← Back to options
+    </button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+function showOptions() {
+  document.getElementById('view-options').style.display = '';
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function showPanel(name) {
+  document.getElementById('view-options').style.display = 'none';
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + (type || 'success') + ' show';
+  setTimeout(() => t.className = 'toast', 3500);
+}
+
+async function submitDeviceRequest() {
+  const username = document.getElementById('dev-username').value.trim();
+  const phone    = document.getElementById('dev-phone').value.trim();
+
+  if (!username) { showToast('Please enter your name or driver ID', 'error'); return; }
+  if (!phone)    { showToast('Please enter your phone number', 'error'); return; }
+
+  const btn = document.getElementById('dev-submit-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:spin .8s linear infinite"><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" opacity=".25"/><path d="M21 12a9 9 0 00-9-9"/></svg> Sending…';
+
+  try {
+    const res  = await fetch('/api/driver/device-request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, phone })
+    });
+    const data = await res.json();
+
+    if (res.ok && data.success) {
+      document.getElementById('device-form-card').style.display = 'none';
+      document.getElementById('device-success').classList.add('show');
+    } else {
+      showToast('Error: ' + (data.message || 'Submission failed'), 'error');
+      btn.disabled = false;
+      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg> Submit Request';
+    }
+  } catch (err) {
+    showToast('Network error — please try again', 'error');
+    btn.disabled = false;
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg> Submit Request';
+  }
+}
+</script>
+
+<style>
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</body>
+</html>"""
+
+
 @app.route('/driver')
 def driver_page():
     with open('driver_register.html', 'r') as f:
@@ -3970,6 +4254,79 @@ def maps_register():
     """Alias endpoint — driver registration form posts here."""
     return register_driver()
 
+
+@app.route('/api/driver/device-request', methods=['POST'])
+def driver_device_request():
+    data = request.get_json(force=True, silent=True) or {}
+    username = (data.get('username') or '').strip()
+    phone    = (data.get('phone')    or '').strip()
+
+    if not username or not phone:
+        return jsonify({'success': False, 'message': 'Username and phone are required'}), 400
+
+    # ── Save to DB ────────────────────────────────────────
+    req = DeviceRequest(username=username, phone=phone)
+    db.session.add(req)
+    db.session.commit()
+
+    # ── Send notification email ───────────────────────────
+    _send_device_request_email(username, phone)
+
+    return jsonify({
+        'success': True,
+        'message': 'Request received. Our team will contact you soon!'
+    }), 201
+
+
+def _send_device_request_email(username, phone):
+    """Send a notification to sally@ when a driver requests a device."""
+    import smtplib, ssl
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+
+    smtp_host = os.environ.get('SMTP_HOST', 'smtp.gmail.com')
+    smtp_port = int(os.environ.get('SMTP_PORT', '587'))
+    smtp_user = os.environ.get('SMTP_USER', '')
+    smtp_pass = os.environ.get('SMTP_PASS', '')
+    to_email  = 'sally@letsgocayman.com'
+
+    subject = f'🚌 New Driver Device Request — {username}'
+    body = f"""
+Hello,
+
+A bus driver has submitted a device connection request on LetsGo Cayman.
+
+Driver username : {username}
+Phone number    : {phone}
+Submitted at    : {datetime.utcnow().strftime('%d %b %Y at %H:%M UTC')}
+
+Please contact them to set up their GPS tracking device.
+
+— LetsGo Cayman System
+"""
+
+    if not smtp_user or not smtp_pass:
+        # No SMTP configured — just log it, request is saved in DB
+        print(f'[DeviceRequest] No SMTP configured. Request saved: {username} / {phone}')
+        return
+
+    try:
+        msg = MIMEMultipart()
+        msg['From']    = smtp_user
+        msg['To']      = to_email
+        msg['Subject'] = subject
+        msg.attach(MIMEText(body, 'plain'))
+
+        context = ssl.create_default_context()
+        with smtplib.SMTP(smtp_host, smtp_port) as server:
+            server.starttls(context=context)
+            server.login(smtp_user, smtp_pass)
+            server.sendmail(smtp_user, to_email, msg.as_string())
+        print(f'[DeviceRequest] Email sent to {to_email}')
+    except Exception as e:
+        print(f'[DeviceRequest] Email failed: {e}')
+
+        
 
 @app.route('/api/driver/register', methods=['POST'])
 def register_driver():
