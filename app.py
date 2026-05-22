@@ -4459,59 +4459,134 @@ def api_admin_sos_alerts():
 # PUBLIC TRACKING PAGE  /track/<token>
 # ═══════════════════════════════════════════════════════════
 
+@app.route('/api/tracking/session/<token>')
+def api_tracking_session(token):
+    sess = TrackingSession.query.filter_by(token=token).first()
+    if not sess:
+        return jsonify({'found': False}), 404
+ 
+    # ── pull live bus location for this route/bus ─────────
+    live_sess = (
+        TrackingSession.query
+        .filter_by(bus_id=sess.bus_id, active=True)
+        .order_by(TrackingSession.updated_at.desc())
+        .first()
+    )
+ 
+    # also check by route_id in DriverRoute table for stops
+    driver = (
+        DriverRoute.query
+        .filter_by(bus_id=sess.bus_id)
+        .order_by(DriverRoute.created_at.desc())
+        .first()
+    ) or (
+        DriverRoute.query
+        .filter_by(route_id=sess.route_id)
+        .order_by(DriverRoute.created_at.desc())
+        .first()
+    )
+ 
+    stops = []
+    route_color = '#F5C518'
+    frequency   = 'Every 15 minutes'
+    description = ''
+ 
+    if driver:
+        route_color = driver.route_color or '#F5C518'
+        frequency   = driver.frequency   or 'Every 15 minutes'
+        description = driver.description or ''
+        try:
+            raw = json.loads(driver.stops_json or '[]')
+            for i, s in enumerate(raw):
+                if isinstance(s, (list, tuple)) and len(s) >= 3:
+                    stops.append({'name': str(s[0]), 'lat': float(s[1]), 'lng': float(s[2])})
+                elif isinstance(s, dict):
+                    stops.append({
+                        'name': s.get('name') or s.get('stopName') or 'Stop',
+                        'lat':  float(s.get('lat') or s.get('latitude') or 0),
+                        'lng':  float(s.get('lng') or s.get('longitude') or 0),
+                    })
+        except Exception:
+            stops = []
+ 
+    # fallback: use the static CAYMAN_ROUTES list
+    if not stops:
+        for route in CAYMAN_ROUTES:
+            if route['route_number'] in (sess.route_id, sess.bus_id):
+                route_color = route['color']
+                frequency   = route['frequency']
+                description = route['description']
+                stops = [
+                    {'name': name, 'lat': lat, 'lng': lng}
+                    for name, lat, lng in route['stops']
+                ]
+                break
+ 
+    bus_lat = bus_lng = None
+    bus_updated = None
+    if live_sess:
+        try:
+            bus_lat     = float(live_sess.lat)
+            bus_lng     = float(live_sess.lng)
+            bus_updated = live_sess.updated_at.isoformat() if live_sess.updated_at else None
+        except (TypeError, ValueError):
+            pass
+ 
+    return jsonify({
+        'found':       True,
+        'active':      sess.active,
+        'username':    sess.username or 'Rider',
+        'phoneNumber': sess.phone_number or '',
+        'routeId':     sess.route_id   or '',
+        'busId':       sess.bus_id     or '',
+        'busName':     sess.bus_name   or sess.bus_id or '',
+        'routeColor':  route_color,
+        'frequency':   frequency,
+        'description': description,
+        'stops':       stops,
+        'busLat':      bus_lat,
+        'busLng':      bus_lng,
+        'busUpdated':  bus_updated,
+        'updatedAt':   sess.updated_at.strftime('%H:%M:%S') if sess.updated_at else 'N/A',
+    })
+
+
 @app.route('/track/<token>')
 def tracking_page(token):
+    # Minimal server-side check — just confirm the token exists
     sess = TrackingSession.query.filter_by(token=token).first()
-
-    if sess:
-        lat = sess.lat or '19.3465'
-        lng = sess.lng or '-81.3958'
-        username = sess.username or 'Rider'
-        bus_id = sess.bus_id or 'CaymanBus'
-        bus_name = sess.bus_name or 'Cayman Bus'
-        route_id = sess.route_id or 'CaymanBus'
-        active = sess.active
-        updated = sess.updated_at.strftime('%H:%M:%S') if sess.updated_at else 'N/A'
-    else:
-        lat = '19.3465';
-        lng = '-81.3958'
-        username = 'Rider';
-        bus_id = 'CaymanBus'
-        bus_name = 'Cayman Bus';
-        route_id = 'CaymanBus'
-        active = True;
-        updated = 'Demo'
-
+    exists = sess is not None
+    active = sess.active if sess else True   # used only for the initial status pill
+ 
     sc = '#16a34a' if active else '#6b7280'
-    sl = 'LIVE' if active else 'ENDED'
-    is_live_js = 'true' if active else 'false'
-
+    sl = 'LIVE'    if active else 'ENDED'
+ 
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<title>LetsGo — {username}'s Journey</title>
+<title>LetsGo — Live Journey</title>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 *{{box-sizing:border-box;margin:0;padding:0}}
-html,body{{height:100%;font-family:'Outfit',sans-serif;background:#f8fafc;color:#1e293b;overflow:hidden}}
+html,body{{height:100%;font-family:\'Outfit\',sans-serif;background:#f8fafc;color:#1e293b;overflow:hidden}}
 body{{display:flex;flex-direction:column}}
-
+ 
 .hdr{{background:#fff;border-bottom:1px solid #e2e8f0;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:1000;box-shadow:0 1px 4px rgba(0,0,0,.06)}}
 .hdr-logo{{font-size:15px;font-weight:700;color:#0B1F3A;display:flex;align-items:center;gap:6px}}
 .hdr-logo span{{color:#F5C518}}
-.hdr-center{{text-align:center}}
-.hdr-center .title{{font-size:13px;font-weight:600;color:#1e293b}}
-.hdr-center .sub{{font-size:11px;color:#94a3b8;margin-top:1px}}
-.live-pill{{display:inline-flex;align-items:center;gap:5px;background:{sc}15;border:1px solid {sc}50;color:{sc};padding:4px 11px;border-radius:20px;font-size:11px;font-weight:700}}
+.hdr-center{{text-align:center;min-width:0;flex:1;padding:0 12px}}
+.hdr-center .title{{font-size:13px;font-weight:600;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
+.hdr-center .sub{{font-size:11px;color:#94a3b8;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
+.live-pill{{display:inline-flex;align-items:center;gap:5px;background:{sc}15;border:1px solid {sc}50;color:{sc};padding:4px 11px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;flex-shrink:0}}
 .live-dot{{width:6px;height:6px;border-radius:50%;background:{sc};animation:pdot 1.4s infinite}}
 @keyframes pdot{{0%,100%{{opacity:1}}50%{{opacity:.3}}}}
-
+ 
 #map{{flex:1;width:100%;min-height:0}}
-
+ 
 .bottom{{background:#fff;border-top:1px solid #e2e8f0;flex-shrink:0;box-shadow:0 -1px 4px rgba(0,0,0,.06)}}
 .info-row{{display:flex;border-bottom:1px solid #f1f5f9}}
 .info-item{{flex:1;text-align:center;padding:10px 6px;border-right:1px solid #f1f5f9}}
@@ -4520,251 +4595,335 @@ body{{display:flex;flex-direction:column}}
 .val{{font-size:13px;font-weight:700;color:#1e293b;margin-top:3px;line-height:1.1}}
 .sub{{font-size:9px;color:#94a3b8;margin-top:2px}}
 .eta-item .val{{color:#F5C518;font-size:20px;font-weight:800}}
-
+ 
 .coords-bar{{display:flex;align-items:center;justify-content:space-between;padding:6px 14px;background:#f8fafc;border-top:1px solid #f1f5f9}}
 .ctxt{{font-size:10px;color:#94a3b8;font-family:monospace}}
 .rnote{{font-size:10px;color:#cbd5e1}}
-.ended-bar{{background:#fef9c3;padding:7px 16px;text-align:center;font-size:11px;color:#854d0e;border-top:1px solid #fde68a}}
-
-/* You-are-here pulse ring — pure CSS on a regular div, no embedded style tags */
+.ended-bar{{background:#fef9c3;padding:7px 16px;text-align:center;font-size:11px;color:#854d0e;border-top:1px solid #fde68a;display:none}}
+ 
+/* loading overlay */
+.loading-overlay{{position:absolute;inset:0;background:rgba(248,250,252,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:2000;gap:12px}}
+.loading-overlay .spinner{{width:36px;height:36px;border:3px solid #e2e8f0;border-top-color:#F5C518;border-radius:50%;animation:spin .7s linear infinite}}
+.loading-overlay p{{font-size:13px;color:#64748b;font-weight:500}}
+@keyframes spin{{to{{transform:rotate(360deg)}}}}
+.not-found{{position:absolute;inset:0;background:#f8fafc;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:40px;text-align:center}}
+.not-found .icon{{font-size:48px}}
+.not-found h2{{font-size:18px;font-weight:700;color:#1e293b}}
+.not-found p{{font-size:14px;color:#64748b;line-height:1.6}}
+ 
 .you-pulse{{width:36px;height:36px;border-radius:50%;background:#0ea5e9;display:flex;align-items:center;justify-content:center;font-size:18px;border:3px solid #fff;box-shadow:0 2px 8px rgba(14,165,233,.5);position:relative}}
-.you-pulse::before{{content:'';position:absolute;inset:-8px;border-radius:50%;background:rgba(14,165,233,.2);animation:youRipple 1.8s ease-out infinite}}
-.you-pulse::after{{content:'';position:absolute;inset:-16px;border-radius:50%;background:rgba(14,165,233,.1);animation:youRipple 1.8s ease-out .6s infinite}}
+.you-pulse::before{{content:\'\';position:absolute;inset:-8px;border-radius:50%;background:rgba(14,165,233,.2);animation:youRipple 1.8s ease-out infinite}}
+.you-pulse::after{{content:\'\';position:absolute;inset:-16px;border-radius:50%;background:rgba(14,165,233,.1);animation:youRipple 1.8s ease-out .6s infinite}}
 @keyframes youRipple{{0%{{transform:scale(.6);opacity:.8}}100%{{transform:scale(1.3);opacity:0}}}}
-
+ 
 .leaflet-popup-content-wrapper{{border-radius:10px!important;box-shadow:0 4px 20px rgba(0,0,0,.12)!important}}
-.leaflet-popup-content{{margin:10px 14px!important;font-family:'Outfit',sans-serif;font-size:12px;line-height:1.7;color:#1e293b}}
-.leaflet-bar a{{background:#fff!important;color:#1e293b!important;border-color:#e2e8f0!important}}
-.leaflet-bar a:hover{{color:#F5C518!important}}
+.leaflet-popup-content{{margin:10px 14px!important;font-family:\'Outfit\',sans-serif;font-size:12px;line-height:1.7;color:#1e293b}}
 .leaflet-container .leaflet-control-attribution{{font-size:9px!important;background:rgba(255,255,255,.7)!important}}
 </style>
 </head>
 <body>
-
+ 
 <div class="hdr">
   <div class="hdr-logo">🚌 <span>LetsGo</span></div>
   <div class="hdr-center">
-    <div class="title">{username}'s Journey</div>
-    <div class="sub">{bus_id} · Route {route_id}</div>
+    <div class="title" id="hdr-title">Loading journey…</div>
+    <div class="sub"   id="hdr-sub">Please wait</div>
   </div>
-  <div class="live-pill"><div class="live-dot"></div>{sl}</div>
+  <div class="live-pill" id="live-pill"><div class="live-dot"></div>{sl}</div>
 </div>
-
-<div id="map"></div>
-
-<div class="bottom">
+ 
+<div style="position:relative;flex:1;display:flex;flex-direction:column;min-height:0">
+  <div id="map"></div>
+ 
+  <!-- loading overlay shown until session data arrives -->
+  <div class="loading-overlay" id="loading-overlay">
+    <div class="spinner"></div>
+    <p>Loading journey details…</p>
+  </div>
+ 
+  <!-- shown if token is invalid -->
+  <div class="not-found" id="not-found" style="display:none">
+    <div class="icon">🔍</div>
+    <h2>Journey not found</h2>
+    <p>This tracking link may have expired or the journey has ended.</p>
+    <a href="/" style="color:#F5C518;font-size:14px;font-weight:600;text-decoration:none">← Back to LetsGo</a>
+  </div>
+</div>
+ 
+<div class="bottom" id="bottom-bar">
   <div class="info-row">
     <div class="info-item">
       <div class="lbl">Rider</div>
-      <div class="val">{username}</div>
+      <div class="val" id="info-rider">—</div>
     </div>
     <div class="info-item">
       <div class="lbl">Bus</div>
-      <div class="val">{bus_id}</div>
-      <div class="sub" id="bus-status">Searching…</div>
+      <div class="val" id="info-bus">—</div>
+      <div class="sub" id="bus-status">Loading…</div>
     </div>
     <div class="info-item eta-item">
       <div class="lbl">ETA</div>
       <div class="val" id="eta-val">—</div>
-      <div class="sub" id="eta-stop">waiting for GPS</div>
+      <div class="sub" id="eta-stop">acquiring GPS</div>
     </div>
     <div class="info-item">
       <div class="lbl">Updated</div>
-      <div class="val" id="last-upd" style="font-size:11px">{updated}</div>
+      <div class="val" id="last-upd" style="font-size:11px">—</div>
       <div class="sub">bus time</div>
     </div>
   </div>
   <div class="coords-bar">
     <span class="ctxt" id="coords-txt">Acquiring your location…</span>
-    {'<span class="rnote">Bus updates every 8s</span>' if active else ''}
+    <span class="rnote" id="freq-note"></span>
   </div>
-  {'<div class="ended-bar">Journey ended — showing last known position</div>' if not active else ''}
+  <div class="ended-bar" id="ended-bar">Journey ended — showing last known position</div>
 </div>
-
+ 
 <script>
-/* ── constants ── */
-const TOKEN   = '{token}';
-const IS_LIVE = {is_live_js};   /* proper JS boolean, not a string */
-
-/* ── haversine (km) ── */
+const TOKEN = '{token}';
+ 
+/* ── haversine ── */
 function hav(a,b,c,d){{
-  const R=6371, dL=(c-a)*Math.PI/180, dN=(d-b)*Math.PI/180,
+  const R=6371,dL=(c-a)*Math.PI/180,dN=(d-b)*Math.PI/180,
         x=Math.sin(dL/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dN/2)**2;
   return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
 }}
-
-/* ── map — LIGHT tiles ── */
+ 
+/* ── map (default centre = George Town) ── */
 const map = L.map('map',{{zoomControl:false,attributionControl:true}})
               .setView([19.2993,-81.3816],14);
 L.tileLayer('https://{{s}}.basemaps.cartocdn.com/light_all/{{z}}/{{x}}/{{y}}{{r}}.png',
   {{subdomains:'abcd',maxZoom:19,attribution:'© OpenStreetMap © CartoDB'}}).addTo(map);
 L.control.zoom({{position:'topright'}}).addTo(map);
-
-/* ── stops ── */
-const STOPS=[
-  {{n:'George Town Depot',   lat:19.2869,lng:-81.3797}},
-  {{n:'Walkers Road',        lat:19.2800,lng:-81.3650}},
-  {{n:'Compass Media',       lat:19.2993,lng:-81.3816}},
-  {{n:'Cayman Enterprise City',lat:19.3120,lng:-81.3900}},
-  {{n:'Fairbanks Road',      lat:19.2750,lng:-81.3500}},
-  {{n:'Hospitals',           lat:19.2900,lng:-81.3300}},
-  {{n:'Schools Complex',     lat:19.2950,lng:-81.3200}},
-  {{n:'Seven Mile Beach S',  lat:19.3044,lng:-81.3939}},
-  {{n:'Camana Bay',          lat:19.3175,lng:-81.3982}},
-  {{n:'Seven Mile Beach N',  lat:19.3340,lng:-81.3894}},
-  {{n:'Cayman Turtle Centre',lat:19.3712,lng:-81.3789}},
-  {{n:'Bodden Town',         lat:19.2842,lng:-81.2528}},
-  {{n:'East End',            lat:19.3036,lng:-81.0914}},
-  {{n:'Airport ORIA',        lat:19.2928,lng:-81.3576}},
-];
-const stopIco = L.divIcon({{html:'<div style="width:10px;height:10px;border-radius:50%;background:#F5C518;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3)"></div>',iconSize:[10,10],iconAnchor:[5,5],className:''}});
-STOPS.forEach(s=>{{
-  L.marker([s.lat,s.lng],{{icon:stopIco}}).addTo(map)
-   .bindTooltip('<b style="color:#0B1F3A">'+s.n+'</b>',{{direction:'top',offset:[0,-6],className:''}});
-}});
-
-/* route line */
-L.polyline([[19.2869,-81.3797],[19.2800,-81.3650],[19.2993,-81.3816],
-            [19.3120,-81.3900],[19.2750,-81.3500],[19.2900,-81.3300],[19.2950,-81.3200]],
-  {{color:'#F5C518',weight:3,opacity:.45,dashArray:'8 5'}}).addTo(map);
-
-/* ── BUS marker ── */
-const busIco = L.divIcon({{
-  html:'<div style="background:#F5C518;width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;border:3px solid #fff;box-shadow:0 3px 10px rgba(245,197,24,.6)">🚌</div>',
-  iconSize:[44,44],iconAnchor:[22,22],className:''
-}});
-let busMarker=null,busRing=null,busLat=null,busLng=null;
-
-async function fetchBus(){{
-  try{{
-    const r=await fetch('/api/buses/coordinates');
-    if(!r.ok)return;
-    const data=await r.json();
-    const route=(data.routes||[]).find(rt=>rt.liveLocation);
-    if(!route?.liveLocation){{
-      document.getElementById('bus-status').textContent='No live bus';
-      return;
-    }}
-    const lat=parseFloat(route.liveLocation.lat),lng=parseFloat(route.liveLocation.lng);
-    if(isNaN(lat)||isNaN(lng))return;
-    busLat=lat; busLng=lng;
-    const upd=route.liveLocation.updatedAt
-      ? new Date(route.liveLocation.updatedAt).toLocaleTimeString() : 'now';
-    if(!busMarker){{
-      busRing=L.circle([lat,lng],{{color:'#F5C518',fillColor:'#F5C518',fillOpacity:.08,weight:1.5,radius:70}}).addTo(map);
-      busMarker=L.marker([lat,lng],{{icon:busIco,zIndexOffset:200}}).addTo(map)
-        .bindPopup('<b style="color:#0B1F3A">{bus_id}</b><br><span style="color:#64748b">{bus_name}</span><br><small style="color:#94a3b8">Updated '+upd+'</small>');
-    }}else{{
-      busMarker.setLatLng([lat,lng]);
-      busRing.setLatLng([lat,lng]);
-    }}
-    document.getElementById('last-upd').textContent=upd;
-    document.getElementById('bus-status').textContent='Online';
-    calcETA();
-  }}catch(e){{
-    document.getElementById('bus-status').textContent='Offline';
-    console.warn('bus:',e);
-  }}
+ 
+/* ── state ── */
+let SESSION     = null;
+let busMarker   = null, busRing  = null;
+let youMarker   = null, youCircle = null;
+let busLat      = null, busLng   = null;
+let youLat      = null, youLng   = null;
+let stopMarkers = [];
+let routeLine   = null;
+let geoWatchId  = null, geoRetryTimer = null, geoAttempts = 0;
+ 
+/* ── icons ── */
+function makeBusIcon(color) {{
+  return L.divIcon({{
+    html:`<div style="background:${{color}};width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;border:3px solid #fff;box-shadow:0 3px 10px ${{color}}99">🚌</div>`,
+    iconSize:[44,44],iconAnchor:[22,22],className:''
+  }});
 }}
-
-/* ── YOU marker — note: icon html has NO embedded <style> tags ── */
+function makeStopIcon(color) {{
+  return L.divIcon({{
+    html:`<div style="width:10px;height:10px;border-radius:50%;background:${{color}};border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3)"></div>`,
+    iconSize:[10,10],iconAnchor:[5,5],className:''
+  }});
+}}
 const youIco = L.divIcon({{
   html:'<div class="you-pulse">📍</div>',
   iconSize:[36,36],iconAnchor:[18,18],className:''
 }});
-let youMarker=null,youCircle=null,youLat=null,youLng=null,geoStarted=false;
-
-function startGeo(){{
-  if(!navigator.geolocation){{
-    document.getElementById('coords-txt').textContent='GPS not available on this device';
-    return;
+ 
+/* ── render stops + route line from session data ── */
+function renderRoute(session) {{
+  /* clear old stops */
+  stopMarkers.forEach(m => map.removeLayer(m));
+  stopMarkers = [];
+  if (routeLine) {{ map.removeLayer(routeLine); routeLine = null; }}
+ 
+  const color   = session.routeColor || '#F5C518';
+  const stopIco = makeStopIcon(color);
+  const coords  = [];
+ 
+  (session.stops || []).forEach(s => {{
+    if (!s.lat || !s.lng) return;
+    const m = L.marker([s.lat,s.lng],{{icon:stopIco}}).addTo(map)
+      .bindTooltip('<b style="color:#0B1F3A">'+s.name+'</b>',{{direction:'top',offset:[0,-6]}});
+    stopMarkers.push(m);
+    coords.push([s.lat,s.lng]);
+  }});
+ 
+  if (coords.length > 1) {{
+    routeLine = L.polyline(coords,{{
+      color:color, weight:3, opacity:.45, dashArray:'8 5'
+    }}).addTo(map);
   }}
-  /* getCurrentPosition fires immediately; watchPosition follows for updates */
-  navigator.geolocation.getCurrentPosition(handlePos,handleGeoErr,{{enableHighAccuracy:true,timeout:15000}});
-  navigator.geolocation.watchPosition(handlePos,handleGeoErr,{{enableHighAccuracy:true,maximumAge:4000,timeout:20000}});
 }}
-
-function handlePos(pos){{
+ 
+/* ── update bus marker ── */
+function updateBusMarker(lat, lng, session) {{
+  const color = session.routeColor || '#F5C518';
+  if (!busMarker) {{
+    busRing   = L.circle([lat,lng],{{color,fillColor:color,fillOpacity:.08,weight:1.5,radius:70}}).addTo(map);
+    busMarker = L.marker([lat,lng],{{icon:makeBusIcon(color),zIndexOffset:200}}).addTo(map)
+      .bindPopup(`<b style="color:#0B1F3A">${{session.busId}}</b><br>`+
+                 `<span style="color:#64748b">${{session.busName}}</span><br>`+
+                 `<small style="color:#94a3b8">Route ${{session.routeId}}</small>`);
+  }} else {{
+    busMarker.setLatLng([lat,lng]);
+    busRing.setLatLng([lat,lng]);
+  }}
+  busLat = lat; busLng = lng;
+}}
+ 
+/* ── fit map to show both markers ── */
+function fitBoth() {{
+  if (youLat===null || busLat===null) return;
+  map.fitBounds(L.latLngBounds([[youLat,youLng],[busLat,busLng]]),
+    {{padding:[60,60],maxZoom:16,animate:true}});
+}}
+ 
+/* ── ETA ── */
+function calcETA(stops) {{
+  if (youLat===null || !stops || !stops.length) return;
+  let nearest=null, minD=Infinity;
+  stops.forEach(s=>{{ if (!s.lat||!s.lng) return; const d=hav(youLat,youLng,s.lat,s.lng); if(d<minD){{minD=d;nearest=s;}} }});
+  if (!nearest) return;
+  const etaEl = document.getElementById('eta-val');
+  const subEl = document.getElementById('eta-stop');
+  if (busLat!==null) {{
+    const dist   = hav(busLat,busLng,nearest.lat,nearest.lng);
+    const etaMin = Math.max(0,Math.round(dist/30*60));
+    if (etaMin===0) {{ etaEl.textContent='Now';        etaEl.style.color='#16a34a'; subEl.textContent='Bus arriving!'; }}
+    else if (etaMin===1) {{ etaEl.textContent='1 min'; etaEl.style.color='#ea580c'; subEl.textContent=nearest.name; }}
+    else                {{ etaEl.textContent=etaMin+' min'; etaEl.style.color=SESSION?.routeColor||'#F5C518'; subEl.textContent=nearest.name; }}
+  }} else {{
+    const walkMin = Math.round(minD*1000/80);
+    etaEl.textContent = walkMin<1?'<1':walkMin+' min';
+    etaEl.style.color = '#94a3b8';
+    subEl.textContent = 'walk to '+nearest.name;
+  }}
+}}
+ 
+/* ── fetch session + bus location ── */
+async function fetchSession() {{
+  try {{
+    const r    = await fetch('/api/tracking/session/'+TOKEN);
+    if (r.status===404) {{
+      document.getElementById('loading-overlay').style.display='none';
+      document.getElementById('not-found').style.display='flex';
+      return;
+    }}
+    const data = await r.json();
+    if (!data.found) {{
+      document.getElementById('loading-overlay').style.display='none';
+      document.getElementById('not-found').style.display='flex';
+      return;
+    }}
+ 
+    SESSION = data;
+ 
+    /* ── update header ── */
+    document.getElementById('hdr-title').textContent = data.username+"\'s Journey";
+    document.getElementById('hdr-sub').textContent   = data.busId+' · Route '+data.routeId;
+    document.getElementById('info-rider').textContent = data.username;
+    document.getElementById('info-bus').textContent   = data.busId;
+    document.getElementById('last-upd').textContent   = data.updatedAt;
+    document.getElementById('freq-note').textContent  = data.frequency || '';
+ 
+    /* ── active/ended banner ── */
+    if (!data.active) {{
+      document.getElementById('ended-bar').style.display = 'block';
+      const pill = document.getElementById('live-pill');
+      pill.style.background='#6b728015';
+      pill.style.borderColor='#6b728050';
+      pill.style.color='#6b7280';
+      pill.querySelector('.live-dot').style.background='#6b7280';
+      pill.lastChild.textContent=' ENDED';
+    }}
+ 
+    /* ── render stops ── */
+    renderRoute(data);
+ 
+    /* ── bus live location ── */
+    if (data.busLat!==null && data.busLat!==undefined) {{
+      updateBusMarker(data.busLat, data.busLng, data);
+      const upd = data.busUpdated ? new Date(data.busUpdated).toLocaleTimeString() : data.updatedAt;
+      document.getElementById('last-upd').textContent  = upd;
+      document.getElementById('bus-status').textContent = 'Online';
+      fitBoth();
+    }} else {{
+      document.getElementById('bus-status').textContent = 'No live bus';
+    }}
+ 
+    calcETA(data.stops);
+ 
+    /* hide loading overlay */
+    document.getElementById('loading-overlay').style.display='none';
+ 
+  }} catch(e) {{
+    console.error('fetchSession error:', e);
+    document.getElementById('loading-overlay').style.display='none';
+  }}
+}}
+ 
+/* ══ GPS ══ */
+function handlePos(pos) {{
+  geoAttempts=0;
+  if (geoRetryTimer) {{ clearTimeout(geoRetryTimer); geoRetryTimer=null; }}
+ 
   const lat=pos.coords.latitude, lng=pos.coords.longitude, acc=pos.coords.accuracy;
   youLat=lat; youLng=lng;
-
+ 
   /* push to server */
-  if(IS_LIVE&&TOKEN){{
-    fetch('/api/tracking/update',{{method:'POST',
-      headers:{{'Content-Type':'application/json'}},
-      body:JSON.stringify({{token:TOKEN,lat,lng}})}});
+  if (SESSION?.active && TOKEN) {{
+    fetch('/api/tracking/update',{{
+      method:'POST',headers:{{'Content-Type':'application/json'}},
+      body:JSON.stringify({{token:TOKEN,lat,lng}})
+    }}).catch(()=>{{}});
   }}
-
-  if(!youMarker){{
-    youCircle=L.circle([lat,lng],{{color:'#0ea5e9',fillColor:'#0ea5e9',fillOpacity:.1,weight:1.5,radius:Math.max(20,acc)}}).addTo(map);
-    youMarker=L.marker([lat,lng],{{icon:youIco,zIndexOffset:500}}).addTo(map)
-      .bindTooltip('{username} — you',{{permanent:true,direction:'top',offset:[0,-22]}});
-    /* pan map to show both you and bus if available */
-    if(busLat!==null){{
-      const bounds=L.latLngBounds([[lat,lng],[busLat,busLng]]);
-      map.fitBounds(bounds,{{padding:[60,60],maxZoom:15}});
-    }}else{{
-      map.setView([lat,lng],15,{{animate:true}});
-    }}
-    geoStarted=true;
-  }}else{{
+ 
+  if (!youMarker) {{
+    youCircle = L.circle([lat,lng],{{color:'#0ea5e9',fillColor:'#0ea5e9',fillOpacity:.1,weight:1.5,radius:Math.max(20,acc)}}).addTo(map);
+    youMarker = L.marker([lat,lng],{{icon:youIco,zIndexOffset:500}}).addTo(map)
+      .bindTooltip((SESSION?.username||'You')+' — you',{{permanent:true,direction:'top',offset:[0,-22]}});
+    busLat!==null ? fitBoth() : map.setView([lat,lng],15,{{animate:true}});
+  }} else {{
     youMarker.setLatLng([lat,lng]);
     youCircle.setLatLng([lat,lng]);
     youCircle.setRadius(Math.max(20,acc));
   }}
-  document.getElementById('coords-txt').textContent=
+ 
+  document.getElementById('coords-txt').textContent =
     '📍 You: '+lat.toFixed(5)+', '+lng.toFixed(5)+' (±'+Math.round(acc)+'m)';
-  calcETA();
+ 
+  if (SESSION) calcETA(SESSION.stops);
 }}
-
-function handleGeoErr(e){{
-  const m={{1:'Location blocked — tap the lock icon in your browser and allow location',
-           2:'GPS signal unavailable — try moving outside',
-           3:'GPS timed out — retrying…'}};
-  document.getElementById('coords-txt').textContent=m[e.code]||'GPS error '+e.code;
-  document.getElementById('eta-stop').textContent='enable GPS to see ETA';
-}}
-
-/* ── ETA ── */
-function calcETA(){{
-  if(youLat===null)return;
-
-  /* nearest stop to user */
-  let nearest=null,minD=Infinity;
-  STOPS.forEach(s=>{{const d=hav(youLat,youLng,s.lat,s.lng);if(d<minD){{minD=d;nearest=s;}}}});
-  if(!nearest)return;
-
-  const youToStop=Math.round(minD*1000); /* metres from you to stop */
-  const etaEl=document.getElementById('eta-val');
-  const subEl=document.getElementById('eta-stop');
-
-  if(busLat!==null){{
-    /* bus is online — use bus→stop distance */
-    const busToStop=hav(busLat,busLng,nearest.lat,nearest.lng);
-    const etaMin=Math.max(0,Math.round(busToStop/30*60)); /* 30 km/h */
-    if(etaMin===0){{
-      etaEl.textContent='Now'; etaEl.style.color='#16a34a';
-      subEl.textContent='Bus arriving!';
-    }}else if(etaMin===1){{
-      etaEl.textContent='1 min'; etaEl.style.color='#ea580c';
-      subEl.textContent=nearest.n;
-    }}else{{
-      etaEl.textContent=etaMin+' min'; etaEl.style.color='#F5C518';
-      subEl.textContent=nearest.n;
-    }}
-  }}else{{
-    /* no bus online — show walking distance to nearest stop */
-    const walkMin=Math.round(youToStop/80); /* ~80m/min walking */
-    etaEl.textContent=walkMin<1?'<1':walkMin+' min';
-    etaEl.style.color='#94a3b8';
-    subEl.textContent='walk to '+nearest.n;
+ 
+function handleGeoErr(err) {{
+  const msgs = {{
+    1:'🔒 Location blocked — tap the lock icon and allow location',
+    2:'📡 GPS signal weak — move to an open area',
+    3:'⏱ GPS timed out — retrying…'
+  }};
+  document.getElementById('coords-txt').textContent = msgs[err.code]||'GPS error '+err.code;
+  document.getElementById('eta-stop').textContent   = 'enable GPS to see ETA';
+  if (err.code===3 && geoAttempts<5) {{
+    geoAttempts++;
+    if (geoWatchId!==null) {{ navigator.geolocation.clearWatch(geoWatchId); geoWatchId=null; }}
+    document.getElementById('coords-txt').textContent = '⏱ GPS timed out — retrying ('+geoAttempts+'/5)…';
+    geoRetryTimer = setTimeout(startGeo, 3000);
   }}
 }}
-
-/* ── boot ── */
-fetchBus();
+ 
+function startGeo() {{
+  if (!navigator.geolocation) {{
+    document.getElementById('coords-txt').textContent='❌ GPS not available — try Chrome or Safari';
+    return;
+  }}
+  if (geoWatchId!==null) {{ navigator.geolocation.clearWatch(geoWatchId); geoWatchId=null; }}
+  document.getElementById('coords-txt').textContent='🛰 Acquiring your location…';
+  geoWatchId = navigator.geolocation.watchPosition(handlePos, handleGeoErr, {{
+    enableHighAccuracy:true, timeout:15000, maximumAge:5000
+  }});
+}}
+ 
+/* ══ boot ══ */
+fetchSession();
 startGeo();
-if(IS_LIVE) setInterval(fetchBus,8000);
+ 
+/* poll every 8s for live bus updates */
+setInterval(fetchSession, 8000);
 </script>
 </body>
 </html>"""
