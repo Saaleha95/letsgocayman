@@ -2897,10 +2897,10 @@ def buses_coordinates():
     }), 200
 
 
-# ── Standalone location endpoint (still works too) ────────────────────────
-@app.route('/api/buses/location', methods=['POST'])
-def update_bus_location():
-    return buses_registered()
+# # ── Standalone location endpoint (still works too) ────────────────────────
+# @app.route('/api/buses/location', methods=['POST'])
+# def update_bus_location():
+#     return buses_registered()
 
 
 @app.route('/api/buses/coordinates', methods=['GET', 'POST'])
