@@ -286,11 +286,11 @@ def require_admin(fn):
 LANDING_HTML = r"""<!DOCTYPE html>
 <html lang="en">
 <head>
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5902518344335566"
-     crossorigin="anonymous"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LetsGo Cayman — Smart Bus Transport</title>
+<title>LetsGo — Cayman Bus App | Live Tracking, Routes & Fares</title>
+<meta name="description" content="Track your Cayman bus in real time, pay offline with NFC, and stay safe with SOS. LetsGo is Grand Cayman's smart bus app — free on iOS & Android.">
+<meta name="keywords" content="cayman bus, grand cayman bus, cayman bus routes, cayman bus app, grand cayman public transport, bus tracker cayman">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -504,6 +504,7 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
     <div class="hero-content">
       <div class="hero-tag"><span class="live-dot"></span>CAYMAN ISLANDS · AI-POWERED TRANSIT</div>
       <h1 class="hero-title">RIDE<br><span class="gold">SMARTER</span><br>CAYMAN</h1>
+      <h2 style="...existing style...">Grand Cayman's Smartest Cayman Bus App</h2>
       <p class="hero-sub">The Cayman Islands' first AI-powered smart bus app — live tracking, offline payments, and community safety features built for Grand Cayman life.</p>
       <div class="hero-cta-row">
         <a href="#dl" class="btn-primary" onclick="showPage('home')">
@@ -741,6 +742,7 @@ def admin_login():
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LetsGo Admin Login</title>
@@ -763,6 +765,22 @@ def admin_login():
   .back-link a{{color:#8b949e}}
   .back-link a:hover{{color:var(--gold)}}
 </style>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5902518344335566"
+     crossorigin="anonymous"></script>
+<link rel="canonical" href="https://www.letsgocayman.com/">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "MobileApplication",
+  "name": "LetsGo Cayman",
+  "description": "Grand Cayman bus tracking app with live GPS, offline payments, and safety features",
+  "operatingSystem": "iOS, Android",
+  "applicationCategory": "TransportationApplication",
+  "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"},
+  "url": "https://www.letsgocayman.com",
+  "keywords": "cayman bus, grand cayman bus app, bus tracker cayman islands"
+}
+</script>
 </head>
 <body>
 <div class="login-box">
@@ -785,6 +803,706 @@ def admin_login():
   </form>
   <div class="back-link"><a href="/">← Back to LetsGo site</a></div>
 </div>
+</body>
+</html>"""
+
+@app.route('/sitemap.xml')
+def sitemap():
+    from flask import Response
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://www.letsgocayman.com/</loc><priority>1.0</priority></url>
+  <url><loc>https://www.letsgocayman.com/cayman-bus</loc><priority>0.9</priority></url>
+  <url><loc>https://www.letsgocayman.com/support</loc><priority>0.6</priority></url>
+  <url><loc>https://www.letsgocayman.com/drivers</loc><priority>0.5</priority></url>
+</urlset>"""
+    return Response(xml, mimetype='application/xml')
+
+@app.route('/robots.txt')
+def robots():
+    from flask import Response
+    txt = "User-agent: *\nAllow: /\nSitemap: https://www.letsgocayman.com/sitemap.xml"
+    return Response(txt, mimetype='text/plain')
+
+@app.route('/cayman-bus')
+def cayman_bus_page():
+    return """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cayman Bus Guide — Routes, Fares & Live Tracking | LetsGo</title>
+<meta name="description" content="Everything about the Cayman bus: all 9 Grand Cayman routes, fares from CI$2.50, schedules, and live GPS tracking via the LetsGo app. Free download on iOS & Android.">
+<meta name="keywords" content="cayman bus, grand cayman bus, cayman bus routes, cayman bus fares, cayman bus schedule, grand cayman public transport, cayman bus app, west bay bus, george town bus, bodden town bus, east end bus, cayman islands bus">
+<link rel="canonical" href="https://www.letsgocayman.com/cayman-bus">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚌</text></svg>">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "Cayman Bus Guide — Routes, Fares & Live Tracking",
+  "description": "Grand Cayman public bus routes, fares, schedules and live GPS tracking",
+  "url": "https://www.letsgocayman.com/cayman-bus",
+  "breadcrumb": {
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {"@type": "ListItem", "position": 1, "name": "LetsGo Cayman", "item": "https://www.letsgocayman.com"},
+      {"@type": "ListItem", "position": 2, "name": "Cayman Bus Guide", "item": "https://www.letsgocayman.com/cayman-bus"}
+    ]
+  }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "How much does the Cayman bus cost?",
+      "acceptedAnswer": {"@type": "Answer", "text": "Cayman bus fares start at CI$2.50 for short routes in George Town. Longer routes to East End or North Side cost CI$3–CI$4. Exact fares depend on the distance and route taken."}
+    },
+    {
+      "@type": "Question",
+      "name": "How many bus routes are there in Grand Cayman?",
+      "acceptedAnswer": {"@type": "Answer", "text": "There are 9 main public bus routes covering Grand Cayman, including West Bay routes WB1, WB2 and WB3, East End routes 7A and 7B, North Side routes 8A and 8B, and routes 4A and 9A serving inland and far east areas."}
+    },
+    {
+      "@type": "Question",
+      "name": "Is there a bus app for Grand Cayman?",
+      "acceptedAnswer": {"@type": "Answer", "text": "Yes — LetsGo is Grand Cayman's dedicated bus app, available free on iOS and Android. It shows live bus locations on a map, provides ETAs, lets you pay with NFC, and includes offline tracking for areas with poor signal."}
+    },
+    {
+      "@type": "Question",
+      "name": "What are the Cayman bus operating hours?",
+      "acceptedAnswer": {"@type": "Answer", "text": "Most Cayman bus routes operate from approximately 6:00 AM to 11:00 PM Monday to Saturday. Sunday and public holiday service is reduced. The LetsGo app shows real-time availability for each route."}
+    },
+    {
+      "@type": "Question",
+      "name": "Does the Cayman bus go to Seven Mile Beach?",
+      "acceptedAnswer": {"@type": "Answer", "text": "Yes, routes WB1 and WB2 serve Seven Mile Beach, running from George Town Depot through Camana Bay and along the beach corridor to West Bay. These are the most frequent routes, running every 2–5 minutes during peak hours."}
+    }
+  ]
+}
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --gold:#F5C518;--gold2:#e8b400;--navy:#0B1F3A;--navy2:#0e2847;
+  --teal:#00897B;--sand:#F9F4E8;--white:#fff;
+  --text:#1a1a2e;--muted:#6B7B8D;--bg:#f5f5f0;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden}
+a{color:var(--navy);text-decoration:none}
+a:hover{color:var(--gold2)}
+
+/* ── nav ── */
+nav{background:var(--navy);padding:0 60px;height:64px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 20px rgba(0,0,0,.3)}
+.nav-logo{font-family:'Playfair Display',serif;font-size:22px;font-weight:900;color:var(--gold);text-decoration:none;display:flex;align-items:center;gap:8px}
+.nav-links{display:flex;gap:24px;list-style:none}
+.nav-links a{color:rgba(255,255,255,.7);font-size:14px;font-weight:500;text-decoration:none;transition:color .2s}
+.nav-links a:hover{color:var(--gold)}
+.nav-dl{background:var(--gold);color:var(--navy);padding:9px 22px;border-radius:50px;font-weight:700;font-size:13px;text-decoration:none;transition:opacity .2s}
+.nav-dl:hover{opacity:.88}
+
+/* ── hero ── */
+.hero{background:var(--navy);color:white;padding:80px 60px 64px;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 80% 50%,rgba(245,197,24,.08),transparent 60%);pointer-events:none}
+.flag-stripe{position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#003F87 33%,#fff 33%,#fff 66%,#CC0001 66%)}
+.hero-inner{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:8px;background:rgba(245,197,24,.1);border:1px solid rgba(245,197,24,.3);color:var(--gold);font-size:11px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;padding:6px 14px;border-radius:50px;margin-bottom:20px}
+.live-dot{width:6px;height:6px;background:#4caf50;border-radius:50%;animation:ldot 1.2s infinite}
+@keyframes ldot{0%,100%{opacity:1}50%{opacity:.2}}
+.hero h1{font-family:'Playfair Display',serif;font-size:clamp(40px,5vw,64px);font-weight:900;line-height:1;margin-bottom:20px}
+.hero h1 .gold{color:var(--gold)}
+.hero-sub{font-size:16px;color:rgba(255,255,255,.65);line-height:1.8;margin-bottom:32px;max-width:480px}
+.hero-ctas{display:flex;gap:12px;flex-wrap:wrap}
+.btn-gold{display:inline-flex;align-items:center;gap:8px;background:var(--gold);color:var(--navy);padding:13px 28px;border-radius:50px;font-weight:700;font-size:14px;text-decoration:none;transition:opacity .2s}
+.btn-gold:hover{opacity:.88;color:var(--navy)}
+.btn-outline{display:inline-flex;align-items:center;gap:8px;background:transparent;color:white;padding:13px 28px;border-radius:50px;font-weight:600;font-size:14px;border:1.5px solid rgba(255,255,255,.25);text-decoration:none;transition:border-color .2s,color .2s}
+.btn-outline:hover{border-color:var(--gold);color:var(--gold)}
+
+/* stats bar */
+.stats-bar{display:flex;gap:48px;padding-top:36px;border-top:1px solid rgba(255,255,255,.1);margin-top:36px}
+.stat .num{font-family:'Playfair Display',serif;font-size:36px;font-weight:900;color:var(--gold);line-height:1}
+.stat .lbl{font-size:12px;color:rgba(255,255,255,.4);letter-spacing:1.5px;text-transform:uppercase;margin-top:4px}
+
+/* right hero panel */
+.hero-card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:28px;backdrop-filter:blur(8px)}
+.hcard-title{font-size:13px;font-weight:700;color:rgba(255,255,255,.5);letter-spacing:1px;text-transform:uppercase;margin-bottom:16px}
+.route-pill{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);margin-bottom:8px;transition:background .2s}
+.route-pill:hover{background:rgba(255,255,255,.1)}
+.route-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.route-pill-name{font-size:13px;font-weight:600;color:white;flex:1}
+.route-pill-freq{font-size:11px;color:rgba(255,255,255,.4)}
+.hcard-more{text-align:center;margin-top:10px;font-size:12px;color:rgba(255,255,255,.3)}
+
+/* ── main sections ── */
+.container{max-width:1100px;margin:0 auto;padding:0 60px}
+section{padding:72px 0}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:3px;color:var(--teal);text-transform:uppercase;margin-bottom:12px}
+h2.section-title{font-family:'Playfair Display',serif;font-size:clamp(32px,4vw,50px);font-weight:900;line-height:1.05;color:var(--navy);margin-bottom:20px}
+h2.section-title .accent{color:var(--gold2)}
+.section-intro{font-size:16px;color:var(--muted);line-height:1.8;max-width:640px;margin-bottom:48px}
+
+/* ── ROUTES TABLE ── */
+.routes-section{background:white}
+.routes-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.route-card{border:1.5px solid #e8e8e0;border-radius:16px;padding:24px;background:white;transition:transform .25s,box-shadow .25s,border-color .25s;position:relative;overflow:hidden}
+.route-card::before{content:'';position:absolute;top:0;left:0;width:4px;height:100%;background:var(--rc);border-radius:0}
+.route-card:hover{transform:translateY(-4px);box-shadow:0 16px 40px rgba(11,31,58,.08);border-color:var(--rc)}
+.route-badge{display:inline-block;background:var(--rc);color:white;font-weight:800;font-size:12px;letter-spacing:1px;padding:4px 12px;border-radius:20px;margin-bottom:12px;font-family:'Outfit',sans-serif}
+.route-card h3{font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:var(--navy);margin-bottom:8px;line-height:1.3}
+.route-card .rc-desc{font-size:13px;color:var(--muted);line-height:1.65;margin-bottom:14px}
+.rc-meta{display:flex;gap:8px;flex-wrap:wrap}
+.rc-tag{display:inline-flex;align-items:center;gap:4px;background:#f5f5f0;color:var(--navy);font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px}
+
+/* ── FARES ── */
+.fares-section{background:var(--sand)}
+.fares-grid{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:start}
+.fares-table{width:100%;border-collapse:collapse;background:white;border-radius:16px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.06)}
+.fares-table th{background:var(--navy);color:white;padding:14px 18px;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;text-align:left}
+.fares-table td{padding:14px 18px;border-bottom:1px solid #f0f0e8;font-size:14px}
+.fares-table tr:last-child td{border-bottom:none}
+.fares-table tr:hover td{background:#fafaf5}
+.fare-amt{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--gold2)}
+.fares-info{display:flex;flex-direction:column;gap:18px}
+.fare-tip{background:white;border-radius:14px;padding:20px 22px;border-left:4px solid var(--gold);box-shadow:0 2px 10px rgba(0,0,0,.05)}
+.fare-tip h4{font-size:14px;font-weight:700;color:var(--navy);margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.fare-tip p{font-size:13px;color:var(--muted);line-height:1.65}
+
+/* ── HOW TO RIDE ── */
+.how-section{background:var(--navy)}
+.how-section .eyebrow{color:rgba(245,197,24,.6)}
+.how-section h2{color:white}
+.how-section .section-intro{color:rgba(255,255,255,.5)}
+.steps-row{display:grid;grid-template-columns:repeat(5,1fr);gap:2px;background:rgba(255,255,255,.06);border-radius:16px;overflow:hidden}
+.step{background:var(--navy2);padding:28px 22px;text-align:center;transition:background .2s;position:relative}
+.step:hover{background:rgba(245,197,24,.06)}
+.step-num{width:48px;height:48px;background:var(--gold);color:var(--navy);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:18px;font-weight:900;margin:0 auto 16px}
+.step h4{font-size:14px;font-weight:700;color:white;margin-bottom:8px}
+.step p{font-size:12px;color:rgba(255,255,255,.45);line-height:1.6}
+
+/* ── FAQ ── */
+.faq-section{background:white}
+.faq-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:0}
+.faq-item{background:var(--sand);border-radius:14px;padding:24px;border:1px solid #e8e4d8;transition:border-color .2s}
+.faq-item:hover{border-color:var(--gold)}
+.faq-item h3{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:10px;display:flex;align-items:flex-start;gap:10px}
+.faq-item h3 .fq{color:var(--gold);font-size:18px;flex-shrink:0;line-height:1.1}
+.faq-item p{font-size:14px;color:var(--muted);line-height:1.75}
+.faq-item p a{color:var(--teal)}
+
+/* ── STOPS / MAP INFO ── */
+.stops-section{background:var(--bg)}
+.stops-grid{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:start}
+.stops-list{display:flex;flex-direction:column;gap:10px}
+.stop-row{background:white;border:1px solid #e8e4d8;border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:14px;transition:border-color .2s}
+.stop-row:hover{border-color:var(--gold)}
+.stop-icon{width:36px;height:36px;background:rgba(245,197,24,.12);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.stop-name{font-size:14px;font-weight:600;color:var(--navy)}
+.stop-routes{font-size:11px;color:var(--muted);margin-top:2px}
+.hub-badge{display:inline-block;background:rgba(245,197,24,.15);color:var(--gold2);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;margin-left:6px}
+
+/* ── SEO ARTICLE TEXT ── */
+.article-section{background:white;border-top:1px solid #e8e4d8}
+.article-cols{display:grid;grid-template-columns:2fr 1fr;gap:60px;align-items:start}
+.article-body h3{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--navy);margin:28px 0 10px}
+.article-body h3:first-child{margin-top:0}
+.article-body p{font-size:15px;color:#4a5568;line-height:1.85;margin-bottom:14px}
+.article-body ul{margin:12px 0 16px 18px}
+.article-body li{font-size:15px;color:#4a5568;line-height:1.75;margin-bottom:6px}
+.article-sidebar{position:sticky;top:80px}
+.sidebar-card{background:var(--navy);color:white;border-radius:16px;padding:28px;margin-bottom:20px}
+.sidebar-card h4{font-size:14px;font-weight:700;color:var(--gold);margin-bottom:14px;letter-spacing:1px;text-transform:uppercase}
+.sc-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.08);font-size:13px}
+.sc-row:last-child{border-bottom:none}
+.sc-row .key{color:rgba(255,255,255,.55)}
+.sc-row .val{color:white;font-weight:600}
+.sidebar-app-card{background:var(--sand);border:1px solid #e8e4d8;border-radius:16px;padding:24px;text-align:center}
+.sidebar-app-card p{font-size:13px;color:var(--muted);line-height:1.65;margin-bottom:16px}
+.app-btns{display:flex;flex-direction:column;gap:8px}
+.app-btn-dark{display:flex;align-items:center;justify-content:center;gap:10px;background:var(--navy);color:white;padding:12px 16px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;transition:opacity .2s}
+.app-btn-dark:hover{opacity:.88;color:white}
+
+/* ── CTA BANNER ── */
+.cta-section{background:var(--gold);text-align:center;padding:80px 60px;position:relative;overflow:hidden}
+.cta-section::before{content:'LETSGO';font-family:'Playfair Display',serif;font-size:200px;font-weight:900;color:rgba(11,31,58,.06);position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);white-space:nowrap;pointer-events:none;letter-spacing:8px}
+.cta-section h2{font-family:'Playfair Display',serif;font-size:clamp(36px,6vw,72px);font-weight:900;color:var(--navy);line-height:.95;margin-bottom:14px}
+.cta-section p{font-size:17px;color:rgba(11,31,58,.6);max-width:400px;margin:0 auto 40px;line-height:1.65}
+.cta-btns{display:flex;justify-content:center;gap:16px;flex-wrap:wrap;position:relative}
+.cta-app-btn{display:flex;align-items:center;gap:14px;background:var(--navy);color:white;padding:15px 30px;border-radius:14px;text-decoration:none;transition:opacity .2s}
+.cta-app-btn:hover{opacity:.88;color:white}
+.cta-app-btn .dt small{display:block;font-size:10px;opacity:.5;letter-spacing:1px;text-transform:uppercase}
+.cta-app-btn .dt strong{display:block;font-size:17px;font-weight:700}
+
+/* ── footer ── */
+footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:36px 60px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px}
+.footer-logo{font-family:'Playfair Display',serif;font-size:20px;font-weight:900;color:var(--gold)}
+.footer-links{display:flex;gap:24px}
+.footer-links a{color:rgba(255,255,255,.35);font-size:13px;text-decoration:none;transition:color .2s}
+.footer-links a:hover{color:var(--gold)}
+.footer-copy{font-size:12px;color:rgba(255,255,255,.25)}
+
+/* ── breadcrumb ── */
+.breadcrumb{background:var(--navy);padding:12px 60px;border-bottom:1px solid rgba(255,255,255,.06)}
+.breadcrumb ol{display:flex;gap:8px;list-style:none;align-items:center}
+.breadcrumb li{font-size:12px;color:rgba(255,255,255,.4)}
+.breadcrumb li a{color:rgba(255,255,255,.5);text-decoration:none}
+.breadcrumb li a:hover{color:var(--gold)}
+.breadcrumb li::after{content:'/';margin-left:8px;opacity:.3}
+.breadcrumb li:last-child::after{display:none}
+.breadcrumb li:last-child{color:var(--gold)}
+
+/* responsive */
+@media(max-width:900px){
+  nav{padding:0 20px}
+  .nav-links{display:none}
+  .breadcrumb{padding:10px 20px}
+  .hero{padding:56px 20px 48px}
+  .hero-inner{grid-template-columns:1fr}
+  .hero-card{display:none}
+  .container{padding:0 20px}
+  .routes-grid{grid-template-columns:1fr}
+  .fares-grid,.stops-grid,.article-cols,.faq-grid{grid-template-columns:1fr}
+  .steps-row{grid-template-columns:1fr 1fr}
+  .cta-section{padding:60px 20px}
+  footer{padding:28px 20px;flex-direction:column;text-align:center}
+  .stats-bar{gap:20px;flex-wrap:wrap}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="/" class="nav-logo">🚌 LetsGo</a>
+  <ul class="nav-links">
+    <li><a href="/">Home</a></li>
+    <li><a href="/#features">Features</a></li>
+    <li><a href="/drivers">For Drivers</a></li>
+    <li><a href="/support">Support</a></li>
+  </ul>
+  <a href="https://apps.apple.com/us/app/letsgo-cayman/id6768839802" target="_blank" class="nav-dl">Download App</a>
+</nav>
+
+<!-- BREADCRUMB -->
+<div class="breadcrumb">
+  <ol>
+    <li><a href="/">LetsGo Cayman</a></li>
+    <li>Cayman Bus Guide</li>
+  </ol>
+</div>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-inner">
+    <div>
+      <div class="hero-eyebrow"><span class="live-dot"></span> Grand Cayman Public Transport</div>
+      <h1>The Complete<br><span class="gold">Cayman Bus</span><br>Guide</h1>
+      <p class="hero-sub">Every route, fare, stop and schedule for Grand Cayman's public bus network — plus live GPS tracking via the LetsGo app.</p>
+      <div class="hero-ctas">
+        <a href="https://apps.apple.com/us/app/letsgo-cayman/id6768839802" target="_blank" class="btn-gold">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+          Track My Bus
+        </a>
+        <a href="#routes" class="btn-outline">View All Routes ↓</a>
+      </div>
+      <div class="stats-bar">
+        <div class="stat"><div class="num">9</div><div class="lbl">Bus Routes</div></div>
+        <div class="stat"><div class="num">CI$2.50</div><div class="lbl">From Per Ride</div></div>
+        <div class="stat"><div class="num">24/7</div><div class="lbl">Live Tracking</div></div>
+        <div class="stat"><div class="num">100%</div><div class="lbl">Free App</div></div>
+      </div>
+    </div>
+    <div class="hero-card">
+      <div class="hcard-title">🚌 Live Routes</div>
+      <div class="route-pill"><div class="route-dot" style="background:#F5C518"></div><span class="route-pill-name">WB1 — Seven Mile Beach</span><span class="route-pill-freq">Every 2–5 min</span></div>
+      <div class="route-pill"><div class="route-dot" style="background:#4CAF50"></div><span class="route-pill-name">WB2 — Watercourse / Hell</span><span class="route-pill-freq">Every 2–5 min</span></div>
+      <div class="route-pill"><div class="route-dot" style="background:#9C27B0"></div><span class="route-pill-name">WB3 — Industrial / Barkers</span><span class="route-pill-freq">Every 15 min</span></div>
+      <div class="route-pill"><div class="route-dot" style="background:#FF5722"></div><span class="route-pill-name">7A — East End / Blow Holes</span><span class="route-pill-freq">Every 5–10 min</span></div>
+      <div class="route-pill"><div class="route-dot" style="background:#E91E63"></div><span class="route-pill-name">8A — Rum Point / Kai</span><span class="route-pill-freq">Every 30 min</span></div>
+      <div class="hcard-more">+ 4 more routes — see below</div>
+    </div>
+  </div>
+</section>
+
+<!-- ROUTES -->
+<section class="routes-section" id="routes">
+  <div class="container">
+    <p class="eyebrow">All 9 routes</p>
+    <h2 class="section-title">Grand Cayman Bus <span class="accent">Routes</span></h2>
+    <p class="section-intro">Grand Cayman's public minibus network connects George Town to every major district. All routes depart from the George Town Bus Depot. Use the LetsGo app to see live locations and real-time ETAs.</p>
+    <div class="routes-grid">
+
+      <div class="route-card" style="--rc:#F5C518">
+        <div class="route-badge">WB1</div>
+        <h3>Seven Mile Beach – Northwest Point – Turtle Centre</h3>
+        <p class="rc-desc">The most popular route. Runs from George Town Depot through Camana Bay and the entire Seven Mile Beach corridor to West Bay, Turtle Centre and Northwest Point.</p>
+        <div class="rc-meta">
+          <span class="rc-tag">📍 George Town → West Bay</span>
+          <span class="rc-tag">⏱ Every 2–5 min</span>
+          <span class="rc-tag">11 stops</span>
+        </div>
+      </div>
+
+      <div class="route-card" style="--rc:#4CAF50">
+        <div class="route-badge">WB2</div>
+        <h3>Seven Mile Beach – Watercourse Road – Hell</h3>
+        <p class="rc-desc">Serves Seven Mile Beach and Camana Bay, then diverts via Watercourse Road to the Cayman Turtle Centre and the famous Hell post office.</p>
+        <div class="rc-meta">
+          <span class="rc-tag">📍 George Town → Hell</span>
+          <span class="rc-tag">⏱ Every 2–5 min</span>
+          <span class="rc-tag">8 stops</span>
+        </div>
+      </div>
+
+      <div class="route-card" style="--rc:#9C27B0">
+        <div class="route-badge">WB3</div>
+        <h3>Owen Roberts Drive – Industrial Park – SMB – Barkers</h3>
+        <p class="rc-desc">Loops through the Industrial Park and Owen Roberts area before joining the SMB corridor, continuing to Esterley Tibbetts Highway, Mount Pleasant and Barkers beach.</p>
+        <div class="rc-meta">
+          <span class="rc-tag">📍 George Town → Barkers</span>
+          <span class="rc-tag">⏱ Every 15 min</span>
+          <span class="rc-tag">9 stops</span>
+        </div>
+      </div>
+
+      <div class="route-card" style="--rc:#00BCD4">
+        <div class="route-badge">4A</div>
+        <h3>Walkers Road – Fairbanks Road – Hospitals</h3>
+        <p class="rc-desc">An essential inland route connecting Walkers Road and Fairbanks Road to Health City and the schools complex. Important for workers and students travelling without a car.</p>
+        <div class="rc-meta">
+          <span class="rc-tag">📍 George Town → Health City</span>
+          <span class="rc-tag">⏱ Every 30 min</span>
+          <span class="rc-tag">5 stops</span>
+        </div>
+      </div>
+
+      <div class="route-card" style="--rc:#FF5722">
+        <div class="route-badge">7A</div>
+        <h3>East End – Queens Highway – Blow Holes</h3>
+        <p class="rc-desc">The longest route, running east from George Town through Prospect, Savannah, Bodden Town, Breakers and all the way to the Blow Holes, Wreck of the Ten Sails and Gun Bay.</p>
+        <div class="rc-meta">
+          <span class="rc-tag">📍 George Town → East End</span>
+          <span class="rc-tag">⏱ Every 5–10 min</span>
+          <span class="rc-tag">16 stops</span>
+        </div>
+      </div>
+
+      <div class="route-card" style="--rc:#FF9800">
+        <div class="route-badge">7B</div>
+        <h3>Walkers Rd – Smith Cove – South Sound – East End</h3>
+        <p class="rc-desc">Follows the southern coastal road via Smith Cove and South Sound before connecting to the main East End highway. Great for riders in the South Sound residential area.</p>
+        <div class="rc-meta">
+          <span class="rc-tag">📍 George Town → East End</span>
+          <span class="rc-tag">⏱ Every 30 min</span>
+          <span class="rc-tag">11 stops</span>
+        </div>
+      </div>
+
+      <div class="route-card" style="--rc:#E91E63">
+        <div class="route-badge">8A</div>
+        <h3>Cayman Kai – Starfish Point – North Side – Rum Point</h3>
+        <p class="rc-desc">Serves the scenic north coast through Hutland and Old Man Bay to Rum Point, Starfish Point and Cayman Kai — ideal for day-trippers and North Side residents.</p>
+        <div class="rc-meta">
+          <span class="rc-tag">📍 George Town → Cayman Kai</span>
+          <span class="rc-tag">⏱ Every 30 min</span>
+          <span class="rc-tag">8 stops</span>
+        </div>
+      </div>
+
+      <div class="route-card" style="--rc:#3F51B5">
+        <div class="route-badge">8B</div>
+        <h3>Walkers Rd – Smith Cove – Frank Sound – Cayman Kai</h3>
+        <p class="rc-desc">An alternative north route that takes the south coast road before heading inland through Frank Sound to reach Cayman Kai from the south-east.</p>
+        <div class="rc-meta">
+          <span class="rc-tag">📍 George Town → Cayman Kai</span>
+          <span class="rc-tag">⏱ Every 30 min</span>
+          <span class="rc-tag">8 stops</span>
+        </div>
+      </div>
+
+      <div class="route-card" style="--rc:#009688">
+        <div class="route-badge">9A</div>
+        <h3>Queens Highway – Gun Bay – Botanic Park – Mastic Trail</h3>
+        <p class="rc-desc">Runs the full length of Queens Highway to the far east, serving Gun Bay, the Botanic Park and Mastic Trail — popular with eco-tourists and eastern district residents.</p>
+        <div class="rc-meta">
+          <span class="rc-tag">📍 George Town → Mastic Trail</span>
+          <span class="rc-tag">⏱ Every 5–10 min</span>
+          <span class="rc-tag">11 stops</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- FARES -->
+<section class="fares-section" id="fares">
+  <div class="container">
+    <p class="eyebrow">Prices &amp; payment</p>
+    <h2 class="section-title">Cayman Bus <span class="accent">Fares</span></h2>
+    <p class="section-intro">Cayman bus fares are set by zone. All fares are in Cayman Islands dollars (CI$). Cash is accepted, and the LetsGo app lets you pay by NFC tap — no cash needed.</p>
+    <div class="fares-grid">
+      <table class="fares-table">
+        <thead>
+          <tr>
+            <th>Journey</th>
+            <th>Route(s)</th>
+            <th>Fare (CI$)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>George Town → Seven Mile Beach</td><td>WB1, WB2</td><td class="fare-amt">CI$2.50</td></tr>
+          <tr><td>George Town → West Bay</td><td>WB1, WB2, WB3</td><td class="fare-amt">CI$2.50</td></tr>
+          <tr><td>George Town → Camana Bay</td><td>WB1, WB2</td><td class="fare-amt">CI$2.50</td></tr>
+          <tr><td>George Town → Bodden Town</td><td>7A, 7B</td><td class="fare-amt">CI$2.50</td></tr>
+          <tr><td>George Town → East End</td><td>7A, 7B</td><td class="fare-amt">CI$3.00</td></tr>
+          <tr><td>George Town → North Side</td><td>8A, 8B</td><td class="fare-amt">CI$3.00</td></tr>
+          <tr><td>George Town → Rum Point / Cayman Kai</td><td>8A, 8B</td><td class="fare-amt">CI$4.00</td></tr>
+          <tr><td>George Town → Hospitals / Schools</td><td>4A</td><td class="fare-amt">CI$2.50</td></tr>
+          <tr><td>George Town → Botanic Park / Mastic Trail</td><td>9A</td><td class="fare-amt">CI$3.00</td></tr>
+        </tbody>
+      </table>
+      <div class="fares-info">
+        <div class="fare-tip">
+          <h4>💳 Pay by NFC tap</h4>
+          <p>Load your LetsGo wallet once and tap your phone at the reader on any bus. No cash, no change, no fuss — works offline too.</p>
+        </div>
+        <div class="fare-tip">
+          <h4>💵 Cash accepted</h4>
+          <p>All Cayman buses accept CI$ cash. Drivers generally carry change, but exact fare is always appreciated, especially on early morning runs.</p>
+        </div>
+        <div class="fare-tip">
+          <h4>📅 Monthly passes</h4>
+          <p>Frequent riders can purchase monthly passes through the LetsGo app for unlimited travel on selected routes — significant savings for daily commuters.</p>
+        </div>
+        <div class="fare-tip">
+          <h4>👶 Children &amp; concessions</h4>
+          <p>Children under 5 travel free when accompanied by a fare-paying adult. Concession fares apply for school students in uniform on school days.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW TO RIDE -->
+<section class="how-section" id="how">
+  <div class="container">
+    <p class="eyebrow">Getting started</p>
+    <h2 class="section-title" style="color:white">How to Ride the <span class="accent">Cayman Bus</span></h2>
+    <p class="section-intro">Taking the bus in Grand Cayman is straightforward once you know how it works. Here's everything a first-time rider needs to know.</p>
+    <div class="steps-row">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h4>Download LetsGo</h4>
+        <p>Get the free app on iOS or Android. See every route on a live map with real-time bus locations.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h4>Find your route</h4>
+        <p>Select your destination or browse all 9 routes. The app shows the next bus and walking distance to your nearest stop.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h4>Wait at a stop</h4>
+        <p>Cayman minibuses pick up from designated yellow posts. You can also wave down a bus at safe spots along the route.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <h4>Tap or pay cash</h4>
+        <p>Tap your phone on the NFC reader near the driver, or hand over cash. You'll receive a verbal fare confirmation.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <h4>Track &amp; arrive</h4>
+        <p>Watch your journey live in the app. Get a notification before your stop. Tap the bell to request the next stop.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- KEY STOPS -->
+<section class="stops-section" id="stops">
+  <div class="container">
+    <p class="eyebrow">Key stops</p>
+    <h2 class="section-title">Major <span class="accent">Bus Stops</span> in Grand Cayman</h2>
+    <p class="section-intro">Most routes begin or pass through George Town. These are the most-used stops across the island — all visible in the LetsGo app with real-time arrivals.</p>
+    <div class="stops-grid">
+      <div class="stops-list">
+        <div class="stop-row"><div class="stop-icon">🏛</div><div><div class="stop-name">George Town Depot <span class="hub-badge">Hub</span></div><div class="stop-routes">All routes · George Town</div></div></div>
+        <div class="stop-row"><div class="stop-icon">⚓</div><div><div class="stop-name">George Town Harbour</div><div class="stop-routes">WB1, WB2, 7A · Cruise ship district</div></div></div>
+        <div class="stop-row"><div class="stop-icon">🏖</div><div><div class="stop-name">Seven Mile Beach South</div><div class="stop-routes">WB1, WB2, WB3 · Beach corridor</div></div></div>
+        <div class="stop-row"><div class="stop-icon">🏢</div><div><div class="stop-name">Camana Bay</div><div class="stop-routes">WB1, WB2, WB3 · Shopping &amp; dining</div></div></div>
+        <div class="stop-row"><div class="stop-icon">🏥</div><div><div class="stop-name">Health City / Hospitals</div><div class="stop-routes">4A · Medical district</div></div></div>
+        <div class="stop-row"><div class="stop-icon">🐢</div><div><div class="stop-name">Cayman Turtle Centre</div><div class="stop-routes">WB1, WB2, WB3 · West Bay attraction</div></div></div>
+        <div class="stop-row"><div class="stop-icon">🏘</div><div><div class="stop-name">Bodden Town <span class="hub-badge">Hub</span></div><div class="stop-routes">7A, 7B, 9A · Eastern district</div></div></div>
+        <div class="stop-row"><div class="stop-icon">🌊</div><div><div class="stop-name">The Blow Holes</div><div class="stop-routes">7A · East End landmark</div></div></div>
+        <div class="stop-row"><div class="stop-icon">⛵</div><div><div class="stop-name">Rum Point</div><div class="stop-routes">8A · North Side beach</div></div></div>
+        <div class="stop-row"><div class="stop-icon">🌿</div><div><div class="stop-name">Botanic Park</div><div class="stop-routes">9A · Mastic Trail &amp; nature</div></div></div>
+      </div>
+      <div>
+        <div style="background:white;border:1px solid #e8e4d8;border-radius:16px;padding:28px;margin-bottom:20px">
+          <h3 style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--navy);margin-bottom:14px">🗺 About George Town Depot</h3>
+          <p style="font-size:14px;color:var(--muted);line-height:1.75;margin-bottom:14px">The George Town Bus Depot on Edward Street is the main hub for all Cayman bus routes. Every route starts or terminates here, making it easy to transfer between routes in a single stop.</p>
+          <p style="font-size:14px;color:var(--muted);line-height:1.75">The depot has covered waiting areas, route maps and public toilets. It sits a short walk from the cruise ship terminal and the main shopping area on Harbour Drive.</p>
+        </div>
+        <div style="background:var(--navy);border-radius:16px;padding:24px;color:white">
+          <h4 style="font-size:14px;font-weight:700;color:var(--gold);margin-bottom:12px;letter-spacing:1px;text-transform:uppercase">📱 Find any stop instantly</h4>
+          <p style="font-size:13px;color:rgba(255,255,255,.55);line-height:1.7;margin-bottom:16px">The LetsGo app shows every stop on the island with real-time bus arrivals, walking directions, and a one-tap community report if something's wrong at a stop.</p>
+          <a href="https://apps.apple.com/us/app/letsgo-cayman/id6768839802" target="_blank" style="display:inline-flex;align-items:center;gap:8px;background:var(--gold);color:var(--navy);padding:11px 20px;border-radius:10px;font-size:13px;font-weight:700;text-decoration:none">Download Free →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="faq-section" id="faq">
+  <div class="container">
+    <p class="eyebrow">Common questions</p>
+    <h2 class="section-title">Cayman Bus <span class="accent">FAQs</span></h2>
+    <p class="section-intro" style="margin-bottom:32px">Everything first-time and regular riders ask about the Cayman bus system.</p>
+    <div class="faq-grid">
+      <div class="faq-item">
+        <h3><span class="fq">Q</span> How much does the Cayman bus cost?</h3>
+        <p>Fares start at <strong>CI$2.50</strong> for most routes within George Town, West Bay and Seven Mile Beach. Longer routes to East End or North Side cost CI$3–CI$4. Children under 5 ride free. You can pay by cash or NFC tap using the LetsGo app.</p>
+      </div>
+      <div class="faq-item">
+        <h3><span class="fq">Q</span> What time do Cayman buses run?</h3>
+        <p>Most routes operate from approximately <strong>6:00 AM to 11:00 PM</strong> Monday to Saturday. Service is reduced on Sundays and public holidays. High-frequency routes like WB1 and WB2 run as often as every 2–5 minutes during peak hours.</p>
+      </div>
+      <div class="faq-item">
+        <h3><span class="fq">Q</span> Does the bus go to Seven Mile Beach?</h3>
+        <p>Yes — routes <strong>WB1, WB2 and WB3</strong> all serve Seven Mile Beach, running from George Town through Camana Bay along the beach corridor all the way to West Bay. WB1 and WB2 are the most frequent, running every 2–5 minutes.</p>
+      </div>
+      <div class="faq-item">
+        <h3><span class="fq">Q</span> Is there a bus to East End?</h3>
+        <p>Yes. Route <strong>7A</strong> runs from George Town along the southern Queens Highway all the way to East End, the Blow Holes, Wreck of the Ten Sails and Gun Bay. Route <strong>7B</strong> takes the South Sound coastal road as an alternative. Route <strong>9A</strong> serves Botanic Park and Mastic Trail.</p>
+      </div>
+      <div class="faq-item">
+        <h3><span class="fq">Q</span> Can I track the bus in real time?</h3>
+        <p>Yes — the <strong>LetsGo app</strong> (free on iOS and Android) shows every bus live on a map with GPS-accurate locations and ETAs. For areas with poor signal, the app switches to offline SMS tracking automatically so you're never left waiting in uncertainty.</p>
+      </div>
+      <div class="faq-item">
+        <h3><span class="fq">Q</span> How do I get from the cruise terminal to Seven Mile Beach?</h3>
+        <p>From George Town's cruise terminal, walk about 5 minutes to the Bus Depot on Edward Street and board <strong>route WB1 or WB2</strong>. Buses depart every few minutes. The fare is CI$2.50 each way and the journey takes around 10–20 minutes depending on traffic.</p>
+      </div>
+      <div class="faq-item">
+        <h3><span class="fq">Q</span> Are Cayman buses air-conditioned?</h3>
+        <p>Most Cayman minibuses are air-conditioned, especially on major routes like WB1 and 7A. Older vehicles on some routes may use open windows. The LetsGo app's community reports feature lets riders flag comfort issues on specific buses.</p>
+      </div>
+      <div class="faq-item">
+        <h3><span class="fq">Q</span> Is there a bus to Rum Point or Cayman Kai?</h3>
+        <p>Yes — route <strong>8A</strong> connects George Town to North Side, Hutland, Old Man Bay, Rum Point, Starfish Point and Cayman Kai. Route <strong>8B</strong> offers an alternative path via South Sound and Frank Sound. Both run approximately every 30 minutes. Always check live times in the LetsGo app before heading out.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SEO ARTICLE -->
+<section class="article-section">
+  <div class="container" style="padding-top:72px;padding-bottom:72px">
+    <div class="article-cols">
+      <div class="article-body">
+        <h3>Grand Cayman's Public Bus Network: What You Need to Know</h3>
+        <p>Grand Cayman's public bus network is operated by private minibus owners licensed by the Cayman Islands government. Unlike formal metro systems, Cayman buses are typically Toyota HiAce or similar minivans, colour-coded and numbered by route. They are a practical, affordable and locally-loved way to get around the island for residents and visitors alike.</p>
+        <p>The hub of the entire network is the <strong>George Town Bus Depot</strong> on Edward Street, a short walk from the main cruise ship terminal and Harbour Drive. From the depot, all 9 main routes fan out to every major district on the island. This makes George Town the natural transfer point for anyone travelling across the island — for example, changing from the West Bay WB1 route to the East End 7A route.</p>
+
+        <h3>West Bay Routes: Serving Seven Mile Beach</h3>
+        <p>The West Bay routes (WB1, WB2 and WB3) are by far the busiest in the system. Route WB1 is the most frequent bus service in Cayman, running the full length of Seven Mile Beach from George Town through Camana Bay to West Bay, the Cayman Turtle Centre and Northwest Point. With buses arriving as often as every 2 minutes at peak times, WB1 is the de facto shuttle between George Town and the beach.</p>
+        <p>Route WB2 follows a similar path but diverts via Watercourse Road on the way to Cayman Turtle Centre and the quirky Hell post office — a popular stop for tourists. WB3 takes a different southern approach through the Industrial Park before joining the beach corridor and heading up to Barkers National Reserve.</p>
+
+        <h3>East End Routes: The Longest Rides on the Island</h3>
+        <p>Heading east from George Town, routes 7A and 7B serve the communities of Prospect, Savannah, Newlands and Bodden Town before continuing all the way to the far east of the island. Route 7A is one of the few public transport options for residents of East End and Gun Bay — areas that are difficult to reach without a car.</p>
+        <p>Notable stops on 7A include the Blow Holes (a natural rock formation where waves shoot water into the air), the Wreck of the Ten Sails park, and Breakers. The journey from George Town to East End takes around 50–60 minutes. Route 7B offers an alternative via the south coastal road through Smith Cove and South Sound before joining the main highway east.</p>
+
+        <h3>North Side Routes: Rum Point and Cayman Kai</h3>
+        <p>Routes 8A and 8B cover the scenic north coast, including Old Man Bay, Rum Point and the popular Cayman Kai beach bar area. These routes are less frequent (every 30 minutes) but essential for residents of the North Side district and popular with visitors wanting to reach Rum Point and Starfish Point without renting a car.</p>
+        <p>Route 8A takes the northern road through North Side and Hutland, while 8B approaches from the south via Frank Sound — useful for riders connecting from the eastern end of the island.</p>
+
+        <h3>Using the LetsGo App on Grand Cayman</h3>
+        <p>The LetsGo app was built specifically for Grand Cayman's bus system. Unlike generic transit apps that show static schedules, LetsGo uses live GPS data from drivers' devices to show you exactly where each bus is in real time. Features include:</p>
+        <ul>
+          <li>Live bus locations on an interactive map for all 9 routes</li>
+          <li>Real-time ETAs based on current traffic and bus position</li>
+          <li>Offline tracking via SMS — works in dead zones along coast roads</li>
+          <li>NFC tap-to-pay — load your wallet once and tap at the reader on any bus</li>
+          <li>Journey sharing — send your live location to family or friends with one tap</li>
+          <li>SOS safety feature — press to alert emergency contacts with your GPS position</li>
+          <li>Community reports — flag overcrowding, broken stops or delays in seconds</li>
+        </ul>
+        <p>LetsGo is free to download on iOS and Android and free for all riders. There are no subscription fees for using the tracking and safety features.</p>
+
+        <h3>Tips for Riding the Cayman Bus</h3>
+        <p>A few practical notes that make the experience smoother. Cayman minibuses pick up at designated yellow bus stop posts, but on many routes drivers will also stop for a wave along the roadside — particularly on quieter stretches outside George Town. It's polite to signal clearly and step well off the road.</p>
+        <p>On busy routes like WB1, buses fill up quickly during morning rush (7–9 AM) and after school (3–5 PM). If you're heading to the beach or airport area at peak times, give yourself a buffer. For late-night travel (after 9 PM), frequency drops significantly and the LetsGo app will show real-time availability so you're not left waiting.</p>
+        <p>Always have your fare ready when boarding. While drivers will accept larger notes, having exact change or a loaded LetsGo wallet speeds things up and is appreciated, especially on high-frequency routes where drivers are focused on keeping to schedule.</p>
+      </div>
+      <div class="article-sidebar">
+        <div class="sidebar-card">
+          <h4>Quick Reference</h4>
+          <div class="sc-row"><span class="key">Depot location</span><span class="val">Edward St, GT</span></div>
+          <div class="sc-row"><span class="key">Total routes</span><span class="val">9</span></div>
+          <div class="sc-row"><span class="key">Min fare</span><span class="val">CI$2.50</span></div>
+          <div class="sc-row"><span class="key">Max fare</span><span class="val">CI$4.00</span></div>
+          <div class="sc-row"><span class="key">Hours (approx)</span><span class="val">6 AM – 11 PM</span></div>
+          <div class="sc-row"><span class="key">Currency</span><span class="val">CI$ or US$</span></div>
+          <div class="sc-row"><span class="key">Children under 5</span><span class="val">Free</span></div>
+          <div class="sc-row"><span class="key">App cost</span><span class="val">Free</span></div>
+        </div>
+        <div class="sidebar-app-card">
+          <div style="font-size:36px;margin-bottom:12px">🚌</div>
+          <h4 style="font-family:'Playfair Display',serif;font-size:17px;font-weight:700;color:var(--navy);margin-bottom:8px">Track your bus live</h4>
+          <p>Free on iOS and Android. Real-time GPS, offline SMS backup, NFC payments and SOS safety features.</p>
+          <div class="app-btns">
+            <a href="https://apps.apple.com/us/app/letsgo-cayman/id6768839802" target="_blank" class="app-btn-dark">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+              App Store
+            </a>
+            <a href="https://play.google.com/store/apps/details?id=com.letsgocayman" target="_blank" class="app-btn-dark">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M3.18 23.76c.3.17.64.22.99.14l12.82-7.41-2.79-2.79-11.02 10.06zM.35 1.33C.13 1.66 0 2.1 0 2.67v18.66c0 .57.13 1.01.36 1.34l.07.07 10.46-10.46v-.25L.42 1.27l-.07.06zM20.96 10.18l-2.64-1.53-3.13 3.13 3.13 3.13 2.65-1.54c.76-.44.76-1.15 0-1.6l-.01.41zM4.17.24l12.82 7.41-2.79 2.79L4.17.24c.35-.09.7-.04.99.14l-.99-.14z"/></svg>
+              Google Play
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section">
+  <p class="eyebrow" style="color:rgba(11,31,58,.5)">Free to download</p>
+  <h2>Ride Cayman<br>Smarter</h2>
+  <p>Join thousands of Grand Cayman riders who track their bus live, pay by NFC, and stay safe with LetsGo.</p>
+  <div class="cta-btns">
+    <a href="https://apps.apple.com/us/app/letsgo-cayman/id6768839802" target="_blank" class="cta-app-btn">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+      <div class="dt"><small>Download on the</small><strong>App Store</strong></div>
+    </a>
+    <a href="https://play.google.com/store/apps/details?id=com.letsgocayman" target="_blank" class="cta-app-btn">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M3.18 23.76c.3.17.64.22.99.14l12.82-7.41-2.79-2.79-11.02 10.06zM.35 1.33C.13 1.66 0 2.1 0 2.67v18.66c0 .57.13 1.01.36 1.34l.07.07 10.46-10.46v-.25L.42 1.27l-.07.06zM20.96 10.18l-2.64-1.53-3.13 3.13 3.13 3.13 2.65-1.54c.76-.44.76-1.15 0-1.6l-.01.41zM4.17.24l12.82 7.41-2.79 2.79L4.17.24c.35-.09.7-.04.99.14l-.99-.14z"/></svg>
+      <div class="dt"><small>Get it on</small><strong>Google Play</strong></div>
+    </a>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-logo">🚌 LetsGo</div>
+  <div class="footer-links">
+    <a href="/">Home</a>
+    <a href="/cayman-bus">Cayman Bus Guide</a>
+    <a href="/drivers">For Drivers</a>
+    <a href="/support">Support</a>
+    <a href="/privacy">Privacy</a>
+  </div>
+  <div class="footer-copy">© 2026 LetsGo · Cayman Islands</div>
+</footer>
+
 </body>
 </html>"""
 
