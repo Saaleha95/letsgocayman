@@ -699,6 +699,18 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
     <a href="/admin/login" class="footer-admin">Admin</a>
   </footer>
 </div>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5902518344335566"
+     crossorigin="anonymous"></script>
+<!-- Ads -->
+<ins class="adsbygoogle"
+     style="display:block"
+     data-ad-client="ca-pub-5902518344335566"
+     data-ad-slot="8924238713"
+     data-ad-format="auto"
+     data-full-width-responsive="true"></ins>
+<script>
+     (adsbygoogle = window.adsbygoogle || []).push({});
+</script>
 <script>
 const cur=document.getElementById('cur');
 document.addEventListener('mousemove',e=>{cur.style.left=e.clientX+'px';cur.style.top=e.clientY+'px';});
