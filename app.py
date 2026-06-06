@@ -477,6 +477,8 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
   .stats-bar{gap:24px;flex-wrap:wrap}
 }
 </style>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5902518344335566"
+     crossorigin="anonymous"></script>
 </head>
 <body>
 <div class="cur" id="cur"></div>
@@ -765,8 +767,6 @@ def admin_login():
   .back-link a{{color:#8b949e}}
   .back-link a:hover{{color:var(--gold)}}
 </style>
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5902518344335566"
-     crossorigin="anonymous"></script>
 <link rel="canonical" href="https://www.letsgocayman.com/">
 <script type="application/ld+json">
 {
