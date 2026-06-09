@@ -731,7 +731,7 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
 #   document.querySelectorAll('.reveal:not(.visible)').forEach(el=>obs.observe(el));
 # }
 # runReveal();
-</script>
+# </script>
 </body>
 </html>"""
 
