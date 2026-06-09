@@ -697,41 +697,6 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
     <a href="/admin/login" class="footer-admin">Admin</a>
   </footer>
 </div>
-# <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5902518344335566"
-#      crossorigin="anonymous"></script>
-# <!-- Ads -->
-# <ins class="adsbygoogle"
-#      style="display:block"
-#      data-ad-client="ca-pub-5902518344335566"
-#      data-ad-slot="8924238713"
-#      data-ad-format="auto"
-#      data-full-width-responsive="true"></ins>
-# <script>
-#      (adsbygoogle = window.adsbygoogle || []).push({});
-# </script>
-# <script>
-# const cur=document.getElementById('cur');
-# document.addEventListener('mousemove',e=>{cur.style.left=e.clientX+'px';cur.style.top=e.clientY+'px';});
-# document.querySelectorAll('a,button,.feat-card,.team-card,.why-hl,.step-card').forEach(el=>{
-#   el.addEventListener('mouseenter',()=>cur.classList.add('big'));
-#   el.addEventListener('mouseleave',()=>cur.classList.remove('big'));
-# });
-# window.addEventListener('scroll',()=>{document.getElementById('nav').classList.toggle('scrolled',window.scrollY>40);});
-# (function(){const c=document.getElementById('stars');if(!c)return;for(let i=0;i<60;i++){const s=document.createElement('div');s.className='star';s.style.cssText=`left:${Math.random()*100}%;top:${Math.random()*100}%;--d:${2+Math.random()*3}s;--delay:${Math.random()*4}s`;c.appendChild(s);}})();
-# function showPage(name){
-#   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-#   document.querySelectorAll('.pnav-btn').forEach(b=>b.classList.remove('active'));
-#   document.getElementById('page-'+name).classList.add('active');
-#   document.getElementById('tab-'+name).classList.add('active');
-#   window.scrollTo({top:0,behavior:'smooth'});
-#   setTimeout(runReveal,100);
-# }
-# function runReveal(){
-#   const obs=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible');});},{threshold:0.12});
-#   document.querySelectorAll('.reveal:not(.visible)').forEach(el=>obs.observe(el));
-# }
-# runReveal();
-# </script>
 </body>
 </html>"""
 
