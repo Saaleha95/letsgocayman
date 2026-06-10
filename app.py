@@ -288,9 +288,7 @@ LANDING_HTML = r"""<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LetsGo — Cayman Bus App | Live Tracking, Routes & Fares</title>
-<meta name="description" content="Track your Cayman bus in real time, pay offline with NFC, and stay safe with SOS. LetsGo is Grand Cayman's smart bus app — free on iOS & Android.">
-<meta name="keywords" content="cayman bus, grand cayman bus, cayman bus routes, cayman bus app, grand cayman public transport, bus tracker cayman">
+<title>LetsGo Cayman — Smart Bus Transport</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -504,7 +502,6 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
     <div class="hero-content">
       <div class="hero-tag"><span class="live-dot"></span>CAYMAN ISLANDS · AI-POWERED TRANSIT</div>
       <h1 class="hero-title">RIDE<br><span class="gold">SMARTER</span><br>CAYMAN</h1>
-      <h2 style="...existing style...">Grand Cayman's Smartest Cayman Bus App</h2>
       <p class="hero-sub">The Cayman Islands' first AI-powered smart bus app — live tracking, offline payments, and community safety features built for Grand Cayman life.</p>
       <div class="hero-cta-row">
         <a href="#dl" class="btn-primary" onclick="showPage('home')">
@@ -697,6 +694,29 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
     <a href="/admin/login" class="footer-admin">Admin</a>
   </footer>
 </div>
+<script>
+const cur=document.getElementById('cur');
+document.addEventListener('mousemove',e=>{cur.style.left=e.clientX+'px';cur.style.top=e.clientY+'px';});
+document.querySelectorAll('a,button,.feat-card,.team-card,.why-hl,.step-card').forEach(el=>{
+  el.addEventListener('mouseenter',()=>cur.classList.add('big'));
+  el.addEventListener('mouseleave',()=>cur.classList.remove('big'));
+});
+window.addEventListener('scroll',()=>{document.getElementById('nav').classList.toggle('scrolled',window.scrollY>40);});
+(function(){const c=document.getElementById('stars');if(!c)return;for(let i=0;i<60;i++){const s=document.createElement('div');s.className='star';s.style.cssText=`left:${Math.random()*100}%;top:${Math.random()*100}%;--d:${2+Math.random()*3}s;--delay:${Math.random()*4}s`;c.appendChild(s);}})();
+function showPage(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.pnav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+  setTimeout(runReveal,100);
+}
+function runReveal(){
+  const obs=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible');});},{threshold:0.12});
+  document.querySelectorAll('.reveal:not(.visible)').forEach(el=>obs.observe(el));
+}
+runReveal();
+</script>
 </body>
 </html>"""
 
@@ -741,20 +761,6 @@ def admin_login():
   .back-link a{{color:#8b949e}}
   .back-link a:hover{{color:var(--gold)}}
 </style>
-<link rel="canonical" href="https://www.letsgocayman.com/">
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "MobileApplication",
-  "name": "LetsGo Cayman",
-  "description": "Grand Cayman bus tracking app with live GPS, offline payments, and safety features",
-  "operatingSystem": "iOS, Android",
-  "applicationCategory": "TransportationApplication",
-  "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"},
-  "url": "https://www.letsgocayman.com",
-  "keywords": "cayman bus, grand cayman bus app, bus tracker cayman islands"
-}
-</script>
 </head>
 <body>
 <div class="login-box">
@@ -779,7 +785,6 @@ def admin_login():
 </div>
 </body>
 </html>"""
-
 
 
 @app.route('/admin/logout')
