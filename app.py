@@ -525,11 +525,16 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
   footer{padding:30px 20px;flex-direction:column;text-align:center}
   .stats-bar{gap:24px;flex-wrap:wrap}
 }
+.notice-bar{position:relative;z-index:210;background:#7F1D1D;color:#fff;text-align:center;padding:10px 20px;font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;letter-spacing:.3px}
+.notice-bar a{color:#F5C518;text-decoration:underline;font-weight:700}
 </style>
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5902518344335566"
      crossorigin="anonymous"></script>
 </head>
 <body>
+<div class="notice-bar">
+  🚌 Bus driver currently unavailable — please call <a href="tel:517-8784">517-8784</a> for assistance.
+</div>
 <div class="cur" id="cur"></div>
 <nav id="nav">
   <a class="nav-logo" href="#"><span class="dot"></span> LetsGo</a>
