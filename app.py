@@ -37,6 +37,57 @@ TWILIO_CONFIG = {
 _twilio_override = {}
 
 
+# ═══════════════════════════════════════════════════════════
+# ROBOTS / CRAWL CONTROL
+# ═══════════════════════════════════════════════════════════
+ROBOTS_TXT = """User-agent: *
+Disallow: /admin/
+Disallow: /delete-account
+Disallow: /track/
+Disallow: /sos/
+Disallow: /driver
+Disallow: /maps
+Disallow: /api/
+
+Allow: /
+Allow: /support
+Allow: /drivers
+
+Sitemap: https://www.letsgocayman.com/sitemap.xml
+"""
+
+SITEMAP_XML = """<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://www.letsgocayman.com/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://www.letsgocayman.com/support</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://www.letsgocayman.com/drivers</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+</urlset>
+"""
+
+
+@app.route('/robots.txt')
+def robots_txt():
+    from flask import Response
+    return Response(ROBOTS_TXT, mimetype='text/plain')
+
+
+@app.route('/sitemap.xml')
+def sitemap_xml():
+    from flask import Response
+    return Response(SITEMAP_XML, mimetype='application/xml')
+
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
@@ -744,6 +795,7 @@ def admin_login():
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LetsGo Admin Login</title>
+<meta name="robots" content="noindex, nofollow">
 {ADMIN_STYLE}
 <style>
   body{{display:flex;align-items:center;justify-content:center;min-height:100vh;background:radial-gradient(ellipse at 60% 40%, #0e2847 0%, #0d1117 70%)}}
@@ -824,6 +876,7 @@ def admin_settings():
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Settings — LetsGo Admin</title>
+<meta name="robots" content="noindex, nofollow">
 {ADMIN_STYLE}
 </head>
 <body>
@@ -918,6 +971,7 @@ def show_users():
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Users — LetsGo Admin</title>
+<meta name="robots" content="noindex, nofollow">
 {ADMIN_STYLE}
 </head>
 <body>
@@ -1076,6 +1130,7 @@ def show_community_reports():
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Community Reports — LetsGo Admin</title>
+<meta name="robots" content="noindex, nofollow">
 {ADMIN_STYLE}
 <style>table td{{max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}</style>
 </head>
@@ -1249,6 +1304,7 @@ def admin_sos_alerts():
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SOS Alerts — LetsGo Admin</title>
+<meta name="robots" content="noindex, nofollow">
 {ADMIN_STYLE}
 <style>table td{{max-width:180px;overflow:hidden;text-overflow:ellipsis}}</style>
 </head>
@@ -1484,6 +1540,7 @@ def delete_account_page():
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Delete Account — LetsGo Cayman</title>
+<meta name="robots" content="noindex, nofollow">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   :root {{
@@ -3581,6 +3638,7 @@ def admin_sms_alerts():
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SMS Alerts — LetsGo Admin</title>
+<meta name="robots" content="noindex, nofollow">
 {ADMIN_STYLE}
 <style>
   table td{{max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
@@ -3738,6 +3796,7 @@ def drivers_page():
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Drivers — LetsGo Cayman</title>
+<meta name="robots" content="noindex, nofollow">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -4076,6 +4135,7 @@ def admin_drivers():
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Drivers — LetsGo Admin</title>
+<meta name="robots" content="noindex, nofollow">
 {ADMIN_STYLE}
 <style>
   table td{{max-width:200px;overflow:hidden;text-overflow:ellipsis}}
@@ -4554,6 +4614,7 @@ def tracking_page(token):
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>LetsGo — Live Journey</title>
+<meta name="robots" content="noindex, nofollow">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -5013,6 +5074,7 @@ def sos_page(token):
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#0a0a0a">
 <title>{'🔴 ACTIVE SOS' if not resolved else '✅ SOS Resolved'} — LetsGo Cayman</title>
+<meta name="robots" content="noindex, nofollow">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -5174,10 +5236,23 @@ L.circle([{lat},{lng}],{{color:'#ef4444',fillColor:'#ef4444',fillOpacity:.07,wei
 # ═══════════════════════════════════════════════════════════
 
 @app.route('/')
-@app.route('/home')
-@app.route('/team')
 def landing():
     return LANDING_HTML
+
+
+@app.route('/home')
+def landing_home():
+    return redirect('/')
+
+
+@app.route('/team')
+def landing_team():
+    # Serve the same page but auto-select the Team tab via a tiny inline script,
+    # so this URL isn't just a duplicate of "/" with the wrong content showing.
+    return LANDING_HTML.replace(
+        'runReveal();\n</script>',
+        "showPage('team');\nrunReveal();\n</script>"
+    )
 
 
 if __name__ == '__main__':
