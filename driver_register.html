@@ -409,21 +409,29 @@ function addStop() {
   div.id = 'item_' + id;
 
   div.innerHTML =
-    '<div class="stop-row" style="grid-template-columns:32px 1fr auto">' +
-      '<div class="stop-idx" id="idx_' + id + '">' + idx + '</div>' +
-      '<div class="name-wrap">' +
-        '<input class="stop-name-input" id="name_' + id + '" placeholder="Stop name…" autocomplete="off">' +
-        '<div class="name-dropdown" id="dd_' + id + '"></div>' +
-      '</div>' +
-      '<div style="display:flex;align-items:center;gap:8px">' +
-        '<div class="loc-display" id="locDisp_' + id + '" style="min-width:120px">' +
-          '<span>📍</span>' +
-          '<span id="locTxt_' + id + '" style="font-size:11px">No coords</span>' +
-        '</div>' +
-        '<button class="btn-del" onclick="removeStop(\'' + id + '\')" title="Remove">✕</button>' +
-      '</div>' +
-    '</div>';
+  '<div class="stop-row">' +
 
+  '<div class="stop-idx">' + idx + '</div>' +
+
+  '<div class="name-wrap">' +
+  '<input class="stop-name-input" id="name_' + id + '" placeholder="Stop name..." autocomplete="off">' +
+  '<div class="name-dropdown" id="dd_' + id + '"></div>' +
+
+  '<div id="customFields_' + id + '" style="display:none;margin-top:8px;">' +
+
+  '<input type="text" id="customName_' + id + '" placeholder="Enter Stop Name" style="margin-bottom:6px;">' +
+
+  '<input type="number" step="any" id="customLat_' + id + '" placeholder="Latitude" style="margin-bottom:6px;">' +
+
+  '<input type="number" step="any" id="customLng_' + id + '" placeholder="Longitude">' +
+
+  '</div>' +
+
+  '</div>' +
+
+  '<button class="btn-del" onclick="removeStop(\'' + id + '\')">✕</button>' +
+
+  '</div>';
   container.appendChild(div);
 
   /* wire up name input events after DOM insertion */
@@ -501,32 +509,53 @@ function scheduleCloseDD(id) {
 function cancelCloseDD(id) { clearTimeout(ddTimers[id]); }
 
 function pickName(id, name) {
-  var isOther = name.indexOf('Other') !== -1;
-  var inp = document.getElementById('name_' + id);
-  inp.value = isOther ? '' : name;
-  document.getElementById('dd_' + id).classList.remove('open');
 
-  var s = stops.find(function(x){ return x.id === id; });
-  if (s) {
-    s.name = isOther ? '' : name;
+    var inp = document.getElementById("name_" + id);
 
-    // ── Auto-fill coords from known stop name ──
-    if (!isOther) {
-      var key = name.toLowerCase();
-      if (STOP_COORDS[key]) {
-        s.lat = STOP_COORDS[key][0];
-        s.lng = STOP_COORDS[key][1];
-        updateLocDisplay(id, s.lat, s.lng);
-      } else {
-        s.lat = null;
-        s.lng = null;
-        updateLocDisplay(id, null, null);
-      }
+    inp.value = name;
+
+    document.getElementById("dd_" + id).classList.remove("open");
+
+    var stop = stops.find(function(s){
+        return s.id === id;
+    });
+
+    if (!stop) return;
+
+    if (name === "Other (specify name below)") {
+
+        document.getElementById("customFields_" + id).style.display = "block";
+
+        stop.name = "";
+        stop.lat = null;
+        stop.lng = null;
+
+        return;
     }
-  }
 
-  if (isOther) { inp.placeholder = 'Type custom stop name…'; inp.focus(); }
-  updateProgress();
+    document.getElementById("customFields_" + id).style.display = "none";
+
+    stop.name = name;
+
+    var key = name.toLowerCase();
+
+    if (STOP_COORDS[key]) {
+
+        stop.lat = STOP_COORDS[key][0];
+        stop.lng = STOP_COORDS[key][1];
+
+        updateLocDisplay(id, stop.lat, stop.lng);
+
+    } else {
+
+        stop.lat = null;
+        stop.lng = null;
+
+        updateLocDisplay(id, null, null);
+
+    }
+
+    updateProgress();
 }
 
 /* ── remove stop ── */
@@ -577,18 +606,37 @@ function updateProgress() {
 /* ── submit ── */
 async function submitForm() {
   stops.forEach(function(s) {
-    var inp = document.getElementById('name_' + s.id);
-    if (inp) s.name = inp.value.trim();
-    // Final attempt to fill coords from name if still missing
-    if (s.name && (s.lat === null || s.lng === null)) {
-      var key = s.name.toLowerCase();
-      if (STOP_COORDS[key]) {
-        s.lat = STOP_COORDS[key][0];
-        s.lng = STOP_COORDS[key][1];
-        updateLocDisplay(s.id, s.lat, s.lng);
-      }
+
+    var inp = document.getElementById("name_" + s.id);
+
+    if (inp)
+        s.name = inp.value.trim();
+
+    if (s.name === "Other (specify name below)") {
+
+        s.name = document.getElementById("customName_" + s.id).value.trim();
+
+        s.lat = parseFloat(
+            document.getElementById("customLat_" + s.id).value
+        );
+
+        s.lng = parseFloat(
+            document.getElementById("customLng_" + s.id).value
+        );
     }
-  });
+
+    if (!s.name) {
+        return;
+    }
+
+    if ((s.lat == null || s.lng == null) && STOP_COORDS[s.name.toLowerCase()]) {
+
+        s.lat = STOP_COORDS[s.name.toLowerCase()][0];
+        s.lng = STOP_COORDS[s.name.toLowerCase()][1];
+
+    }
+
+   });
 
   var driverName     = document.getElementById('driverName').value.trim();
   var driverPhone    = document.getElementById('driverPhone').value.trim();
@@ -605,7 +653,22 @@ async function submitForm() {
   if (!driverUsername) { showToast('Please enter a username / driver ID', 'error'); return; }
   if (!routeId)        { showToast('Please select a route', 'error'); return; }
   if (stops.length === 0) { showToast('Please add at least one bus stop', 'error'); return; }
-  var unnamed = stops.find(function(s){ return !s.name; });
+  var unnamed = stops.find(function(s){
+
+    if (s.name === "Other (specify name below)") {
+
+        var n = document.getElementById("customName_" + s.id).value.trim();
+
+        var lat = document.getElementById("customLat_" + s.id).value;
+
+        var lng = document.getElementById("customLng_" + s.id).value;
+
+        return !n || lat === "" || lng === "";
+    }
+
+    return !s.name;
+
+   });
   if (unnamed) { showToast('Please name all bus stops', 'error'); return; }
 
   var btn = document.getElementById('submitBtn');
