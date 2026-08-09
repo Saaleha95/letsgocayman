@@ -2048,6 +2048,10 @@ def offline_sms():
         'results': results,
     }), 200 if any_sent else 500
 
+@app.route('/ping')
+def ping():
+    return jsonify({'status': 'ok'}), 200
+
 
 @app.route('/api/emergency-contacts', methods=['GET'])
 def get_emergency_contacts():
