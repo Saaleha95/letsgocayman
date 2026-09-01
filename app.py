@@ -46,12 +46,12 @@ Disallow: /delete-account
 Disallow: /track/
 Disallow: /sos/
 Disallow: /driver
+Disallow: /drivers
 Disallow: /maps
 Disallow: /api/
 
 Allow: /
 Allow: /support
-Allow: /drivers
 
 Sitemap: https://www.letsgocayman.com/sitemap.xml
 """
@@ -67,11 +67,6 @@ SITEMAP_XML = """<?xml version="1.0" encoding="UTF-8"?>
     <loc>https://www.letsgocayman.com/support</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://www.letsgocayman.com/drivers</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
   </url>
 </urlset>
 """
@@ -3800,8 +3795,8 @@ def drivers_page():
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Drivers — LetsGo Cayman</title>
 <meta name="robots" content="noindex, nofollow">
+<title>Drivers — LetsGo Cayman</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -5252,12 +5247,7 @@ def landing_home():
 
 @app.route('/team')
 def landing_team():
-    # Serve the same page but auto-select the Team tab via a tiny inline script,
-    # so this URL isn't just a duplicate of "/" with the wrong content showing.
-    return LANDING_HTML.replace(
-        'runReveal();\n</script>',
-        "showPage('team');\nrunReveal();\n</script>"
-    )
+    return redirect('/')
 
 
 if __name__ == '__main__':
