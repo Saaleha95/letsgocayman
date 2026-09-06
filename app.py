@@ -2339,7 +2339,7 @@ CAYMAN_ROUTES = [
     # (Source: Bus Stop and Shelter List from FS Jct, 2026)
     {
         'route_number': '7A',
-        'name': 'Frank Sound Junction – Old Man Bay – Queens Highway – East End',
+        'name': '7A',
         'color': '#FF5722',
         'frequency': 'Every 5–10 minutes',
         'description': 'Frank Sound Junction • Clifton Hunter • Crystal Caves • Old Man Bay Dock • Bo Miller Public Beach • Morritts • Wyndham • Colliers • Cayman Parrot Sanctuary • Wreck of the Ten Sails • Compass Point • George Dixon Park • East End Primary • Health City • South Coast • Botanic Garden • Blow Holes',
@@ -2371,7 +2371,7 @@ CAYMAN_ROUTES = [
     # Frank Sound Jct -> Old Man Bay -> Hutland -> Rum Point -> Cayman Kai
     {
         'route_number': '8A',
-        'name': 'Frank Sound Junction – Old Man Bay – Hutland – Rum Point – Cayman Kai',
+        'name': '8A',
         'color': '#4CAF50',
         'frequency': 'Every 30 minutes',
         'description': 'Frank Sound Junction • Clifton Hunter • Crystal Caves • Old Man Bay Dock • National Housing Development Trust • Melville\u2019s Lane • Rum Point • Kaibo • Cayman Kai • Chisholm\u2019s Cemetery • Hutland • Over the Edge • Compass Point • North Side Public Beach #5 • South Coast • Botanic Garden',
@@ -2404,7 +2404,7 @@ CAYMAN_ROUTES = [
     # Frank Sound Jct -> Old Man Bay -> Queens Hwy -> East End (opposite direction of 7A)
     {
         'route_number': '9A',
-        'name': 'Frank Sound Junction – Queens Highway – Gun Bay – East End',
+        'name': '9A',
         'color': '#009688',
         'frequency': 'Every 5–10 minutes',
         'description': 'Frank Sound Junction • Clifton Hunter • Crystal Caves • Old Man Bay Dock • Bo Miller Public Beach • Morritts • Wyndham • Colliers • Cayman Parrot Sanctuary • Wreck of the Ten Sails • Compass Point • George Dixon Park • East End Primary • Health City • South Coast • Botanic Garden • Blow Holes',
