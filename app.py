@@ -4414,7 +4414,7 @@ def register_driver():
         route_id=effective_route_id,
         bus_id=effective_bus_id,
         bus_name=route_name,
-        active=True,
+        active=False,
     )
     db.session.add(sess)
     db.session.commit()
