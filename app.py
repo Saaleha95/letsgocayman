@@ -2337,35 +2337,7 @@ CAYMAN_ROUTES = [
     # ── Route 7A ────────────────────────────────────────────────────────────
     # Frank Sound Jct -> Old Man Bay -> Queens Hwy -> East End
     # (Source: Bus Stop and Shelter List from FS Jct, 2026)
-    {
-        'route_number': '7A',
-        'name': '7A',
-        'color': '#FF5722',
-        'frequency': 'Every 5–10 minutes',
-        'description': 'Frank Sound Junction • Clifton Hunter • Crystal Caves • Old Man Bay Dock • Bo Miller Public Beach • Morritts • Wyndham • Colliers • Cayman Parrot Sanctuary • Wreck of the Ten Sails • Compass Point • George Dixon Park • East End Primary • Health City • South Coast • Botanic Garden • Blow Holes',
-        'stops': [
-            ('Frank Sound Junction Bus Shelter', 19.3110, -81.1530),
-            ('Clifton Hunter High School Bus Shelter', 19.3097, -81.1831),
-            ('Crystal Caves Bus Stop', 19.3480, -81.1980),
-            ('Old Man Bay Dock Bus Stop', 19.3735, -81.2105),
-            ('Bo Miller Public Beach Bus Stop (towards EE)', 19.3150, -81.1150),
-            ('Bo Miller Public Beach Bus Stop (towards NS)', 19.3160, -81.1160),
-            ('Old Robin Rd Bus Stop', 19.3120, -81.1080),
-            ('Morritts Shopping Center Bus Shelter', 19.3080, -81.1000),
-            ('Wyndham Bus Shelter', 19.3050, -81.0950),
-            ('Colliers Beach Bus Shelter', 19.3100, -81.1020),
-            ('Cayman Parrot Sanctuary Bus Stop', 19.3000, -81.0900),
-            ('Cayman Parrot Sanctuary Bus Stop (towards Tukka)', 19.3010, -81.0910),
-            ('Wreck of the Ten Sails Bus Shelter', 19.2880, -81.0700),
-            ('Compass Point Bus Stop', 19.2990, -81.1060),
-            ('George Dixon Park Bus Shelter', 19.3030, -81.0930),
-            ('East End Primary School Bus Shelter', 19.3020, -81.0910),
-            ('Health City Bus Shelter', 19.2980, -81.0890),
-            ('South Coast Bar and Grill Bus Shelter', 19.2900, -81.1000),
-            ('H.M. Botanic Garden (entrance)', 19.3170, -81.1360),
-            ('Blow Holes (Sea View Rd)', 19.2980, -81.0680),
-        ]
-    },
+
 
     # ── Route 8A ────────────────────────────────────────────────────────────
     # Frank Sound Jct -> Old Man Bay -> Hutland -> Rum Point -> Cayman Kai
