@@ -26,6 +26,19 @@ db = SQLAlchemy(app)
 ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'letsgo2026')
 
+GOV_USERNAME = 'admin'
+GOV_PASSWORD = 'admin2026'
+
+
+def require_gov(fn):
+    from functools import wraps
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        if not session.get('gov_logged_in'):
+            return redirect('/gov/login')
+        return fn(*args, **kwargs)
+    return wrapper
+
 # ── TWILIO CONFIG (stored in env / overridable via admin) ──
 TWILIO_CONFIG = {
     'accountSid': os.environ.get('TWILIO_ACCOUNT_SID', ''),
@@ -846,6 +859,74 @@ def admin_logout():
     session.pop('admin_logged_in', None)
     return redirect('/admin/login')
 
+@app.route('/gov/login', methods=['GET', 'POST'])
+def gov_login():
+    error = ''
+    if request.method == 'POST':
+        username = request.form.get('username', '')
+        password = request.form.get('password', '')
+        if username == GOV_USERNAME and password == GOV_PASSWORD:
+            session['gov_logged_in'] = True
+            return redirect('/gov')
+        error = 'Invalid username or password.'
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gov Portal Login</title>
+<meta name="robots" content="noindex, nofollow">
+{ADMIN_STYLE}
+<style>
+  body{{display:flex;align-items:center;justify-content:center;min-height:100vh;background:radial-gradient(ellipse at 60% 40%, #0e2847 0%, #0d1117 70%)}}
+  .login-box{{background:#161b22;border:1px solid #30363d;border-radius:20px;padding:48px 40px;width:100%;max-width:400px;box-shadow:0 24px 80px rgba(0,0,0,.5)}}
+  .login-logo{{text-align:center;margin-bottom:32px}}
+  .login-logo .icon{{font-size:40px;display:block;margin-bottom:8px}}
+  .login-logo h1{{font-size:22px;font-weight:700;color:#f0f6fc}}
+  .login-logo p{{font-size:13px;color:#6e7681;margin-top:4px}}
+  .login-field{{margin-bottom:16px}}
+  .login-field label{{display:block;font-size:12px;font-weight:600;color:#8b949e;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}}
+  .login-field input{{width:100%;background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:11px 14px;font-size:14px;color:#e6edf3;outline:none;transition:border-color .2s}}
+  .login-field input:focus{{border-color:var(--gold)}}
+  .login-btn{{width:100%;background:var(--gold);color:#0d1117;border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px;transition:background .2s}}
+  .login-btn:hover{{background:#e8b400}}
+  .login-error{{background:rgba(220,38,38,.1);border:1px solid rgba(220,38,38,.3);color:#f87171;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px}}
+  .back-link{{display:block;text-align:center;margin-top:20px;font-size:13px;color:#6e7681}}
+  .back-link a{{color:#8b949e}}
+  .back-link a:hover{{color:var(--gold)}}
+</style>
+</head>
+<body>
+<div class="login-box">
+  <div class="login-logo">
+    <span class="icon">🏛</span>
+    <h1>Gov Portal</h1>
+    <p>Sign in to view rider registration data</p>
+  </div>
+  {'<div class="login-error">⚠ ' + error + '</div>' if error else ''}
+  <form method="POST">
+    <div class="login-field">
+      <label>Username</label>
+      <input type="text" name="username" placeholder="admin" autocomplete="username" required autofocus>
+    </div>
+    <div class="login-field">
+      <label>Password</label>
+      <input type="password" name="password" placeholder="••••••••" autocomplete="current-password" required>
+    </div>
+    <button type="submit" class="login-btn">Sign In →</button>
+  </form>
+  <div class="back-link"><a href="/">← Back to LetsGo site</a></div>
+</div>
+</body>
+</html>"""
+
+
+@app.route('/gov/logout')
+def gov_logout():
+    session.pop('gov_logged_in', None)
+    return redirect('/gov/login')
+
 
 # ═══════════════════════════════════════════════════════════
 # ADMIN SETTINGS PAGE
@@ -1085,6 +1166,181 @@ async function refreshUsers(){{
   }}catch(e){{console.error(e);}}
 }}
 setInterval(refreshUsers,15000);
+</script>
+</body>
+</html>"""
+
+@app.route('/gov')
+@require_gov
+def gov_dashboard():
+    from datetime import timedelta
+
+    users = User.query.order_by(User.created_at.desc()).all()
+    total_users = len(users)
+
+    today = datetime.utcnow().date()
+    days = [today - timedelta(days=i) for i in range(6, -1, -1)]
+    counts_by_day = {d: 0 for d in days}
+    for u in users:
+        d = u.created_at.date() if u.created_at else None
+        if d in counts_by_day:
+            counts_by_day[d] += 1
+
+    labels = [d.strftime('%a %d %b') for d in days]
+    counts = [counts_by_day[d] for d in days]
+    week_total = sum(counts)
+    today_count = counts[-1]
+    avg_per_day = round(week_total / 7, 1)
+
+    rows = ""
+    for u in users:
+        joined = u.created_at.strftime('%d %b %Y, %H:%M') if u.created_at else '—'
+        rows += f"""
+        <tr id="gov-row-{u.id}">
+          <td><strong style="color:#f0f6fc">{u.username}</strong></td>
+          <td style="color:#8b949e">{u.full_name}</td>
+          <td style="color:#8b949e">{u.phone_number or '—'}</td>
+          <td>
+            <span class="lock" title="{u.password}">🔒 hashed</span>
+            <button class="btn btn-ghost" style="font-size:11px;padding:3px 8px;margin-left:6px" onclick="openReset({u.id},'{u.username}')">Reset</button>
+          </td>
+          <td class="date-cell">{joined}</td>
+        </tr>"""
+    if not rows:
+        rows = '<tr><td colspan="5" style="text-align:center;padding:48px;color:#484f58">No users registered yet.</td></tr>'
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gov Portal — LetsGo</title>
+<meta name="robots" content="noindex, nofollow">
+{ADMIN_STYLE}
+<style>
+  .gov-nav{{background:#161b22;border-bottom:1px solid #30363d;padding:0 32px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}}
+  .gov-nav .brand{{font-size:18px;font-weight:700;color:var(--gold)}}
+  .gov-nav .logout{{color:#8b949e;font-size:13px;padding:6px 14px;border-radius:8px;border:1px solid #30363d}}
+  .gov-nav .logout:hover{{border-color:var(--red);color:var(--red);text-decoration:none}}
+  .stat-card{{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:18px 22px;display:flex;align-items:center;gap:16px}}
+  .sc-icon{{font-size:20px;width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}}
+  .sc-num{{font-size:24px;font-weight:700;color:#f0f6fc;line-height:1}}
+  .sc-lbl{{font-size:12px;color:#6e7681;margin-top:3px}}
+  .chart-wrap{{background:#0d1117;border-radius:10px;padding:16px;border:1px solid #21262d}}
+  .note-banner{{background:rgba(245,197,24,.08);border:1px solid rgba(245,197,24,.25);border-radius:10px;padding:12px 16px;font-size:13px;color:#e8c14f;margin-bottom:20px}}
+</style>
+</head>
+<body>
+<nav class="gov-nav">
+  <div class="brand">🏛 Gov Portal — LetsGo</div>
+  <a href="/gov/logout" class="logout">Logout</a>
+</nav>
+<div class="admin-main">
+  <div class="page-header">
+    <div><h1>👥 Registered Users</h1><p>Rider registration data and weekly signup report</p></div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-primary" onclick="downloadChartPNG()">⬇ Download Chart (PNG)</button>
+      <button class="btn btn-ghost" onclick="downloadCSV()">⬇ Download CSV</button>
+    </div>
+  </div>
+
+  <div class="note-banner">
+    ⚠ Passwords are one-way hashed and cannot be viewed in plaintext for security reasons. Use "Reset" to set a new password for a user if needed.
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px">
+    <div class="stat-card"><div class="sc-icon" style="background:rgba(245,197,24,.1)">👥</div><div><div class="sc-num">{total_users}</div><div class="sc-lbl">Total Users</div></div></div>
+    <div class="stat-card"><div class="sc-icon" style="background:rgba(34,197,94,.1)">📈</div><div><div class="sc-num" style="color:#4ade80">{week_total}</div><div class="sc-lbl">Signups (7 days)</div></div></div>
+    <div class="stat-card"><div class="sc-icon" style="background:rgba(129,140,248,.1)">📅</div><div><div class="sc-num" style="color:#818cf8">{today_count}</div><div class="sc-lbl">Signups Today</div></div></div>
+    <div class="stat-card"><div class="sc-icon" style="background:rgba(251,146,60,.1)">➗</div><div><div class="sc-num" style="color:#fb923c">{avg_per_day}</div><div class="sc-lbl">Avg / Day</div></div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2>Weekly Signups</h2><span style="font-size:12px;color:#484f58">Last 7 days</span></div>
+    <div class="card-body"><div class="chart-wrap"><canvas id="govChart" height="90"></canvas></div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h2>Registered Users</h2><span class="badge">{total_users} user(s)</span></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Username</th><th>Full Name</th><th>Mobile Number</th><th>Password</th><th>Joined</th></tr></thead>
+        <tbody id="gov-tbody">{rows}</tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="reset-overlay">
+  <div class="modal">
+    <h3>🔑 Reset Password</h3>
+    <p>Set a new password for <strong id="reset-username"></strong>.</p>
+    <input type="hidden" id="reset-id">
+    <div class="form-group" style="margin-bottom:20px">
+      <label>New Password</label>
+      <input type="password" id="reset-password" placeholder="New password">
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-ghost" onclick="closeModal('reset-overlay')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveReset()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+{ADMIN_JS}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script>
+const LABELS = {json.dumps(labels)};
+const COUNTS = {json.dumps(counts)};
+
+const ctx = document.getElementById('govChart').getContext('2d');
+const govChart = new Chart(ctx, {{
+  type: 'bar',
+  data: {{ labels: LABELS, datasets: [{{ label: 'New signups', data: COUNTS, backgroundColor: '#F5C518', borderRadius: 6, maxBarThickness: 48 }}] }},
+  options: {{
+    responsive: true,
+    plugins: {{ legend: {{ display: false }} }},
+    scales: {{
+      x: {{ ticks: {{ color: '#8b949e' }}, grid: {{ color: '#21262d' }} }},
+      y: {{ beginAtZero: true, ticks: {{ color: '#8b949e', precision: 0 }}, grid: {{ color: '#21262d' }} }}
+    }}
+  }}
+}});
+
+function downloadChartPNG(){{
+  const link=document.createElement('a');
+  link.download='letsgo-weekly-signups.png';
+  link.href=govChart.toBase64Image();
+  link.click();
+  showToast('✓ Chart downloaded');
+}}
+function downloadCSV(){{
+  let csv='Date,New Signups\\n';
+  LABELS.forEach((l,i)=>{{csv+=`${{l}},${{COUNTS[i]}}\\n`;}});
+  const blob=new Blob([csv],{{type:'text/csv'}});
+  const link=document.createElement('a');
+  link.href=URL.createObjectURL(blob);
+  link.download='letsgo-weekly-report.csv';
+  link.click();
+  showToast('✓ CSV downloaded');
+}}
+
+function openReset(id, username){{
+  document.getElementById('reset-id').value=id;
+  document.getElementById('reset-username').textContent=username;
+  document.getElementById('reset-password').value='';
+  openModal('reset-overlay');
+}}
+async function saveReset(){{
+  const id=document.getElementById('reset-id').value;
+  const password=document.getElementById('reset-password').value;
+  if(!password){{showToast('✗ Enter a new password','error');return;}}
+  try{{
+    const res=await fetch(`/api/users/${{id}}`,{{method:'PATCH',headers:{{'Content-Type':'application/json'}},body:JSON.stringify({{password}})}});
+    if(res.ok){{closeModal('reset-overlay');showToast('✓ Password reset');}}
+    else showToast('✗ Reset failed','error');
+  }}catch(e){{showToast('✗ Reset failed','error');}}
+}}
 </script>
 </body>
 </html>"""
