@@ -326,6 +326,18 @@ def nav_html(active='users'):
       <a href="/admin/logout" class="logout">Logout</a>
     </nav>"""
 
+def gov_nav_html(active='users'):
+    return f"""
+    <nav class="gov-nav">
+      <div class="brand">🏛 Gov Portal — LetsGo</div>
+      <div class="nav-links" style="display:flex;gap:4px">
+        <a href="/gov" class="{'active' if active == 'users' else ''}">Users</a>
+        <a href="/gov/community-reports" class="{'active' if active == 'community' else ''}">Community Reports</a>
+        <a href="/gov/sos-alerts" class="sos-link {'active' if active == 'sos' else ''}">🆘 SOS Alerts</a>
+      </div>
+      <a href="/gov/logout" class="logout">Logout</a>
+    </nav>"""
+
 
 def require_admin(fn):
     from functools import wraps
@@ -917,6 +929,134 @@ def gov_login():
     <button type="submit" class="login-btn">Sign In →</button>
   </form>
   <div class="back-link"><a href="/">← Back to LetsGo site</a></div>
+</div>
+</body>
+</html>"""
+
+@app.route('/gov/community-reports')
+@require_gov
+def gov_community_reports():
+    reports = CommunityReport.query.order_by(CommunityReport.created_at.desc()).all()
+
+    rows = ""
+    for r in reports:
+        color = '#f87171' if r.status == 'open' else ('#fb923c' if r.status == 'in_progress' else '#4ade80')
+        label = {'open': 'Open', 'in_progress': 'In Progress', 'resolved': 'Resolved'}.get(r.status, r.status)
+        joined = r.created_at.strftime('%d %b %Y, %H:%M')
+        msg_preview = (r.message[:80] + '…') if len(r.message) > 80 else r.message
+        rows += f"""
+        <tr>
+          <td style="color:#6e7681;font-size:12px">#{r.id}</td>
+          <td><span style="background:rgba(245,197,24,.1);color:var(--gold);padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600">{r.category}</span></td>
+          <td style="color:#8b949e;max-width:260px">{msg_preview}</td>
+          <td style="color:#8b949e;font-size:13px">{r.stop_name}</td>
+          <td style="color:#8b949e;font-size:13px">{r.route_id}</td>
+          <td style="color:var(--gold);font-weight:600">{r.upvotes} 👍</td>
+          <td><span style="color:{color};background:{color}18;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600">{label}</span></td>
+          <td style="color:#6e7681;font-size:12px">{r.username}</td>
+          <td class="date-cell">{joined}</td>
+        </tr>"""
+
+    if not rows:
+        rows = '<tr><td colspan="9" style="text-align:center;padding:48px;color:#484f58">No community reports yet.</td></tr>'
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Community Reports — Gov Portal</title>
+<meta name="robots" content="noindex, nofollow">
+{ADMIN_STYLE}
+<style>table td{{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}</style>
+</head>
+<body>
+{gov_nav_html('community')}
+<div class="admin-main">
+  <div class="page-header">
+    <div><h1>📣 Community Reports</h1><p>Reports submitted by LetsGo riders (read-only)</p></div>
+    <span class="badge">{len(reports)} report(s)</span>
+  </div>
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Category</th><th>Message</th><th>Stop</th><th>Route</th><th>Upvotes</th><th>Status</th><th>Author</th><th>Submitted</th></tr></thead>
+        <tbody>{rows}</tbody>
+      </table>
+    </div>
+  </div>
+  <footer style="margin-top:40px;padding:24px 0;border-top:1px solid #21262d;text-align:center;font-size:12px;color:#484f58">
+    © 2026 LetsGo Cayman. All rights reserved.
+  </footer>
+</div>
+</body>
+</html>"""
+
+@app.route('/gov/sos-alerts')
+@require_gov
+def gov_sos_alerts():
+    alerts = SOSAlert.query.order_by(SOSAlert.created_at.desc()).all()
+    active_count = sum(1 for a in alerts if not a.resolved)
+
+    rows = ""
+    for a in alerts:
+        contacts = json.loads(a.contacts or '[]')
+        contact_names = ', '.join(c.get('name', '?') for c in contacts[:3])
+        if len(contacts) > 3:
+            contact_names += f' +{len(contacts) - 3}'
+        triggered = a.created_at.strftime('%d %b %Y, %H:%M')
+        status_color = '#4ade80' if a.resolved else '#ef4444'
+        status_bg = 'rgba(74,222,128,.1)' if a.resolved else 'rgba(239,68,68,.12)'
+        status_label = 'Resolved' if a.resolved else 'ACTIVE'
+        rows += f"""
+        <tr>
+          <td style="color:#6e7681;font-size:12px;font-family:monospace">#{a.id}</td>
+          <td>
+            <div style="font-weight:600;color:#f0f6fc">{a.username}</div>
+            <div style="font-size:11px;color:#6e7681;margin-top:2px">{a.phone_number or '—'}</div>
+          </td>
+          <td style="color:#8b949e;font-size:13px">{a.route_id or '—'}</td>
+          <td style="color:#8b949e;font-size:13px">{a.bus_id or '—'}</td>
+          <td>
+            <div style="font-family:monospace;font-size:11px;color:#8b949e">{a.lat or '—'}</div>
+            <div style="font-family:monospace;font-size:11px;color:#8b949e">{a.lng or '—'}</div>
+          </td>
+          <td style="max-width:160px">
+            {f'<span style="color:#f0f6fc;font-size:12px">{contact_names}</span>' if contact_names else '<span style="color:#484f58">None</span>'}
+          </td>
+          <td><span style="background:{status_bg};color:{status_color};padding:4px 11px;border-radius:20px;font-size:11px;font-weight:700">{status_label}</span></td>
+          <td class="date-cell">{triggered}</td>
+          <td><a href="/sos/{a.token}" target="_blank" class="btn btn-ghost" style="font-size:12px;padding:5px 10px">View</a></td>
+        </tr>"""
+
+    if not rows:
+        rows = '<tr><td colspan="9" style="text-align:center;padding:48px;color:#484f58">No SOS alerts yet.</td></tr>'
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SOS Alerts — Gov Portal</title>
+<meta name="robots" content="noindex, nofollow">
+{ADMIN_STYLE}
+</head>
+<body>
+{gov_nav_html('sos')}
+<div class="admin-main">
+  <div class="page-header">
+    <div><h1>🆘 SOS Alerts</h1><p>Emergency alerts triggered by riders (read-only)</p></div>
+    <span class="badge">{active_count} active · {len(alerts)} total</span>
+  </div>
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Rider</th><th>Route</th><th>Bus</th><th>GPS</th><th>Contacts</th><th>Status</th><th>Triggered</th><th>Actions</th></tr></thead>
+        <tbody>{rows}</tbody>
+      </table>
+    </div>
+  </div>
+  <footer style="margin-top:40px;padding:24px 0;border-top:1px solid #21262d;text-align:center;font-size:12px;color:#484f58">
+    © 2026 LetsGo Cayman. All rights reserved.
+  </footer>
 </div>
 </body>
 </html>"""
