@@ -1268,6 +1268,9 @@ def gov_dashboard():
       </table>
     </div>
   </div>
+   <footer style="text-align:center;padding:32px 0 12px;color:#484f58;font-size:12px;border-top:1px solid #21262d;margin-top:32px">
+    © 2026 LetsGo Cayman. All rights reserved.
+  </footer>
 </div>
 
 <div class="overlay" id="reset-overlay">
