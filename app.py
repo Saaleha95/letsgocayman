@@ -330,7 +330,7 @@ def gov_nav_html(active='users'):
     return f"""
     <nav class="gov-nav">
       <div class="brand">🏛 Gov Portal — LetsGo</div>
-      <div class="nav-links" style="display:flex;gap:4px">
+      <div class="nav-links">
         <a href="/gov" class="{'active' if active == 'users' else ''}">Users</a>
         <a href="/gov/community-reports" class="{'active' if active == 'community' else ''}">Community Reports</a>
         <a href="/gov/sos-alerts" class="sos-link {'active' if active == 'sos' else ''}">🆘 SOS Alerts</a>
@@ -967,7 +967,18 @@ def gov_community_reports():
 <title>Community Reports — Gov Portal</title>
 <meta name="robots" content="noindex, nofollow">
 {ADMIN_STYLE}
-<style>table td{{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}</style>
+<style>
+  table td{{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+  .gov-nav{{background:#161b22;border-bottom:1px solid #30363d;padding:0 32px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}}
+  .gov-nav .brand{{font-size:18px;font-weight:700;color:var(--gold)}}
+  .gov-nav .nav-links{{display:flex;gap:4px}}
+  .gov-nav .nav-links a{{color:#8b949e;padding:6px 14px;border-radius:8px;font-size:13px;font-weight:500;text-decoration:none;transition:all .2s}}
+  .gov-nav .nav-links a:hover,.gov-nav .nav-links a.active{{background:rgba(245,197,24,.1);color:var(--gold);text-decoration:none}}
+  .gov-nav .nav-links a.sos-link{{color:#f87171}}
+  .gov-nav .nav-links a.sos-link:hover,.gov-nav .nav-links a.sos-link.active{{background:rgba(239,68,68,.12);color:#ef4444}}
+  .gov-nav .logout{{color:#8b949e;font-size:13px;padding:6px 14px;border-radius:8px;border:1px solid #30363d;transition:all .2s}}
+  .gov-nav .logout:hover{{border-color:var(--red);color:var(--red);text-decoration:none}}
+</style>
 </head>
 <body>
 {gov_nav_html('community')}
@@ -990,6 +1001,7 @@ def gov_community_reports():
 </div>
 </body>
 </html>"""
+
 
 @app.route('/gov/sos-alerts')
 @require_gov
@@ -1357,9 +1369,14 @@ def gov_dashboard():
 <meta name="robots" content="noindex, nofollow">
 {ADMIN_STYLE}
 <style>
-  .gov-nav{{background:#161b22;border-bottom:1px solid #30363d;padding:0 32px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}}
+    .gov-nav{{background:#161b22;border-bottom:1px solid #30363d;padding:0 32px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}}
   .gov-nav .brand{{font-size:18px;font-weight:700;color:var(--gold)}}
-  .gov-nav .logout{{color:#8b949e;font-size:13px;padding:6px 14px;border-radius:8px;border:1px solid #30363d}}
+  .gov-nav .nav-links{{display:flex;gap:4px}}
+  .gov-nav .nav-links a{{color:#8b949e;padding:6px 14px;border-radius:8px;font-size:13px;font-weight:500;text-decoration:none;transition:all .2s}}
+  .gov-nav .nav-links a:hover,.gov-nav .nav-links a.active{{background:rgba(245,197,24,.1);color:var(--gold);text-decoration:none}}
+  .gov-nav .nav-links a.sos-link{{color:#f87171}}
+  .gov-nav .nav-links a.sos-link:hover,.gov-nav .nav-links a.sos-link.active{{background:rgba(239,68,68,.12);color:#ef4444}}
+  .gov-nav .logout{{color:#8b949e;font-size:13px;padding:6px 14px;border-radius:8px;border:1px solid #30363d;transition:all .2s}}
   .gov-nav .logout:hover{{border-color:var(--red);color:var(--red);text-decoration:none}}
   .stat-card{{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:18px 22px;display:flex;align-items:center;gap:16px}}
   .sc-icon{{font-size:20px;width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}}
