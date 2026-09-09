@@ -203,6 +203,27 @@ class DeviceRequest(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
+class JourneySearch(db.Model):
+    """Logs every Journey-tab search / nearest-bus tap from the app."""
+    id = db.Column(db.Integer, primary_key=True)
+    source = db.Column(db.String(30), default='')          # stop_search / nearest_bus
+    query = db.Column(db.String(200), default='')
+    stop_id = db.Column(db.String(40), default='')
+    stop_name = db.Column(db.String(120), default='')
+    route_id = db.Column(db.String(20), default='')
+    bus_id = db.Column(db.String(40), default='')
+    user_lat = db.Column(db.Float, nullable=True)
+    user_lng = db.Column(db.Float, nullable=True)
+    bus_lat = db.Column(db.Float, nullable=True)
+    bus_lng = db.Column(db.Float, nullable=True)
+    distance_km = db.Column(db.Float, nullable=True)
+    eta_minutes = db.Column(db.Integer, nullable=True)
+    username = db.Column(db.String(80), default='')
+    phone_number = db.Column(db.String(20), default='')
+    platform = db.Column(db.String(20), default='')
+    client_timestamp = db.Column(db.DateTime, nullable=True)  # from the app's payload
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)  # server receipt time
+
 with app.app_context():
     db.create_all()
 
@@ -333,11 +354,11 @@ def gov_nav_html(active='users'):
       <div class="nav-links">
         <a href="/gov" class="{'active' if active == 'users' else ''}">Users</a>
         <a href="/gov/community-reports" class="{'active' if active == 'community' else ''}">Community Reports</a>
+        <a href="/gov/journey-tracking" class="{'active' if active == 'journeys' else ''}">🧭 Journey Tracking</a>
         <a href="/gov/sos-alerts" class="sos-link {'active' if active == 'sos' else ''}">🆘 SOS Alerts</a>
       </div>
       <a href="/gov/logout" class="logout">Logout</a>
     </nav>"""
-
 
 def require_admin(fn):
     from functools import wraps
@@ -803,6 +824,60 @@ runReveal();
 # ADMIN AUTH ROUTES
 # ═══════════════════════════════════════════════════════════
 
+
+@app.route('/api/journey-searches/', methods=['POST'])
+def journey_searches():
+    data = request.get_json(force=True, silent=True) or {}
+
+    def to_float(v):
+        try:
+            return float(v) if v is not None else None
+        except (TypeError, ValueError):
+            return None
+
+    def to_int(v):
+        try:
+            return int(v) if v is not None else None
+        except (TypeError, ValueError):
+            return None
+
+    ts = None
+    raw_ts = data.get('timestamp')
+    if raw_ts:
+        try:
+            ts = datetime.fromisoformat(str(raw_ts).replace('Z', '+00:00'))
+        except (ValueError, AttributeError):
+            ts = None
+
+    try:
+        entry = JourneySearch(
+            source=(data.get('source') or '').strip()[:30],
+            query=(data.get('query') or '').strip()[:200],
+            stop_id=str(data.get('stopId') or '')[:40],
+            stop_name=(data.get('stopName') or '').strip()[:120],
+            route_id=str(data.get('routeId') or '')[:20],
+            bus_id=str(data.get('busId') or '')[:40],
+            user_lat=to_float(data.get('userLat')),
+            user_lng=to_float(data.get('userLng')),
+            bus_lat=to_float(data.get('busLat')),
+            bus_lng=to_float(data.get('busLng')),
+            distance_km=to_float(data.get('distanceKm')),
+            eta_minutes=to_int(data.get('etaMinutes')),
+            username=(data.get('username') or '').strip()[:80],
+            phone_number=(data.get('phoneNumber') or '').strip()[:20],
+            platform=(data.get('platform') or '').strip()[:20],
+            client_timestamp=ts,
+        )
+        db.session.add(entry)
+        db.session.commit()
+        return jsonify({'success': True}), 201
+    except Exception as e:
+        db.session.rollback()
+        print(f'[JourneySearch] save failed: {e}')
+        # Never surface an error the app has to handle — it fails silently either way.
+        return jsonify({'success': False}), 200
+
+
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
     error = ''
@@ -995,6 +1070,102 @@ def gov_community_reports():
       </table>
     </div>
   </div>
+  <footer style="margin-top:40px;padding:24px 0;border-top:1px solid #21262d;text-align:center;font-size:12px;color:#484f58">
+    © 2026 LetsGo Cayman. All rights reserved.
+  </footer>
+</div>
+</body>
+</html>"""
+
+@app.route('/gov/journey-tracking')
+@require_gov
+def gov_journey_tracking():
+    searches = JourneySearch.query.order_by(JourneySearch.created_at.desc()).limit(500).all()
+    stop_count = sum(1 for s in searches if s.source == 'stop_search')
+    bus_count = sum(1 for s in searches if s.source == 'nearest_bus')
+
+    rows = ""
+    for s in searches:
+        src_label = {'stop_search': '🔍 Stop Search', 'nearest_bus': '🚌 Nearest Bus'}.get(s.source, s.source or '—')
+        src_color = '#818cf8' if s.source == 'stop_search' else '#4ade80'
+        logged = s.created_at.strftime('%d %b %Y, %H:%M') if s.created_at else '—'
+        dist = f'{s.distance_km:.1f} km' if s.distance_km is not None else '—'
+        eta = f'{s.eta_minutes} min' if s.eta_minutes is not None else '—'
+        gps = (
+            f'<a href="https://maps.google.com/?q={s.user_lat},{s.user_lng}" target="_blank" '
+            f'style="color:#F5C518;font-family:monospace;font-size:11px">{s.user_lat:.4f}, {s.user_lng:.4f}</a>'
+            if s.user_lat is not None and s.user_lng is not None else '<span style="color:#484f58">—</span>'
+        )
+        rows += f"""
+        <tr>
+          <td style="color:#6e7681;font-size:12px">#{s.id}</td>
+          <td>
+            <div style="font-weight:600;color:#f0f6fc">{s.username or '—'}</div>
+            <div style="font-size:11px;color:#6e7681;margin-top:2px">{s.phone_number or ''}</div>
+          </td>
+          <td><span style="background:{src_color}18;color:{src_color};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600">{src_label}</span></td>
+          <td style="color:#8b949e;max-width:180px">{s.query or '—'}</td>
+          <td style="color:#8b949e;font-size:13px">{s.stop_name or '—'}</td>
+          <td style="color:#8b949e;font-size:13px">{s.route_id or '—'}</td>
+          <td style="color:#8b949e;font-size:13px">{s.bus_id or '—'}</td>
+          <td style="color:var(--gold);font-weight:600;font-size:13px">{dist}</td>
+          <td style="color:#8b949e;font-size:13px">{eta}</td>
+          <td>{gps}</td>
+          <td style="color:#6e7681;font-size:12px">{s.platform or '—'}</td>
+          <td class="date-cell">{logged}</td>
+        </tr>"""
+
+    if not rows:
+        rows = '<tr><td colspan="12" style="text-align:center;padding:48px;color:#484f58">No journey searches recorded yet.</td></tr>'
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Journey Tracking — Gov Portal</title>
+<meta name="robots" content="noindex, nofollow">
+{ADMIN_STYLE}
+{GOV_NAV_STYLE}
+<style>
+  table td{{max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+  .stat-card{{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:18px 22px;display:flex;align-items:center;gap:16px}}
+  .sc-icon{{font-size:20px;width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}}
+  .sc-num{{font-size:24px;font-weight:700;color:#f0f6fc;line-height:1}}
+  .sc-lbl{{font-size:12px;color:#6e7681;margin-top:3px}}
+</style>
+</head>
+<body>
+{gov_nav_html('journeys')}
+<div class="admin-main">
+  <div class="page-header">
+    <div><h1>🧭 Journey Tracking</h1><p>Rider searches and nearest-bus taps in the Journey tab (read-only, last 500)</p></div>
+    <span class="badge">{len(searches)} search(es)</span>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px">
+    <div class="stat-card">
+      <div class="sc-icon" style="background:rgba(245,197,24,.1)">🧭</div>
+      <div><div class="sc-num">{len(searches)}</div><div class="sc-lbl">Total (last 500)</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="sc-icon" style="background:rgba(129,140,248,.1)">🔍</div>
+      <div><div class="sc-num" style="color:#818cf8">{stop_count}</div><div class="sc-lbl">Stop Searches</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="sc-icon" style="background:rgba(74,222,128,.1)">🚌</div>
+      <div><div class="sc-num" style="color:#4ade80">{bus_count}</div><div class="sc-lbl">Nearest Bus Taps</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Rider</th><th>Source</th><th>Query</th><th>Stop</th><th>Route</th><th>Bus</th><th>Distance</th><th>ETA</th><th>User GPS</th><th>Platform</th><th>Logged</th></tr></thead>
+        <tbody>{rows}</tbody>
+      </table>
+    </div>
+  </div>
+
   <footer style="margin-top:40px;padding:24px 0;border-top:1px solid #21262d;text-align:center;font-size:12px;color:#484f58">
     © 2026 LetsGo Cayman. All rights reserved.
   </footer>
