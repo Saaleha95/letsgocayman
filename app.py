@@ -2945,77 +2945,7 @@ def tracking_position(token):
                     'busId': sess.bus_id, 'updatedAt': sess.updated_at.isoformat() if sess.updated_at else None})
 
 
-CAYMAN_ROUTES = [
-    # ── Route 7A ────────────────────────────────────────────────────────────
-    # Frank Sound Jct -> Old Man Bay -> Queens Hwy -> East End
-    # (Source: Bus Stop and Shelter List from FS Jct, 2026)
-
-
-    # ── Route 8A ────────────────────────────────────────────────────────────
-    # Frank Sound Jct -> Old Man Bay -> Hutland -> Rum Point -> Cayman Kai
-    {
-        'route_number': '8A',
-        'name': '8A',
-        'color': '#4CAF50',
-        'frequency': 'Every 30 minutes',
-        'description': 'Frank Sound Junction • Clifton Hunter • Crystal Caves • Old Man Bay Dock • National Housing Development Trust • Melville\u2019s Lane • Rum Point • Kaibo • Cayman Kai • Chisholm\u2019s Cemetery • Hutland • Over the Edge • Compass Point • North Side Public Beach #5 • South Coast • Botanic Garden',
-        'stops': [
-            ('Frank Sound Junction Bus Shelter', 19.3110, -81.1530),
-            ('Clifton Hunter High School Bus Shelter', 19.3097, -81.1831),
-            ('Crystal Caves Bus Stop', 19.3480, -81.1980),
-            ('Old Man Bay Dock Bus Shelter', 19.3730, -81.2110),
-            ('National Housing Development Trust Bus Shelter', 19.3780, -81.2050),
-            ("Melville's Lane Bus Stop", 19.3760, -81.1990),
-            ('Rum Point Bus Stop', 19.3640, -81.2600),
-            ('Rum Point Bus Shelter', 19.3655, -81.2630),
-            ('Rum Point Bus Stop #2', 19.3670, -81.2660),
-            ('Kaibo Bus Stop', 19.3580, -81.2530),
-            ('Cayman Kai Public Beach Bus Stop', 19.3850, -81.2790),
-            ('Rum Point Exit Sign Bus Stop', 19.3600, -81.2580),
-            ("Rum Point Otto's Ave Bus Stop", 19.3620, -81.2610),
-            ("Chisholm's Cemetery Bus Stop", 19.3500, -81.2400),
-            ('Hutland Bus Shelter', 19.3450, -81.2300),
-            ('Old Man Bay Dock Bus Stop', 19.3735, -81.2105),
-            ('Over the Edge Bus Shelter', 19.3680, -81.2670),
-            ('Compass Point Bus Stop', 19.2990, -81.1060),
-            ('North Side Public Beach #5', 19.3730, -81.2010),
-            ('South Coast Bar and Grill Bus Shelter', 19.2900, -81.1000),
-            ('H.M. Botanic Garden (entrance)', 19.3170, -81.1360),
-        ]
-    },
-
-    # ── Route 9A ────────────────────────────────────────────────────────────
-    # Frank Sound Jct -> Old Man Bay -> Queens Hwy -> East End (opposite direction of 7A)
-    {
-        'route_number': '9A',
-        'name': '9A',
-        'color': '#009688',
-        'frequency': 'Every 5–10 minutes',
-        'description': 'Frank Sound Junction • Clifton Hunter • Crystal Caves • Old Man Bay Dock • Bo Miller Public Beach • Morritts • Wyndham • Colliers • Cayman Parrot Sanctuary • Wreck of the Ten Sails • Compass Point • George Dixon Park • East End Primary • Health City • South Coast • Botanic Garden • Blow Holes',
-        'stops': [
-            ('Frank Sound Junction Bus Shelter', 19.3110, -81.1530),
-            ('Clifton Hunter High School Bus Shelter', 19.3097, -81.1831),
-            ('Crystal Caves Bus Stop', 19.3480, -81.1980),
-            ('Old Man Bay Dock Bus Stop', 19.3735, -81.2105),
-            ('Bo Miller Public Beach Bus Stop (towards EE)', 19.3150, -81.1150),
-            ('Bo Miller Public Beach Bus Stop (towards NS)', 19.3160, -81.1160),
-            ('Old Robin Rd Bus Stop', 19.3120, -81.1080),
-            ('Morritts Shopping Center Bus Shelter', 19.3080, -81.1000),
-            ('Wyndham Bus Shelter', 19.3050, -81.0950),
-            ('Colliers Beach Bus Shelter', 19.3100, -81.1020),
-            ('Cayman Parrot Sanctuary Bus Stop', 19.3000, -81.0900),
-            ('Cayman Parrot Sanctuary Bus Stop (towards Tukka)', 19.3010, -81.0910),
-            ('Wreck of the Ten Sails Bus Shelter', 19.2880, -81.0700),
-            ('Compass Point Bus Stop', 19.2990, -81.1060),
-            ('George Dixon Park Bus Shelter', 19.3030, -81.0930),
-            ('East End Primary School Bus Shelter', 19.3020, -81.0910),
-            ('Health City Bus Shelter', 19.2980, -81.0890),
-            ('South Coast Bar and Grill Bus Shelter', 19.2900, -81.1000),
-            ('H.M. Botanic Garden (entrance)', 19.3170, -81.1360),
-            ('Blow Holes (Sea View Rd)', 19.2980, -81.0680),
-        ]
-    },
-]
+CAYMAN_ROUTES = []
 
 
 @app.route('/api/buses/registered', methods=['GET', 'POST'])
