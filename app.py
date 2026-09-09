@@ -330,6 +330,20 @@ function openModal(id){ document.getElementById(id).classList.add('show'); }
 </script>
 """
 
+GOV_NAV_STYLE = """
+<style>
+  .gov-nav{background:#161b22;border-bottom:1px solid #30363d;padding:0 32px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+  .gov-nav .brand{font-size:18px;font-weight:700;color:var(--gold)}
+  .gov-nav .nav-links{display:flex;gap:4px}
+  .gov-nav .nav-links a{color:#8b949e;padding:6px 14px;border-radius:8px;font-size:13px;font-weight:500;text-decoration:none;transition:all .2s}
+  .gov-nav .nav-links a:hover,.gov-nav .nav-links a.active{background:rgba(245,197,24,.1);color:var(--gold);text-decoration:none}
+  .gov-nav .nav-links a.sos-link{color:#f87171}
+  .gov-nav .nav-links a.sos-link:hover,.gov-nav .nav-links a.sos-link.active{background:rgba(239,68,68,.12);color:#ef4444}
+  .gov-nav .logout{color:#8b949e;font-size:13px;padding:6px 14px;border-radius:8px;border:1px solid #30363d;transition:all .2s}
+  .gov-nav .logout:hover{border-color:var(--red);color:var(--red);text-decoration:none}
+</style>
+"""
+
 
 def nav_html(active='users'):
     return f"""
@@ -897,6 +911,7 @@ def admin_login():
 <title>LetsGo Admin Login</title>
 <meta name="robots" content="noindex, nofollow">
 {ADMIN_STYLE}
+{GOV_NAV_STYLE}
 <style>
   body{{display:flex;align-items:center;justify-content:center;min-height:100vh;background:radial-gradient(ellipse at 60% 40%, #0e2847 0%, #0d1117 70%)}}
   .login-box{{background:#161b22;border:1px solid #30363d;border-radius:20px;padding:48px 40px;width:100%;max-width:400px;box-shadow:0 24px 80px rgba(0,0,0,.5)}}
@@ -1042,6 +1057,7 @@ def gov_community_reports():
 <title>Community Reports — Gov Portal</title>
 <meta name="robots" content="noindex, nofollow">
 {ADMIN_STYLE}
+{GOV_NAV_STYLE}
 <style>
   table td{{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
   .gov-nav{{background:#161b22;border-bottom:1px solid #30363d;padding:0 32px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}}
@@ -1099,13 +1115,12 @@ def gov_journey_tracking():
         rows += f"""
         <tr>
           <td style="color:#6e7681;font-size:12px">#{s.id}</td>
-          <td style="color:#8b949e;max-width:180px">{s.search_query or '—'}</td>
           <td>
             <div style="font-weight:600;color:#f0f6fc">{s.username or '—'}</div>
             <div style="font-size:11px;color:#6e7681;margin-top:2px">{s.phone_number or ''}</div>
           </td>
           <td><span style="background:{src_color}18;color:{src_color};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600">{src_label}</span></td>
-          <td style="color:#8b949e;max-width:180px">{s.query or '—'}</td>
+          <td style="color:#8b949e;max-width:180px">{s.search_query or '—'}</td>
           <td style="color:#8b949e;font-size:13px">{s.stop_name or '—'}</td>
           <td style="color:#8b949e;font-size:13px">{s.route_id or '—'}</td>
           <td style="color:#8b949e;font-size:13px">{s.bus_id or '—'}</td>
@@ -1222,6 +1237,7 @@ def gov_sos_alerts():
 <title>SOS Alerts — Gov Portal</title>
 <meta name="robots" content="noindex, nofollow">
 {ADMIN_STYLE}
+{GOV_NAV_STYLE}
 <style>
   .gov-nav{{background:#161b22;border-bottom:1px solid #30363d;padding:0 32px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}}
   .gov-nav .brand{{font-size:18px;font-weight:700;color:var(--gold)}}
