@@ -1387,10 +1387,7 @@ def gov_dashboard():
 </style>
 </head>
 <body>
-<nav class="gov-nav">
-  <div class="brand">🏛 Gov Portal — LetsGo</div>
-  <a href="/gov/logout" class="logout">Logout</a>
-</nav>
+{gov_nav_html('users')}
 <div class="admin-main">
   <div class="page-header">
     <div><h1>👥 Registered Users</h1><p>Rider registration data and weekly signup report</p></div>
