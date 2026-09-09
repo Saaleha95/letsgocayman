@@ -206,8 +206,8 @@ class DeviceRequest(db.Model):
 class JourneySearch(db.Model):
     """Logs every Journey-tab search / nearest-bus tap from the app."""
     id = db.Column(db.Integer, primary_key=True)
-    source = db.Column(db.String(30), default='')          # stop_search / nearest_bus
-    query = db.Column(db.String(200), default='')
+    source = db.Column(db.String(30), default='')
+    search_query = db.Column(db.String(200), default='')   # ← renamed from `query`
     stop_id = db.Column(db.String(40), default='')
     stop_name = db.Column(db.String(120), default='')
     route_id = db.Column(db.String(20), default='')
@@ -221,8 +221,8 @@ class JourneySearch(db.Model):
     username = db.Column(db.String(80), default='')
     phone_number = db.Column(db.String(20), default='')
     platform = db.Column(db.String(20), default='')
-    client_timestamp = db.Column(db.DateTime, nullable=True)  # from the app's payload
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)  # server receipt time
+    client_timestamp = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 with app.app_context():
     db.create_all()
@@ -852,7 +852,7 @@ def journey_searches():
     try:
         entry = JourneySearch(
             source=(data.get('source') or '').strip()[:30],
-            query=(data.get('query') or '').strip()[:200],
+            search_query=(data.get('query') or '').strip()[:200],  # ← renamed field
             stop_id=str(data.get('stopId') or '')[:40],
             stop_name=(data.get('stopName') or '').strip()[:120],
             route_id=str(data.get('routeId') or '')[:20],
@@ -1099,6 +1099,7 @@ def gov_journey_tracking():
         rows += f"""
         <tr>
           <td style="color:#6e7681;font-size:12px">#{s.id}</td>
+          <td style="color:#8b949e;max-width:180px">{s.search_query or '—'}</td>
           <td>
             <div style="font-weight:600;color:#f0f6fc">{s.username or '—'}</div>
             <div style="font-size:11px;color:#6e7681;margin-top:2px">{s.phone_number or ''}</div>
