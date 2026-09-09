@@ -1050,6 +1050,17 @@ def gov_sos_alerts():
 <title>SOS Alerts — Gov Portal</title>
 <meta name="robots" content="noindex, nofollow">
 {ADMIN_STYLE}
+<style>
+  .gov-nav{{background:#161b22;border-bottom:1px solid #30363d;padding:0 32px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}}
+  .gov-nav .brand{{font-size:18px;font-weight:700;color:var(--gold)}}
+  .gov-nav .nav-links{{display:flex;gap:4px}}
+  .gov-nav .nav-links a{{color:#8b949e;padding:6px 14px;border-radius:8px;font-size:13px;font-weight:500;text-decoration:none;transition:all .2s}}
+  .gov-nav .nav-links a:hover,.gov-nav .nav-links a.active{{background:rgba(245,197,24,.1);color:var(--gold);text-decoration:none}}
+  .gov-nav .nav-links a.sos-link{{color:#f87171}}
+  .gov-nav .nav-links a.sos-link:hover,.gov-nav .nav-links a.sos-link.active{{background:rgba(239,68,68,.12);color:#ef4444}}
+  .gov-nav .logout{{color:#8b949e;font-size:13px;padding:6px 14px;border-radius:8px;border:1px solid #30363d;transition:all .2s}}
+  .gov-nav .logout:hover{{border-color:var(--red);color:var(--red);text-decoration:none}}
+</style>
 </head>
 <body>
 {gov_nav_html('sos')}
