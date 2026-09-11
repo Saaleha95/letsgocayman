@@ -195,19 +195,12 @@ input::placeholder,textarea::placeholder{color:var(--dim)}
         <div class="form-group">
           <label>Route Number</label>
           <select id="routeId" onchange="onRouteChange()">
-            <option value="">Select route…</option>
-            <option value="WB1">WB1 — Seven Mile Beach / Northwest Point</option>
-            <option value="WB2">WB2 — Seven Mile Beach / Hell</option>
-            <option value="WB3">WB3 — Industrial Park / Barkers</option>
-            <option value="4A">4A — Walkers Rd / Hospitals</option>
-            <option value="7A">7A — Queens Hwy / East End</option>
-            <option value="7B">7B — South Sound / East End</option>
-            <option value="8A">8A — North Side / Rum Point</option>
-            <option value="8B">8B — Frank Sound / Cayman Kai</option>
-            <option value="9A">9A — Gun Bay / Botanic Park</option>
-            <option value="CaymanBus">CaymanBus — Live Tracked</option>
-            <option value="custom">Other (custom route)</option>
-          </select>
+          <option value="">Select route…</option>
+          <option value="7A">7A — Frank Sound / East End</option>
+          <option value="8A">8A — Frank Sound / Rum Point / Cayman Kai</option>
+          <option value="9A">9A — Frank Sound / East End (via Bo Miller)</option>
+          <option value="custom">Other (custom route)</option>
+        </select>
         </div>
         <div class="form-group">
           <label>Route Name</label>
@@ -292,88 +285,109 @@ var ddTimers = {};
 var CAYMAN_CENTER = [19.3065, -81.3846];
 
 var ROUTE_NAMES = {
-  WB1:'Seven Mile Beach – Northwest Point',
-  WB2:'Seven Mile Beach – Watercourse Rd – Hell',
-  WB3:'Owen Roberts Drive – Industrial Park – Barkers',
-  '4A':'Walkers Road – Fairbanks Road – Hospitals',
-  '7A':'Wreck of the Ten Sails – East End',
-  '7B':'Walkers Rd – South Sound – East End',
-  '8A':'Cayman Kai – Starfish Point – Rum Point',
-  '8B':'Walkers Rd – Frank Sound – Cayman Kai',
-  '9A':'Queens Highway – Gun Bay – Botanic Park',
-  CaymanBus:'Cayman Bus – Live Tracked'
+  '7A':'Frank Sound Junction – Old Man Bay – East End',
+  '8A':'Frank Sound Junction – Rum Point – Cayman Kai',
+  '9A':'Frank Sound Junction – East End (via Bo Miller)'
 };
 
 // ── Known stop coordinates from CAYMAN_ROUTES ──────────────
 var STOP_COORDS = {
-  'george town depot':           [19.2869, -81.3797],
-  'george town harbour':         [19.2900, -81.3850],
-  'seven mile beach south':      [19.3044, -81.3939],
-  'camana bay':                  [19.3175, -81.3982],
-  'seven mile beach north':      [19.3340, -81.3894],
-  'governors square':            [19.3480, -81.3870],
-  'ed bush stadium':             [19.3560, -81.3820],
-  'cayman turtle centre':        [19.3712, -81.3789],
-  'northwest point':             [19.3800, -81.3900],
-  'hell':                        [19.3744, -81.4028],
-  'west bay square':             [19.3680, -81.3950],
-  'watercourse road':            [19.3550, -81.4050],
-  'owen roberts drive':          [19.2930, -81.3720],
-  'industrial park':             [19.2980, -81.3680],
-  'esterley tibbetts hwy':       [19.3400, -81.4000],
-  'mount pleasant':              [19.3550, -81.4100],
-  'barkers':                     [19.3820, -81.4150],
-  'walkers road':                [19.2800, -81.3650],
-  'fairbanks road':              [19.2750, -81.3500],
-  'health city / hospitals':     [19.2900, -81.3300],
-  'schools complex':             [19.2950, -81.3200],
-  'red bay':                     [19.2920, -81.3400],
-  'prospect':                    [19.2936, -81.3339],
-  'savannah':                    [19.2897, -81.2800],
-  'newlands':                    [19.2850, -81.2500],
-  'bodden town':                 [19.2842, -81.2528],
-  'lookout gardens':             [19.2900, -81.2000],
-  'breakers':                    [19.2819, -81.1747],
-  'frank sound':                 [19.3100, -81.1500],
-  'botanic park':                [19.3200, -81.1300],
-  'east end':                    [19.3036, -81.0914],
-  'lovers wall':                 [19.3000, -81.0700],
-  'the blow holes':              [19.2950, -81.0600],
-  'wreck of the ten sails':      [19.2880, -81.0500],
-  'gun bay':                     [19.2950, -81.0800],
-  'mastic trail':                [19.3300, -81.1600],
-  'smith cove':                  [19.2750, -81.3850],
-  'south sound':                 [19.2700, -81.3700],
-  'south sound dock':            [19.2650, -81.3600],
-  'rex crighton hwy':            [19.2700, -81.3300],
-  'oleander drive':              [19.2800, -81.3000],
-  'queens highway':              [19.3000, -81.1000],
-  'frank sound road':            [19.3289, -81.1444],
-  'north side':                  [19.3669, -81.1533],
-  'hutland':                     [19.3800, -81.1800],
-  'old man bay':                 [19.3900, -81.2200],
-  'rum point':                   [19.4100, -81.2500],
-  'starfish point':              [19.3950, -81.2600],
-  'cayman kai':                  [19.3850, -81.2700],
-  'compass media':               [19.2993, -81.3816],
-  'cayman enterprise city':      [19.3120, -81.3900],
-  'cleander drive':              [19.2800, -81.3000],
-  'owen roberts airport':        [19.2928, -81.3576],
+  'al thompsons bt bus shelter': [19.284245, -81.243578],
+  'blow holes ( sea view rd)': [19.2926, -81.0651],
+  'bo miller public beach bus stop towards ee': [19.346745, -81.174171],
+  'bo miller public beach bus stop towards ns': [19.346742, -81.174148],
+  'bodden town play field bus shelter': [19.283267, -81.244784],
+  'bodden town primary school bus shelter': [19.27457, -81.258764],
+  'bus depot bus shelter 1': [19.296303, -81.381323],
+  'bus depot shelter 2': [19.296204, -81.381182],
+  'bus shelter - little savannah gardens': [19.277309, -81.291782],
+  'bus stop - cool springs close': [19.274567, -81.303875],
+  'bus shelter northward rd': [19.276538, -81.267524],
+  'cayman islands brewery bus shelter': [19.278208, -81.335021],
+  'cayman kai public beach bus stop': [19.369308, -81.266824],
+  'cayman parrot sanctuary bus stop': [19.31931, -81.087027],
+  'cayman parrot sanctuary bus stop towards tukka': [19.31902, -81.087219],
+  'chisholms cemetery bus stop': [19.351198, -81.220108],
+  'clifton hunter high school bus shelter': [19.311645, -81.182809],
+  'colliers beach bus shelter': [19.332695, -81.085661],
+  'compass point bus stop': [19.30603, -81.095078],
+  'coral sage dr bus shelter': [19.274702, -81.307025],
+  'coral sage dr bus stop': [19.274694, -81.307009],
+  'countryside bus shelter': [19.272635, -81.297819],
+  'crewe rd bus shelter - capt osmonds pl': [19.288664, -81.360984],
+  'crystal caves bus stop': [19.345352, -81.177623],
+  'east end primary school bus shelter': [19.294534, -81.114765],
+  'frank sound junction bus shelter': [19.301576, -81.182589],
+  'frenchman dr bus shelter ( tuscan sun)': [19.298512, -81.189449],
+  'george dixon park bus shelter': [19.29772, -81.107531],
+  'governor russell beach bus shelter': [19.281077, -81.246095],
+  'h.m. botanic garden (entrance of road)': [19.317, -81.136],
+  'health city bus shelter': [19.294902, -81.145459],
+  'hurleys bus shelter': [19.280832, -81.345454],
+  'hutland bus shelter': [19.352141, -81.21206],
+  'kaibo bus stop': [19.356017, -81.279949],
+  'kings gym bus shelter': [19.286498, -81.35088],
+  'lighthouse school bus shelter': [19.279479, -81.339317],
+  'melvilles lane bus stop': [19.351051, -81.220247],
+  'moon bay condos bus shelter - near kipling st': [19.288006, -81.236835],
+  'morritts shopping center bus shelter': [19.347616, -81.092311],
+  'napa bus shelter': [19.29237, -81.368768],
+  'national housing development trust bus shelter': [19.350569, -81.203772],
+  'north side public beach #5': [19.373, -81.201],
+  'old man bay dock bus shelter': [19.34627, -81.186828],
+  'old man bay dock bus stop': [19.346192, -81.185664],
+  'old robin rd bus stop': [19.346975, -81.170456],
+  'over the edge bus shelter': [19.346399, -81.184318],
+  'panton place bus shelter 1': [19.288369, -81.353536],
+  'panton place bus shelter 2': [19.288361, -81.353533],
+  'rum point bus shelter': [19.370942, -81.270435],
+  'rum point bus stop': [19.370989, -81.269448],
+  'rum point bus stop #2': [19.366781, -81.27064],
+  'rum point exit sign bus stop': [19.36285, -81.259397],
+  'rum point otto’s ave bus stop': [19.350392, -81.239707],
+  'shamrock rd bus shelter #2': [19.273511, -81.318098],
+  'shamrock rd bus shelter - savannah meadows': [19.275907, -81.293063],
+  'shamrock rd bus shelter - spotts newlands': [19.273525, -81.311031],
+  'shamrock rd bus shelter poindexter rd': [19.273854, -81.325179],
+  'shamrock rd bus shelter #4 starapple rd': [19.278567, -81.278254],
+  'shedden rd bus shelter 1': [19.295851, -81.376102],
+  'shedden rd bus shelter 2': [19.295841, -81.376075],
+  'south coast bar and grill bus shelter': [19.295046, -81.201051],
+  'spotts cruise dock bus shelter': [19.273287, -81.319008],
+  'tomlinson roundabout bus shelter': [19.275917, -81.332444],
+  'vernon l jackson library bus shelter': [19.274713, -81.252939],
+  'wreck of the ten sails bus shelter': [19.309977, -81.091416],
+  'wyndham bus shelter': [19.347434, -81.092116]
 };
 
 var PRESET_NAMES = [
-  'George Town Depot','George Town Harbour','Owen Roberts Airport',
-  'Camana Bay','Seven Mile Beach South','Seven Mile Beach North',
-  'Governors Square','Ed Bush Stadium','Cayman Turtle Centre',
-  'Northwest Point','Hell','West Bay Square','Watercourse Road',
-  'Esterley Tibbetts Hwy','Industrial Park','Walkers Road',
-  'Smith Cove','South Sound','South Sound Dock','Fairbanks Road',
-  'Health City / Hospitals','Schools Complex','Red Bay','Prospect',
-  'Savannah','Newlands','Bodden Town','Breakers','East End',
-  'Lovers Wall','The Blow Holes','Gun Bay','Wreck of the Ten Sails',
-  'Frank Sound','Botanic Park','Rum Point','Cayman Kai',
-  'Starfish Point','North Side','Old Man Bay','Compass Media',
-  'Cayman Enterprise City','Oleander Drive','Rex Crighton Hwy',
+  'AL Thompsons BT Bus Shelter','Blow Holes ( Sea View Rd)',
+  'Bo Miller Public Beach Bus Stop towards EE','Bo Miller Public Beach Bus Stop towards NS',
+  'Bodden Town Play Field Bus Shelter','Bodden Town Primary School Bus Shelter',
+  'Bus Depot Bus Shelter 1','Bus Depot Shelter 2','Bus Shelter - Little Savannah Gardens',
+  'Bus Stop - Cool Springs Close','Bus shelter Northward Rd','Cayman Islands Brewery Bus Shelter',
+  'Cayman Kai Public Beach Bus Stop','Cayman Parrot Sanctuary Bus Stop',
+  'Cayman Parrot Sanctuary Bus Stop towards Tukka','Chisholms Cemetery Bus Stop',
+  'Clifton Hunter High School Bus Shelter','Colliers Beach Bus Shelter','Compass Point Bus Stop',
+  'Coral Sage Dr Bus Shelter','Coral Sage Dr Bus Stop','Countryside Bus Shelter',
+  'Crewe Rd Bus Shelter - Capt Osmonds Pl','Crystal Caves Bus Stop',
+  'East End Primary School Bus Shelter','Frank Sound Junction Bus Shelter',
+  'Frenchman Dr Bus Shelter ( Tuscan Sun)','George Dixon Park Bus Shelter',
+  'Governor Russell Beach Bus Shelter','H.M. Botanic Garden (entrance of road)',
+  'Health City Bus Shelter','Hurleys Bus Shelter','Hutland Bus Shelter','Kaibo Bus Stop',
+  'Kings Gym Bus Shelter','Lighthouse School Bus Shelter','Melvilles Lane Bus Stop',
+  'Moon Bay Condos Bus Shelter - Near Kipling St','Morritts Shopping Center Bus Shelter',
+  'Napa Bus Shelter','National Housing Development Trust Bus Shelter',
+  'North Side Public Beach #5','Old Man Bay Dock Bus Shelter','Old Man Bay Dock Bus Stop',
+  'Old Robin Rd Bus Stop','Over the Edge Bus Shelter','Panton Place Bus Shelter 1',
+  'Panton Place Bus Shelter 2','Rum Point Bus Shelter','Rum Point Bus Stop',
+  'Rum Point Bus Stop #2','Rum Point Exit Sign Bus Stop','Rum Point Otto’s Ave Bus Stop',
+  'Shamrock Rd Bus Shelter #2','Shamrock Rd Bus Shelter - Savannah Meadows',
+  'Shamrock Rd Bus Shelter - Spotts Newlands','Shamrock Rd Bus Shelter Poindexter Rd',
+  'Shamrock rd Bus Shelter #4 Starapple Rd','Shedden Rd Bus Shelter 1','Shedden Rd Bus Shelter 2',
+  'South Coast Bar and Grill Bus Shelter','Spotts Cruise Dock Bus Shelter',
+  'Tomlinson RoundAbout Bus Shelter','Vernon L Jackson Library Bus Shelter',
+  'Wreck of the Ten Sails Bus Shelter','Wyndham Bus Shelter',
   'Other (specify name below)'
 ];
 
