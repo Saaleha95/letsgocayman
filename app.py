@@ -580,15 +580,15 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
   footer{padding:30px 20px;flex-direction:column;text-align:center}
   .stats-bar{gap:24px;flex-wrap:wrap}
 }
-.notice-bar{position:relative;z-index:210;background:#7F1D1D;color:#fff;text-align:center;padding:10px 20px;font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;letter-spacing:.3px}
-.notice-bar a{color:#F5C518;text-decoration:underline;font-weight:700}
+.notice-bar{position:relative;z-index:210;background:var(--navy);border-bottom:1px solid rgba(245,197,24,.25);color:#fff;text-align:center;padding:10px 20px;font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;letter-spacing:.3px}
+.notice-bar strong{color:var(--gold);font-weight:700}
 </style>
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5902518344335566"
      crossorigin="anonymous"></script>
 </head>
 <body>
 <div class="notice-bar">
-  🚌 Bus driver currently unavailable — please call <a href="tel:517-8784">517-8784</a> for assistance.
+  🚌 <strong>Shuttle buses in effect:</strong> Route 7A (Frank Sound → East End) · Route 8A (Frank Sound → Rum Point / North Side) · Route 9A (Frank Sound → East End, parallel to 7A)
 </div>
 <div class="cur" id="cur"></div>
 <nav id="nav">
@@ -761,7 +761,7 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
         <svg viewBox="0 0 24 24" fill="currentColor" style="width:26px;height:26px;flex-shrink:0"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
         <div class="dl-t"><small>Download on the</small><strong>App Store</strong></div>
       </a>
-      <a href="https://play.google.com/store/apps/details?id=com.letsgocayman" target="_blank" class="dl-app-btn">
+      <a href="https://play.google.com/store/apps/details?id=app.saaleha.letsgocayman" target="_blank" class="dl-app-btn">
         <svg viewBox="0 0 24 24" fill="currentColor" style="width:26px;height:26px;flex-shrink:0"><path d="M3.18 23.76c.3.17.64.22.99.14l12.82-7.41-2.79-2.79-11.02 10.06zM.35 1.33C.13 1.66 0 2.1 0 2.67v18.66c0 .57.13 1.01.36 1.34l.07.07 10.46-10.46v-.25L.42 1.27l-.07.06zM20.96 10.18l-2.64-1.53-3.13 3.13 3.13 3.13 2.65-1.54c.76-.44.76-1.15 0-1.6l-.01.41zM4.17.24l12.82 7.41-2.79 2.79L4.17.24c.35-.09.7-.04.99.14l-.99-.14z"/></svg>
         <div class="dl-t"><small>Get it on</small><strong>Google Play</strong></div>
       </a>
@@ -2945,7 +2945,77 @@ def tracking_position(token):
                     'busId': sess.bus_id, 'updatedAt': sess.updated_at.isoformat() if sess.updated_at else None})
 
 
-CAYMAN_ROUTES = []
+CAYMAN_ROUTES = [
+    # ── Route 7A ────────────────────────────────────────────────────────────
+    # Frank Sound Jct -> Old Man Bay -> Queens Hwy -> East End
+    # (Source: Bus Stop and Shelter List from FS Jct, 2026)
+
+
+    # ── Route 8A ────────────────────────────────────────────────────────────
+    # Frank Sound Jct -> Old Man Bay -> Hutland -> Rum Point -> Cayman Kai
+    {
+        'route_number': '8A',
+        'name': '8A',
+        'color': '#4CAF50',
+        'frequency': 'Every 30 minutes',
+        'description': 'Frank Sound Junction • Clifton Hunter • Crystal Caves • Old Man Bay Dock • National Housing Development Trust • Melville\u2019s Lane • Rum Point • Kaibo • Cayman Kai • Chisholm\u2019s Cemetery • Hutland • Over the Edge • Compass Point • North Side Public Beach #5 • South Coast • Botanic Garden',
+        'stops': [
+            ('Frank Sound Junction Bus Shelter', 19.3110, -81.1530),
+            ('Clifton Hunter High School Bus Shelter', 19.3097, -81.1831),
+            ('Crystal Caves Bus Stop', 19.3480, -81.1980),
+            ('Old Man Bay Dock Bus Shelter', 19.3730, -81.2110),
+            ('National Housing Development Trust Bus Shelter', 19.3780, -81.2050),
+            ("Melville's Lane Bus Stop", 19.3760, -81.1990),
+            ('Rum Point Bus Stop', 19.3640, -81.2600),
+            ('Rum Point Bus Shelter', 19.3655, -81.2630),
+            ('Rum Point Bus Stop #2', 19.3670, -81.2660),
+            ('Kaibo Bus Stop', 19.3580, -81.2530),
+            ('Cayman Kai Public Beach Bus Stop', 19.3850, -81.2790),
+            ('Rum Point Exit Sign Bus Stop', 19.3600, -81.2580),
+            ("Rum Point Otto's Ave Bus Stop", 19.3620, -81.2610),
+            ("Chisholm's Cemetery Bus Stop", 19.3500, -81.2400),
+            ('Hutland Bus Shelter', 19.3450, -81.2300),
+            ('Old Man Bay Dock Bus Stop', 19.3735, -81.2105),
+            ('Over the Edge Bus Shelter', 19.3680, -81.2670),
+            ('Compass Point Bus Stop', 19.2990, -81.1060),
+            ('North Side Public Beach #5', 19.3730, -81.2010),
+            ('South Coast Bar and Grill Bus Shelter', 19.2900, -81.1000),
+            ('H.M. Botanic Garden (entrance)', 19.3170, -81.1360),
+        ]
+    },
+
+    # ── Route 9A ────────────────────────────────────────────────────────────
+    # Frank Sound Jct -> Old Man Bay -> Queens Hwy -> East End (opposite direction of 7A)
+    {
+        'route_number': '9A',
+        'name': '9A',
+        'color': '#009688',
+        'frequency': 'Every 5–10 minutes',
+        'description': 'Frank Sound Junction • Clifton Hunter • Crystal Caves • Old Man Bay Dock • Bo Miller Public Beach • Morritts • Wyndham • Colliers • Cayman Parrot Sanctuary • Wreck of the Ten Sails • Compass Point • George Dixon Park • East End Primary • Health City • South Coast • Botanic Garden • Blow Holes',
+        'stops': [
+            ('Frank Sound Junction Bus Shelter', 19.3110, -81.1530),
+            ('Clifton Hunter High School Bus Shelter', 19.3097, -81.1831),
+            ('Crystal Caves Bus Stop', 19.3480, -81.1980),
+            ('Old Man Bay Dock Bus Stop', 19.3735, -81.2105),
+            ('Bo Miller Public Beach Bus Stop (towards EE)', 19.3150, -81.1150),
+            ('Bo Miller Public Beach Bus Stop (towards NS)', 19.3160, -81.1160),
+            ('Old Robin Rd Bus Stop', 19.3120, -81.1080),
+            ('Morritts Shopping Center Bus Shelter', 19.3080, -81.1000),
+            ('Wyndham Bus Shelter', 19.3050, -81.0950),
+            ('Colliers Beach Bus Shelter', 19.3100, -81.1020),
+            ('Cayman Parrot Sanctuary Bus Stop', 19.3000, -81.0900),
+            ('Cayman Parrot Sanctuary Bus Stop (towards Tukka)', 19.3010, -81.0910),
+            ('Wreck of the Ten Sails Bus Shelter', 19.2880, -81.0700),
+            ('Compass Point Bus Stop', 19.2990, -81.1060),
+            ('George Dixon Park Bus Shelter', 19.3030, -81.0930),
+            ('East End Primary School Bus Shelter', 19.3020, -81.0910),
+            ('Health City Bus Shelter', 19.2980, -81.0890),
+            ('South Coast Bar and Grill Bus Shelter', 19.2900, -81.1000),
+            ('H.M. Botanic Garden (entrance)', 19.3170, -81.1360),
+            ('Blow Holes (Sea View Rd)', 19.2980, -81.0680),
+        ]
+    },
+]
 
 
 @app.route('/api/buses/registered', methods=['GET', 'POST'])
