@@ -736,6 +736,30 @@ function updateProgress() {
   if (el) el.addEventListener('input', updateProgress);
 });
 
+/* ── format "HH:MM" (24h) -> "7:30am" ── */
+function formatTime12(hhmm) {
+  if (!hhmm) return '';
+  var parts = hhmm.split(':');
+  var h = parseInt(parts[0], 10);
+  var m = parts[1];
+  var suffix = h >= 12 ? 'pm' : 'am';
+  var h12 = h % 12; if (h12 === 0) h12 = 12;
+  return h12 + ':' + m + suffix;
+}
+
+/* ── build a short human-readable label from the structured frequency fields.
+   The backend's `frequency` DB column is a plain String(40), so this is what
+   actually gets stored/displayed there; the full structured object is sent
+   alongside as `frequencyDetails` for anything that wants to parse it. ── */
+function buildFrequencyLabel(freq) {
+  if (freq.intervalMinutes === 0) return 'On demand';
+  var offsetLabel = freq.offsetMinutes === 30 ? ':30' : ':00';
+  var range = (freq.firstDeparture && freq.lastDeparture)
+    ? ' \u00b7 ' + formatTime12(freq.firstDeparture) + '\u2013' + formatTime12(freq.lastDeparture)
+    : '';
+  return 'Every ' + freq.intervalMinutes + ' min at ' + offsetLabel + range;
+}
+
 /* ── submit ── */
 async function submitForm() {
   stops.forEach(function(s) {
@@ -778,12 +802,13 @@ async function submitForm() {
   var routeId        = document.getElementById('routeId').value;
   var routeName      = document.getElementById('routeName').value.trim();
   var routeColor     = document.getElementById('routeColor').value;
-  var frequency = {
+  var frequencyDetails = {
     intervalMinutes: parseInt(document.getElementById('freqInterval').value, 10) || 0,
     offsetMinutes:   parseInt(document.getElementById('freqOffset').value, 10) || 0,
     firstDeparture:  document.getElementById('freqFirst').value,
     lastDeparture:   document.getElementById('freqLast').value
   };
+  var frequency = buildFrequencyLabel(frequencyDetails);
   var routeDesc      = document.getElementById('routeDesc').value.trim();
 
   if (!driverName)     { showToast('Please enter your full name', 'error'); return; }
@@ -822,6 +847,7 @@ async function submitForm() {
     routeName: routeName || routeId,
     routeColor: routeColor,
     frequency: frequency,
+    frequencyDetails: frequencyDetails,
     description: routeDesc,
     stops: stops.map(function(s, i) {
     var idPrefix = (routeId === 'custom')
