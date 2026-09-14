@@ -49,7 +49,7 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 .form-group{display:flex;flex-direction:column;gap:7px}
 .form-group.full{grid-column:1/-1}
 label{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
-input[type=text],input[type=tel],input[type=number],select,textarea{background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:11px 14px;font-size:14px;font-family:'DM Sans',sans-serif;color:var(--text);outline:none;transition:border-color .2s,box-shadow .2s;width:100%}
+input[type=text],input[type=tel],input[type=number],input[type=time],select,textarea{background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:11px 14px;font-size:14px;font-family:'DM Sans',sans-serif;color:var(--text);outline:none;transition:border-color .2s,box-shadow .2s;width:100%}
 input:focus,select:focus,textarea:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(245,197,24,.08)}
 select option{background:var(--bg)}
 input::placeholder,textarea::placeholder{color:var(--dim)}
@@ -196,9 +196,9 @@ input::placeholder,textarea::placeholder{color:var(--dim)}
           <label>Route Number</label>
           <select id="routeId" onchange="onRouteChange()">
           <option value="">Select route…</option>
-          <option value="7A">7A — Frank Sound / East End</option>
-          <option value="8A">8A — Frank Sound / Rum Point / Cayman Kai</option>
-          <option value="9A">9A — Frank Sound / East End (via Bo Miller)</option>
+          <option value="7A">7A — Eastern Link · East End Loop via East End</option>
+          <option value="9A">9A — Eastern Link · East End Loop via Queen's Highway</option>
+          <option value="8A">8A — Eastern Link · North Side / Cayman Kai</option>
           <option value="custom">Other (custom route)</option>
         </select>
         </div>
@@ -207,15 +207,28 @@ input::placeholder,textarea::placeholder{color:var(--dim)}
           <input type="text" id="routeName" placeholder="e.g. West Bay Route 1">
         </div>
         <div class="form-group">
-          <label>Frequency</label>
-          <select id="frequency">
-            <option>Every 2–5 minutes</option>
-            <option>Every 10 minutes</option>
-            <option>Every 15 minutes</option>
-            <option>Every 30 minutes</option>
-            <option>Hourly</option>
-            <option>On demand</option>
+          <label>Service Interval</label>
+          <select id="freqInterval">
+            <option value="">Select…</option>
+            <option value="30">Every 30 minutes</option>
+            <option value="60">Every 60 minutes</option>
+            <option value="0">On demand</option>
           </select>
+        </div>
+        <div class="form-group">
+          <label>Departs At</label>
+          <select id="freqOffset">
+            <option value="0">On the hour (:00)</option>
+            <option value="30">Half past (:30)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>First Departure</label>
+          <input type="time" id="freqFirst">
+        </div>
+        <div class="form-group">
+          <label>Last Departure</label>
+          <input type="time" id="freqLast">
         </div>
         <div class="form-group">
           <label>Route Colour on Map</label>
@@ -285,10 +298,69 @@ var ddTimers = {};
 var CAYMAN_CENTER = [19.3065, -81.3846];
 
 var ROUTE_NAMES = {
-  '7A':'Frank Sound Junction – Old Man Bay – East End',
-  '8A':'Frank Sound Junction – Rum Point – Cayman Kai',
-  '9A':'Frank Sound Junction – East End (via Bo Miller)'
+  '7A':'EASTERN LINK – East End Loop via East End',
+  '9A':'EASTERN LINK – East End Loop via Queen\u2019s Highway',
+  '8A':'EASTERN LINK – North Side / Cayman Kai'
 };
+
+var ROUTE_FREQ = {
+  '7A': { interval:30, offset:30, first:'07:30', last:'18:30' },
+  '9A': { interval:30, offset:0,  first:'08:00', last:'19:00' },
+  '8A': { interval:60, offset:30, first:'07:30', last:'18:30' }
+};
+
+var OTHER_OPT = 'Other (specify name below)';
+
+/* ── PTU-confirmed stop list, from "Bus Stop and Shelter List from FS Jct 2026".
+   7A and 9A share the same confirmed stop set (both East End loops via Frank Sound Jct);
+   8A is the separate North Side / Cayman Kai line. Two stops (H.M. Botanic Garden,
+   Blow Holes) are marked "unofficial — heavily requested" in the source doc but are
+   included here since they're listed as serviced. */
+var ROUTE_STOPS = {
+  '7A': [
+    'Frank Sound Junction Bus Shelter','Clifton Hunter High School Bus Shelter',
+    'Crystal Caves Bus Stop','Old Man Bay Dock Bus Shelter','Old Man Bay Dock Bus Stop',
+    'Bo Miller Public Beach Bus Stop towards EE','Bo Miller Public Beach Bus Stop towards NS',
+    'Old Robin Rd Bus Stop','Morritts Shopping Center Bus Shelter','Wyndham Bus Shelter',
+    'Colliers Beach Bus Shelter','Cayman Parrot Sanctuary Bus Stop',
+    'Cayman Parrot Sanctuary Bus Stop towards Tukka','Wreck of the Ten Sails Bus Shelter',
+    'Compass Point Bus Stop','George Dixon Park Bus Shelter',
+    'East End Primary School Bus Shelter','Health City Bus Shelter',
+    'South Coast Bar and Grill Bus Shelter','H.M. Botanic Garden (entrance of road)',
+    'Blow Holes ( Sea View Rd)'
+  ],
+  '9A': [
+    'Frank Sound Junction Bus Shelter','Clifton Hunter High School Bus Shelter',
+    'Crystal Caves Bus Stop','Old Man Bay Dock Bus Shelter','Old Man Bay Dock Bus Stop',
+    'Bo Miller Public Beach Bus Stop towards EE','Bo Miller Public Beach Bus Stop towards NS',
+    'Old Robin Rd Bus Stop','Morritts Shopping Center Bus Shelter','Wyndham Bus Shelter',
+    'Colliers Beach Bus Shelter','Cayman Parrot Sanctuary Bus Stop',
+    'Cayman Parrot Sanctuary Bus Stop towards Tukka','Wreck of the Ten Sails Bus Shelter',
+    'Compass Point Bus Stop','George Dixon Park Bus Shelter',
+    'East End Primary School Bus Shelter','Health City Bus Shelter',
+    'South Coast Bar and Grill Bus Shelter','H.M. Botanic Garden (entrance of road)',
+    'Blow Holes ( Sea View Rd)'
+  ],
+  '8A': [
+    'Frank Sound Junction Bus Shelter','Clifton Hunter High School Bus Shelter',
+    'Crystal Caves Bus Stop','Old Man Bay Dock Bus Shelter',
+    'National Housing Development Trust Bus Shelter','Melvilles Lane Bus Stop',
+    'Rum Point Bus Stop','Rum Point Bus Shelter','Rum Point Bus Stop #2','Kaibo Bus Stop',
+    'Cayman Kai Public Beach Bus Stop','Rum Point Exit Sign Bus Stop',
+    'Rum Point Otto\u2019s Ave Bus Stop','Chisholms Cemetery Bus Stop','Hutland Bus Shelter',
+    'Old Man Bay Dock Bus Stop','Over the Edge Bus Shelter','Compass Point Bus Stop',
+    'North Side Public Beach #5','South Coast Bar and Grill Bus Shelter',
+    'H.M. Botanic Garden (entrance of road)'
+  ]
+};
+
+/* returns the stop list for the currently selected route,
+   or the full island list for custom / no selection */
+function currentPresets() {
+  var r = document.getElementById('routeId').value;
+  if (ROUTE_STOPS[r]) return ROUTE_STOPS[r].concat([OTHER_OPT]);
+  return PRESET_NAMES;
+}
 
 // ── Known stop coordinates from CAYMAN_ROUTES ──────────────
 var STOP_COORDS = {
@@ -405,11 +477,24 @@ function onRouteChange() {
   var val = document.getElementById('routeId').value;
   var name = ROUTE_NAMES[val] || '';
   if (name) document.getElementById('routeName').value = name;
+
+  var f = ROUTE_FREQ[val];
+  if (f) {
+    document.getElementById('freqInterval').value = String(f.interval);
+    document.getElementById('freqOffset').value   = String(f.offset);
+    document.getElementById('freqFirst').value    = f.first;
+    document.getElementById('freqLast').value     = f.last;
+  }
+
+  document.querySelectorAll('.name-dropdown').forEach(function(dd){ dd.classList.remove('open'); });
+  populateRouteStops(val);
+
   updateProgress();
 }
 
-/* ── add stop ── */
-function addStop() {
+/* ── add stop. Pass presetName to pre-fill a known stop (used for route auto-population);
+   omit it for the normal manual "Add Stop" button flow. ── */
+function addStop(presetName) {
   stopCounter++;
   var id = 'stop' + stopCounter;
   var idx = stops.length + 1;
@@ -456,7 +541,40 @@ function addStop() {
 
   updateBadge();
   updateProgress();
-  nameInput.focus();
+
+  if (presetName) {
+    nameInput.value = presetName;
+    var s = stops[stops.length - 1];
+    s.name = presetName;
+    var key = presetName.toLowerCase();
+    if (STOP_COORDS[key]) {
+      s.lat = STOP_COORDS[key][0];
+      s.lng = STOP_COORDS[key][1];
+      updateLocDisplay(id, s.lat, s.lng);
+    }
+  } else {
+    nameInput.focus();
+  }
+}
+
+/* ── remove every stop and reset to the empty state, without touching driver/route fields ── */
+function clearStops() {
+  Object.values(activeMaps).forEach(function(m){ m.remove(); });
+  activeMaps = {};
+  stops = [];
+  document.getElementById('stopsList').innerHTML =
+    '<div class="empty-stops" id="emptyHint"><span class="icon">🚏</span>No stops yet — press <strong style="color:var(--gold)">Add Stop</strong> to begin.</div>';
+  updateBadge();
+}
+
+/* ── load every confirmed stop for a route in order ── */
+function populateRouteStops(routeId) {
+  clearStops();
+  var list = ROUTE_STOPS[routeId];
+  if (!list) { updateProgress(); return; }
+  list.forEach(function(name){ addStop(name); });
+  showToast(list.length + ' stops auto-loaded for ' + routeId, 'success');
+  updateProgress();
 }
 
 /* ── auto-fill coords from known stop name ── */
@@ -479,6 +597,7 @@ function updateCoordsFromName(id) {
 function updateLocDisplay(id, lat, lng) {
   var disp = document.getElementById('locDisp_' + id);
   var txt  = document.getElementById('locTxt_' + id);
+  if (!disp || !txt) return; // current stop-item template has no location chip
   if (lat && lng) {
     disp.classList.add('set');
     disp.style.borderColor = 'rgba(34,197,94,.4)';
@@ -497,9 +616,9 @@ function filterDD(id, val) {
   var dd = document.getElementById('dd_' + id);
   if (!dd) return;
   var q = val.toLowerCase();
-  var filtered = PRESET_NAMES.filter(function(s){ return s.toLowerCase().indexOf(q) !== -1 || q === ''; });
+  var filtered = currentPresets().filter(function(s){ return s.toLowerCase().indexOf(q) !== -1 || q === ''; });
   if (filtered.length === 0) { dd.classList.remove('open'); return; }
-  dd.innerHTML = filtered.slice(0, 8).map(function(s) {
+  dd.innerHTML = filtered.slice(0, 20).map(function(s) {
     var isCustom = s.indexOf('Other') !== -1;
     var hasCoords = STOP_COORDS[s.toLowerCase()];
     var coordBadge = hasCoords
@@ -659,7 +778,12 @@ async function submitForm() {
   var routeId        = document.getElementById('routeId').value;
   var routeName      = document.getElementById('routeName').value.trim();
   var routeColor     = document.getElementById('routeColor').value;
-  var frequency      = document.getElementById('frequency').value;
+  var frequency = {
+    intervalMinutes: parseInt(document.getElementById('freqInterval').value, 10) || 0,
+    offsetMinutes:   parseInt(document.getElementById('freqOffset').value, 10) || 0,
+    firstDeparture:  document.getElementById('freqFirst').value,
+    lastDeparture:   document.getElementById('freqLast').value
+  };
   var routeDesc      = document.getElementById('routeDesc').value.trim();
 
   if (!driverName)     { showToast('Please enter your full name', 'error'); return; }
@@ -741,9 +865,11 @@ function resetAll() {
   activeMaps = {}; stops = []; stopCounter = 0;
   document.getElementById('stopsList').innerHTML =
     '<div class="empty-stops" id="emptyHint"><span class="icon">🚏</span>No stops yet — press <strong style="color:var(--gold)">Add Stop</strong> to begin.</div>';
-  ['driverName','driverPhone','driverUsername','busId','routeName','routeDesc'].forEach(function(id){
+  ['driverName','driverPhone','driverUsername','busId','routeName','routeDesc','freqFirst','freqLast'].forEach(function(id){
     var el = document.getElementById(id); if (el) el.value = '';
   });
+  document.getElementById('freqInterval').value = '';
+  document.getElementById('freqOffset').value = '0';
   document.getElementById('routeId').value = '';
   document.getElementById('routeColor').value = '#F5C518';
   document.querySelectorAll('.color-swatch').forEach(function(s,i){ s.classList.toggle('selected', i === 0); });
