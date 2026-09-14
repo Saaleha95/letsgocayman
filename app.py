@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
+from flask import Response
 import os
 import json
 import secrets
@@ -55,6 +56,8 @@ _twilio_override = {}
 # ═══════════════════════════════════════════════════════════
 ROBOTS_TXT = """User-agent: *
 Disallow: /admin/
+Disallow: /gov
+Disallow: /gov/
 Disallow: /delete-account
 Disallow: /track/
 Disallow: /sos/
@@ -65,6 +68,19 @@ Disallow: /api/
 
 Allow: /
 Allow: /support
+Allow: /privacy
+
+User-agent: Mediapartners-Google
+Disallow: /admin/
+Disallow: /gov
+Disallow: /gov/
+Disallow: /delete-account
+Disallow: /track/
+Disallow: /sos/
+Disallow: /driver
+Disallow: /drivers
+Disallow: /maps
+Disallow: /api/
 
 Sitemap: https://www.letsgocayman.com/sitemap.xml
 """
@@ -81,19 +97,29 @@ SITEMAP_XML = """<?xml version="1.0" encoding="UTF-8"?>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
+  <url>
+    <loc>https://www.letsgocayman.com/privacy</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
 </urlset>
 """
 
 
+ADS_TXT = "google.com, pub-5902518344335566, DIRECT, f08c47fec0942fa0\n"
+
+@app.route('/ads.txt')
+def ads_txt():
+
+    return Response(ADS_TXT, mimetype='text/plain')
+
 @app.route('/robots.txt')
 def robots_txt():
-    from flask import Response
     return Response(ROBOTS_TXT, mimetype='text/plain')
 
 
 @app.route('/sitemap.xml')
 def sitemap_xml():
-    from flask import Response
     return Response(SITEMAP_XML, mimetype='application/xml')
 
 class User(db.Model):
@@ -4081,6 +4107,71 @@ function toggleFaq(btn) {
 </body>
 </html>"""
 
+
+@app.route('/privacy')
+def privacy_policy():
+    return """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Privacy Policy — LetsGo Cayman</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#0a0f1e;--surface:#111827;--accent:#00d4aa;--text:#e8edf5;--muted:#8fa0b8;--border:rgba(0,212,170,.15)}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);line-height:1.75}
+  .topbar{background:rgba(10,15,30,.95);border-bottom:1px solid var(--border);padding:18px 40px;display:flex;justify-content:space-between;align-items:center}
+  .logo{font-family:'Syne',sans-serif;font-weight:800;font-size:20px;color:var(--accent)}
+  .back{color:var(--accent);text-decoration:none;font-size:14px}
+  main{max-width:760px;margin:0 auto;padding:60px 24px 100px}
+  h1{font-family:'Syne',sans-serif;font-size:32px;font-weight:800;margin-bottom:8px}
+  .updated{color:var(--muted);font-size:13px;margin-bottom:36px}
+  h2{font-family:'Syne',sans-serif;font-size:19px;font-weight:700;margin:32px 0 12px;color:var(--accent)}
+  p,li{color:var(--muted);font-size:15px;margin-bottom:12px}
+  ul{padding-left:20px;margin-bottom:12px}
+  a{color:var(--accent)}
+  footer{border-top:1px solid var(--border);padding:24px 40px;text-align:center;font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<nav class="topbar"><div class="logo">LetsGo</div><a href="/" class="back">← Back to site</a></nav>
+<main>
+  <h1>Privacy Policy</h1>
+  <p class="updated">Last updated: September 2026</p>
+
+  <p>LetsGo Cayman ("we", "our", "us") operates the LetsGo mobile app and website (letsgocayman.com). This policy explains what information we collect, how we use it, and the choices you have.</p>
+
+  <h2>Information we collect</h2>
+  <ul>
+    <li>Account details you provide: full name, username, phone number, and a securely hashed password.</li>
+    <li>Location data, only while you use live tracking, journey sharing, or SOS features.</li>
+    <li>Community reports and journey search activity you submit within the app.</li>
+    <li>Emergency contact names and phone numbers you choose to save.</li>
+  </ul>
+
+  <h2>How we use your information</h2>
+  <ul>
+    <li>To show live bus locations and estimated arrival times.</li>
+    <li>To send SMS notifications for SOS alerts, journey sharing, and offline connectivity reminders.</li>
+    <li>To improve routes and service reliability using aggregated, anonymized usage data.</li>
+  </ul>
+
+  <h2>Advertising and cookies</h2>
+  <p>Our website uses Google AdSense to display advertising. Google and its partners may use cookies or similar technologies to serve ads based on your prior visits to this or other websites. You can opt out of personalized advertising by visiting <a href="https://adssettings.google.com" target="_blank">Google Ads Settings</a>, or by visiting <a href="https://www.aboutads.info/choices" target="_blank">www.aboutads.info/choices</a> to opt out of third-party vendor use of cookies for personalized advertising.</p>
+
+  <h2>Data retention and deletion</h2>
+  <p>You can permanently delete your account and associated data at any time from <a href="/delete-account">our account deletion page</a>. Payment-related records may be retained for up to 7 years to comply with financial regulations.</p>
+
+  <h2>Third parties</h2>
+  <p>We use Twilio to deliver SMS alerts and Google services (Maps, AdSense) as described above. We do not sell personal data to third parties.</p>
+
+  <h2>Contact us</h2>
+  <p>Questions about this policy can be sent to <a href="mailto:support@letsgocayman.com">support@letsgocayman.com</a>.</p>
+</main>
+<footer>© 2026 LetsGo Cayman · Grand Cayman, Cayman Islands</footer>
+</body>
+</html>"""
 
 @app.route('/api/safety/sos/<token>/resolve', methods=['POST'])
 def resolve_sos(token):
