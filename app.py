@@ -1034,8 +1034,13 @@ def gov_community_reports():
         label = {'open': 'Open', 'in_progress': 'In Progress', 'resolved': 'Resolved'}.get(r.status, r.status)
         joined = r.created_at.strftime('%d %b %Y, %H:%M')
         msg_preview = (r.message[:80] + '…') if len(r.message) > 80 else r.message
+        resolve_btn = (
+            f'<button class="btn btn-success" style="font-size:12px;padding:5px 10px" onclick="resolveReport({r.id})">Mark Resolved</button>'
+            if r.status != 'resolved' else
+            '<span style="font-size:11px;color:#484f58;padding:0 8px">✓ Resolved</span>'
+        )
         rows += f"""
-        <tr>
+        <tr id="gov-rep-row-{r.id}">
           <td style="color:#6e7681;font-size:12px">#{r.id}</td>
           <td><span style="background:rgba(245,197,24,.1);color:var(--gold);padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600">{r.category}</span></td>
           <td style="color:#8b949e;max-width:260px">{msg_preview}</td>
@@ -1045,10 +1050,11 @@ def gov_community_reports():
           <td><span style="color:{color};background:{color}18;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600">{label}</span></td>
           <td style="color:#6e7681;font-size:12px">{r.username}</td>
           <td class="date-cell">{joined}</td>
+          <td>{resolve_btn}</td>
         </tr>"""
 
     if not rows:
-        rows = '<tr><td colspan="9" style="text-align:center;padding:48px;color:#484f58">No community reports yet.</td></tr>'
+        rows = '<tr><td colspan="10" style="text-align:center;padding:48px;color:#484f58">No community reports yet.</td></tr>'
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -1060,28 +1066,19 @@ def gov_community_reports():
 {GOV_NAV_STYLE}
 <style>
   table td{{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
-  .gov-nav{{background:#161b22;border-bottom:1px solid #30363d;padding:0 32px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}}
-  .gov-nav .brand{{font-size:18px;font-weight:700;color:var(--gold)}}
-  .gov-nav .nav-links{{display:flex;gap:4px}}
-  .gov-nav .nav-links a{{color:#8b949e;padding:6px 14px;border-radius:8px;font-size:13px;font-weight:500;text-decoration:none;transition:all .2s}}
-  .gov-nav .nav-links a:hover,.gov-nav .nav-links a.active{{background:rgba(245,197,24,.1);color:var(--gold);text-decoration:none}}
-  .gov-nav .nav-links a.sos-link{{color:#f87171}}
-  .gov-nav .nav-links a.sos-link:hover,.gov-nav .nav-links a.sos-link.active{{background:rgba(239,68,68,.12);color:#ef4444}}
-  .gov-nav .logout{{color:#8b949e;font-size:13px;padding:6px 14px;border-radius:8px;border:1px solid #30363d;transition:all .2s}}
-  .gov-nav .logout:hover{{border-color:var(--red);color:var(--red);text-decoration:none}}
 </style>
 </head>
 <body>
 {gov_nav_html('community')}
 <div class="admin-main">
   <div class="page-header">
-    <div><h1>📣 Community Reports</h1><p>Reports submitted by LetsGo riders (read-only)</p></div>
+    <div><h1>📣 Community Reports</h1><p>Reports submitted by LetsGo riders</p></div>
     <span class="badge">{len(reports)} report(s)</span>
   </div>
   <div class="card">
     <div class="table-wrap">
       <table>
-        <thead><tr><th>#</th><th>Category</th><th>Message</th><th>Stop</th><th>Route</th><th>Upvotes</th><th>Status</th><th>Author</th><th>Submitted</th></tr></thead>
+        <thead><tr><th>#</th><th>Category</th><th>Message</th><th>Stop</th><th>Route</th><th>Upvotes</th><th>Status</th><th>Author</th><th>Submitted</th><th>Actions</th></tr></thead>
         <tbody>{rows}</tbody>
       </table>
     </div>
@@ -1090,6 +1087,27 @@ def gov_community_reports():
     © 2026 LetsGo Cayman. All rights reserved.
   </footer>
 </div>
+<div class="toast" id="toast"></div>
+{ADMIN_JS}
+<script>
+async function resolveReport(id){{
+  try{{
+    const res = await fetch(`/api/community/reports/${{id}}`, {{
+      method:'PATCH',
+      headers:{{'Content-Type':'application/json'}},
+      body: JSON.stringify({{status:'resolved'}})
+    }});
+    if(res.ok){{
+      showToast('✓ Report marked resolved');
+      setTimeout(()=>window.location.reload(), 600);
+    }} else {{
+      showToast('✗ Failed to update report','error');
+    }}
+  }}catch(e){{
+    showToast('✗ Request failed','error');
+  }}
+}}
+</script>
 </body>
 </html>"""
 
@@ -1206,8 +1224,13 @@ def gov_sos_alerts():
         status_color = '#4ade80' if a.resolved else '#ef4444'
         status_bg = 'rgba(74,222,128,.1)' if a.resolved else 'rgba(239,68,68,.12)'
         status_label = 'Resolved' if a.resolved else 'ACTIVE'
+        resolve_btn = (
+            f'<button class="btn btn-success" style="font-size:12px;padding:5px 10px;margin-left:4px" onclick="resolveGovSos(\'{a.token}\')">Resolve</button>'
+            if not a.resolved else
+            '<span style="font-size:11px;color:#484f58;padding:0 8px">✓ Done</span>'
+        )
         rows += f"""
-        <tr>
+        <tr id="gov-sos-row-{a.id}">
           <td style="color:#6e7681;font-size:12px;font-family:monospace">#{a.id}</td>
           <td>
             <div style="font-weight:600;color:#f0f6fc">{a.username}</div>
@@ -1224,7 +1247,10 @@ def gov_sos_alerts():
           </td>
           <td><span style="background:{status_bg};color:{status_color};padding:4px 11px;border-radius:20px;font-size:11px;font-weight:700">{status_label}</span></td>
           <td class="date-cell">{triggered}</td>
-          <td><a href="/sos/{a.token}" target="_blank" class="btn btn-ghost" style="font-size:12px;padding:5px 10px">View</a></td>
+          <td>
+            <a href="/sos/{a.token}" target="_blank" class="btn btn-ghost" style="font-size:12px;padding:5px 10px">View</a>
+            {resolve_btn}
+          </td>
         </tr>"""
 
     if not rows:
@@ -1254,7 +1280,7 @@ def gov_sos_alerts():
 {gov_nav_html('sos')}
 <div class="admin-main">
   <div class="page-header">
-    <div><h1>🆘 SOS Alerts</h1><p>Emergency alerts triggered by riders (read-only)</p></div>
+    <div><h1>🆘 SOS Alerts</h1><p>Emergency alerts triggered by riders</p></div>
     <span class="badge">{active_count} active · {len(alerts)} total</span>
   </div>
   <div class="card">
@@ -1269,9 +1295,25 @@ def gov_sos_alerts():
     © 2026 LetsGo Cayman. All rights reserved.
   </footer>
 </div>
+<div class="toast" id="toast"></div>
+{ADMIN_JS}
+<script>
+async function resolveGovSos(token){{
+  try{{
+    const res = await fetch(`/api/safety/sos/${{token}}/resolve`, {{ method:'POST' }});
+    if(res.ok){{
+      showToast('✓ SOS marked resolved');
+      setTimeout(()=>window.location.reload(), 600);
+    }} else {{
+      showToast('✗ Failed to resolve','error');
+    }}
+  }}catch(e){{
+    showToast('✗ Request failed','error');
+  }}
+}}
+</script>
 </body>
 </html>"""
-
 
 @app.route('/gov/logout')
 def gov_logout():
