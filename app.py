@@ -613,9 +613,9 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
      crossorigin="anonymous"></script>
 </head>
 <body>
-<div class="notice-bar">
-  🚌 <strong>Shuttle buses in effect:</strong> Route 7A (Frank Sound → East End) · Route 8A (Frank Sound → Rum Point / North Side) · Route 9A (Frank Sound → East End, parallel to 7A)
-</div>
+# <div class="notice-bar">
+#   🚌 <strong>Shuttle buses in effect:</strong> Route 7A (Frank Sound → East End) · Route 8A (Frank Sound → Rum Point / North Side) · Route 9A (Frank Sound → East End, parallel to 7A)
+# </div>
 <div class="cur" id="cur"></div>
 <nav id="nav">
   <a class="nav-logo" href="#"><span class="dot"></span> LetsGo</a>
@@ -702,7 +702,17 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
         <p style="margin-top:24px">Getting around Grand Cayman just got smarter. Whether you're heading to work in George Town, school in Bodden Town, or the beach on Seven Mile — <strong>LetsGo has your route covered</strong>.</p>
         <p>We know the roads, the schedules, and the Cayman way of life. No more guessing when the next bus comes. No more missed rides. Just tap and go.</p>
         <div class="why-highlights">
-          <div class="why-hl reveal reveal-delay-1"><div class="why-hl-icon">&#128506;</div><div><div class="why-hl-text">All 9 Grand Cayman Routes</div><div class="why-hl-sub">George Town · West Bay · Bodden Town · East End</div></div></div>
+          <div class="why-hl reveal reveal-delay-1">
+            <div class="why-hl-icon">&#128652;</div>
+            <div>
+              <div class="why-hl-text">Eastern Link Routes</div>
+              <div class="why-hl-sub">
+                <strong style="color:var(--gold2)">7A</strong> East End Loop via East End &nbsp;·&nbsp;
+                <strong style="color:var(--gold2)">9A</strong> East End Loop via Queen's Highway &nbsp;·&nbsp;
+                <strong style="color:var(--gold2)">8A</strong> North Side / Cayman Kai
+              </div>
+            </div>
+          </div>
           <div class="why-hl reveal reveal-delay-2"><div class="why-hl-icon">&#127754;</div><div><div class="why-hl-text">Works in Dead Zones</div><div class="why-hl-sub">Full offline support — even along the coast roads</div></div></div>
           <div class="why-hl reveal reveal-delay-3"><div class="why-hl-icon">&#127472;&#127486;</div><div><div class="why-hl-text">Made for Caymanians</div><div class="why-hl-sub">Local team, local knowledge, local pride</div></div></div>
         </div>
