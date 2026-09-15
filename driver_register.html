@@ -316,41 +316,60 @@ var OTHER_OPT = 'Other (specify name below)';
    8A is the separate North Side / Cayman Kai line. Two stops (H.M. Botanic Garden,
    Blow Holes) are marked "unofficial — heavily requested" in the source doc but are
    included here since they're listed as serviced. */
+/* ── PTU-corrected stop lists (per PTU review round 2).
+   Changes from the original list:
+   - Removed Crystal Caves / Old Man Bay Dock / North Side stops from 7A and 9A —
+     PTU confirmed those routes go Frank Sound -> East End via Queens Highway and
+     do NOT enter Old Man Bay / North Side. That corridor belongs to 8A only.
+   - Deduped directional twins (Bo Miller, Cayman Parrot Sanctuary) down to one
+     stop each, per PTU: same physical place, opposite side of the road, no need
+     for two entries.
+   - Reordered 8A into geographic sequence (Frank Sound -> North Side -> Hutland
+     -> Rum Point -> Cayman Kai). This ordering is my best-effort reconstruction
+     from general road geography, NOT a surveyed sequence — PTU should confirm
+     before this goes live for drivers.
+   - Added stops PTU named that have NO CONFIRMED GPS COORDINATES yet: Ocean
+     Frontier, East End Primary School (John Mclean Dr), Hutland Junction Bus
+     Shelter, and Jacks Gas Station Bus Shelter. These will show in the dropdown
+     as "manual" (no auto-pin) until PTU supplies exact coordinates to add to
+     STOP_COORDS. */
 var ROUTE_STOPS = {
   '7A': [
     'Frank Sound Junction Bus Shelter','Clifton Hunter High School Bus Shelter',
-    'Crystal Caves Bus Stop','Old Man Bay Dock Bus Shelter','Old Man Bay Dock Bus Stop',
-    'Bo Miller Public Beach Bus Stop towards EE','Bo Miller Public Beach Bus Stop towards NS',
-    'Old Robin Rd Bus Stop','Morritts Shopping Center Bus Shelter','Wyndham Bus Shelter',
-    'Colliers Beach Bus Shelter','Cayman Parrot Sanctuary Bus Stop',
-    'Cayman Parrot Sanctuary Bus Stop towards Tukka','Wreck of the Ten Sails Bus Shelter',
-    'Compass Point Bus Stop','George Dixon Park Bus Shelter',
-    'East End Primary School Bus Shelter','Health City Bus Shelter',
-    'South Coast Bar and Grill Bus Shelter','H.M. Botanic Garden (entrance of road)',
+    'Compass Point Bus Stop','South Coast Bar and Grill Bus Shelter',
+    'H.M. Botanic Garden (entrance of road)','George Dixon Park Bus Shelter',
+    'Health City Bus Shelter','East End Primary School Bus Shelter',
+    'East End Primary School (John Mclean Dr)','Ocean Frontier',
+    'Cayman Parrot Sanctuary Bus Stop','Wreck of the Ten Sails Bus Shelter',
+    'Old Robin Rd Bus Stop','Colliers Beach Bus Shelter',
+    'Morritts Shopping Center Bus Shelter','Wyndham Bus Shelter',
+    'Bo Miller Public Beach Bus Stop','Jacks Gas Station Bus Shelter',
     'Blow Holes ( Sea View Rd)'
   ],
   '9A': [
     'Frank Sound Junction Bus Shelter','Clifton Hunter High School Bus Shelter',
-    'Crystal Caves Bus Stop','Old Man Bay Dock Bus Shelter','Old Man Bay Dock Bus Stop',
-    'Bo Miller Public Beach Bus Stop towards EE','Bo Miller Public Beach Bus Stop towards NS',
-    'Old Robin Rd Bus Stop','Morritts Shopping Center Bus Shelter','Wyndham Bus Shelter',
-    'Colliers Beach Bus Shelter','Cayman Parrot Sanctuary Bus Stop',
-    'Cayman Parrot Sanctuary Bus Stop towards Tukka','Wreck of the Ten Sails Bus Shelter',
-    'Compass Point Bus Stop','George Dixon Park Bus Shelter',
-    'East End Primary School Bus Shelter','Health City Bus Shelter',
-    'South Coast Bar and Grill Bus Shelter','H.M. Botanic Garden (entrance of road)',
+    'Compass Point Bus Stop','South Coast Bar and Grill Bus Shelter',
+    'H.M. Botanic Garden (entrance of road)','George Dixon Park Bus Shelter',
+    'Health City Bus Shelter','East End Primary School Bus Shelter',
+    'East End Primary School (John Mclean Dr)','Ocean Frontier',
+    'Cayman Parrot Sanctuary Bus Stop','Wreck of the Ten Sails Bus Shelter',
+    'Old Robin Rd Bus Stop','Colliers Beach Bus Shelter',
+    'Morritts Shopping Center Bus Shelter','Wyndham Bus Shelter',
+    'Bo Miller Public Beach Bus Stop','Jacks Gas Station Bus Shelter',
     'Blow Holes ( Sea View Rd)'
   ],
   '8A': [
     'Frank Sound Junction Bus Shelter','Clifton Hunter High School Bus Shelter',
-    'Crystal Caves Bus Stop','Old Man Bay Dock Bus Shelter',
-    'National Housing Development Trust Bus Shelter','Melvilles Lane Bus Stop',
-    'Rum Point Bus Stop','Rum Point Bus Shelter','Rum Point Bus Stop #2','Kaibo Bus Stop',
-    'Cayman Kai Public Beach Bus Stop','Rum Point Exit Sign Bus Stop',
-    'Rum Point Otto\u2019s Ave Bus Stop','Chisholms Cemetery Bus Stop','Hutland Bus Shelter',
-    'Old Man Bay Dock Bus Stop','Over the Edge Bus Shelter','Compass Point Bus Stop',
-    'North Side Public Beach #5','South Coast Bar and Grill Bus Shelter',
-    'H.M. Botanic Garden (entrance of road)'
+    'Compass Point Bus Stop','South Coast Bar and Grill Bus Shelter',
+    'H.M. Botanic Garden (entrance of road)','Crystal Caves Bus Stop',
+    'Old Man Bay Dock Bus Shelter','Old Man Bay Dock Bus Stop',
+    'National Housing Development Trust Bus Shelter','Hutland Bus Shelter',
+    'Hutland Junction Bus Shelter','Jacks Gas Station Bus Shelter',
+    'Chisholms Cemetery Bus Stop','Melvilles Lane Bus Stop',
+    'Over the Edge Bus Shelter','Rum Point Exit Sign Bus Stop',
+    'Rum Point Otto\u2019s Ave Bus Stop','Kaibo Bus Stop','Rum Point Bus Stop',
+    'Rum Point Bus Shelter','Rum Point Bus Stop #2',
+    'Cayman Kai Public Beach Bus Stop','North Side Public Beach #5'
   ]
 };
 
@@ -366,6 +385,7 @@ function currentPresets() {
 var STOP_COORDS = {
   'al thompsons bt bus shelter': [19.284245, -81.243578],
   'blow holes ( sea view rd)': [19.2926, -81.0651],
+  'bo miller public beach bus stop': [19.346744, -81.174160],
   'bo miller public beach bus stop towards ee': [19.346745, -81.174171],
   'bo miller public beach bus stop towards ns': [19.346742, -81.174148],
   'bodden town play field bus shelter': [19.283267, -81.244784],
