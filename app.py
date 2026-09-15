@@ -613,9 +613,7 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
      crossorigin="anonymous"></script>
 </head>
 <body>
-# <div class="notice-bar">
-#   🚌 <strong>Shuttle buses in effect:</strong> Route 7A (Frank Sound → East End) · Route 8A (Frank Sound → Rum Point / North Side) · Route 9A (Frank Sound → East End, parallel to 7A)
-# </div>
+
 <div class="cur" id="cur"></div>
 <nav id="nav">
   <a class="nav-logo" href="#"><span class="dot"></span> LetsGo</a>
