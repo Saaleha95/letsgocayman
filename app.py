@@ -31,7 +31,6 @@ GOV_USERNAME = os.environ.get('GOV_USERNAME', 'admin')
 GOV_PASSWORD = os.environ.get('GOV_PASSWORD', 'admin2026')
 
 
-
 def require_gov(fn):
     from functools import wraps
     @wraps(fn)
@@ -524,7 +523,7 @@ h1.hero-title .gold{color:var(--gold)}
 .feat-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--navy);margin-bottom:10px}
 .feat-desc{font-size:14px;color:var(--muted);line-height:1.75}
 .feat-pill{display:inline-block;margin-top:18px;background:rgba(245,197,24,.15);color:var(--gold2);font-size:10px;font-weight:700;letter-spacing:2px;padding:5px 14px;border-radius:50px}
-.feat-card.featured .feat-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:32px;margin-top:16px}
+.feat-card.featured .feat-row{display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-top:16px}
 .feat-stat .fs-num{font-family:'Playfair Display',serif;font-size:32px;color:var(--gold);font-weight:900}
 .feat-stat .fs-lbl{font-size:12px;color:rgba(255,255,255,.4);margin-top:4px}
 .how-section{padding:100px 60px;background:var(--navy)}
@@ -638,9 +637,9 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
     <svg class="palm-left" width="200" height="400" viewBox="0 0 200 400"><path d="M100 400 Q95 300 80 250 Q40 200 10 180 Q50 190 70 220 Q60 170 20 140 Q65 165 80 200 Q75 150 50 110 Q85 145 90 190 Q90 130 70 80 Q100 130 95 200 Q110 130 130 80 Q110 140 115 200 Q120 150 150 110 Q125 155 120 200 Q135 165 180 140 Q145 170 130 220 Q150 190 190 180 Q160 200 120 250 Q105 300 105 400Z" fill="white"/></svg>
     <svg class="palm-right" width="180" height="360" viewBox="0 0 180 360" style="right:0"><path d="M90 360 Q85 270 70 225 Q35 180 8 162 Q45 172 63 198 Q54 153 18 126 Q59 149 72 180 Q68 135 45 99 Q77 131 81 171 Q81 117 63 72 Q90 117 86 180 Q99 117 117 72 Q99 126 103 180 Q108 135 136 99 Q113 139 109 180 Q121 149 162 126 Q131 153 117 198 Q135 172 172 162 Q145 180 110 225 Q95 270 95 360Z" fill="white"/></svg>
     <div class="hero-content">
-      <div class="hero-tag"><span class="live-dot"></span>CAYMAN ISLANDS · AI-POWERED TRANSIT</div>
+      <div class="hero-tag"><span class="live-dot"></span>CAYMAN ISLANDS · SMART BUS TRACKING</div>
       <h1 class="hero-title">RIDE<br><span class="gold">SMARTER</span><br>CAYMAN</h1>
-      <p class="hero-sub">The Cayman Islands' first AI-powered smart bus app — live tracking, offline payments, and community safety features built for Grand Cayman life.</p>
+      <p class="hero-sub">The Cayman Islands' first smart bus app — live tracking, journey sharing, and safety features built for Grand Cayman life. Currently free to ride on our pilot routes.</p>
       <div class="hero-cta-row">
         <a href="#dl" class="btn-primary" onclick="showPage('home')">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
@@ -653,9 +652,8 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
       </div>
       <div class="stats-bar">
         <div class="stat-item"><div class="num">9+</div><div class="lbl">Active Routes</div></div>
-        <div class="stat-item"><div class="num">24/7</div><div class="lbl">Live Tracking</div></div>
-        <div class="stat-item"><div class="num">CI$2.50</div><div class="lbl">From Per Ride</div></div>
-        <div class="stat-item"><div class="num">100%</div><div class="lbl">Offline Ready</div></div>
+        <div class="stat-item"><div class="num">Live</div><div class="lbl">Bus Tracking</div></div>
+        <div class="stat-item"><div class="num">Free</div><div class="lbl">Pilot Service</div></div>
       </div>
     </div>
     <div class="hero-bus-wrap">
@@ -712,6 +710,13 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
               </div>
             </div>
           </div>
+          <div class="why-hl reveal reveal-delay-1" style="border-left-color:var(--teal)">
+            <div class="why-hl-icon">&#127991;&#65039;</div>
+            <div>
+              <div class="why-hl-text">Free Pilot Service</div>
+              <div class="why-hl-sub">No fare required — this is a government pilot route, free to ride for everyone</div>
+            </div>
+          </div>
           <div class="why-hl reveal reveal-delay-2"><div class="why-hl-icon">&#127754;</div><div><div class="why-hl-text">Works in Dead Zones</div><div class="why-hl-sub">Full offline support — even along the coast roads</div></div></div>
           <div class="why-hl reveal reveal-delay-3"><div class="why-hl-icon">&#127472;&#127486;</div><div><div class="why-hl-text">Made for Caymanians</div><div class="why-hl-sub">Local team, local knowledge, local pride</div></div></div>
         </div>
@@ -746,31 +751,23 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
   <div class="feat-card featured reveal">
     <div class="feat-num">01 ——</div><div class="feat-icon-wrap">📍</div>
     <div class="feat-title" style="font-size:28px;color:var(--white)">Real-Time Tracking — Online & Offline</div>
-    <div class="feat-desc" style="max-width:560px">See your bus live on the map with ETA, speed, stops, and distance. No signal? Our AI-powered device switches seamlessly to offline SMS tracking — so you're never left guessing, no matter where you are on the island.</div>
+    <div class="feat-desc" style="max-width:560px">See your bus live on the map with ETA, speed, stops, and distance. No signal? The app can send an SMS with your last known location and ETA, so you're not left guessing.</div>
     <div class="feat-row">
-      <div class="feat-stat"><div class="fs-num">&lt;60s</div><div class="fs-lbl">ETA accuracy</div></div>
-      <div class="feat-stat"><div class="fs-num">100%</div><div class="fs-lbl">Offline ready</div></div>
       <div class="feat-stat"><div class="fs-num">Live</div><div class="fs-lbl">GPS updates</div></div>
+      <div class="feat-stat"><div class="fs-num">SMS</div><div class="fs-lbl">Offline backup</div></div>
     </div>
-    <span class="feat-pill">AI · MACHINE LEARNING · ALWAYS ON</span>
-  </div>
-
-  <div class="feat-card reveal reveal-delay-1">
-    <div class="feat-num">02 ——</div><div class="feat-icon-wrap">💳</div>
-    <div class="feat-title">Smart Payment — One Tap</div>
-    <div class="feat-desc">Forget cash and coins. Our NFC device is installed on every bus — just tap your phone once to pay. Buy a single ride or a monthly pass instantly, even without internet. Fast, secure, and completely cashless.</div>
-    <span class="feat-pill">NFC · ONE TAP · CASHLESS</span>
+    <span class="feat-pill">LIVE MAP · SMS BACKUP · FREE PILOT</span>
   </div>
 
   <div class="feat-card reveal reveal-delay-2">
-    <div class="feat-num">03 ——</div><div class="feat-icon-wrap">🛡</div>
+    <div class="feat-num">02 ——</div><div class="feat-icon-wrap">🛡</div>
     <div class="feat-title">Safety Features</div>
-    <div class="feat-desc">Share your live journey with family or friends in one tap. If anything feels wrong, hit SOS — your exact GPS location is sent to your emergency contacts instantly, with 911 integrated directly in the app. Every rider is protected.</div>
+    <div class="feat-desc">Share your live journey with family or friends in one tap. If anything feels wrong, hit SOS — your exact GPS location is sent to your emergency contacts instantly, with 911 integrated directly in the app.</div>
     <span class="feat-pill">SOS · LIVE SHARE · 911 INTEGRATED</span>
   </div>
 
   <div class="feat-card reveal reveal-delay-1">
-    <div class="feat-num">04 ——</div><div class="feat-icon-wrap">📣</div>
+    <div class="feat-num">03 ——</div><div class="feat-icon-wrap">📣</div>
     <div class="feat-title">Community Reports</div>
     <div class="feat-desc">Riders flag broken stops, overcrowding, and delays in real time. We collect that data, analyse it, and resolve issues as fast as possible — making the entire bus network smarter and more reliable for everyone.</div>
     <span class="feat-pill">CROWDSOURCED · REAL TIME · RESOLVED FAST</span>
@@ -783,7 +780,7 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
     <div class="steps-row">
       <div class="step-card reveal"><div class="step-num">1</div><div class="step-title">Download Free</div><div class="step-desc">Get LetsGo on iOS or Android in seconds. Free forever for riders.</div></div>
       <div class="step-card reveal reveal-delay-1"><div class="step-num">2</div><div class="step-title">Find Your Route</div><div class="step-desc">Type where you're going or browse all 9 Grand Cayman routes on the live map.</div></div>
-      <div class="step-card reveal reveal-delay-2"><div class="step-num">3</div><div class="step-title">Tap &amp; Pay</div><div class="step-desc">Load your wallet once. Tap your phone at the reader — even with no signal.</div></div>
+      <div class="step-card reveal reveal-delay-2"><div class="step-num">3</div><div class="step-title">Hop On, Free</div><div class="step-desc">No ticket, no tap — pilot routes are free to ride. Just board when your bus arrives.</div></div>
       <div class="step-card reveal reveal-delay-3"><div class="step-num">4</div><div class="step-title">Track &amp; Ride</div><div class="step-desc">Watch your bus approach in real time. Get notified before it arrives. Sit back, relax.</div></div>
     </div>
   </section>
@@ -3888,11 +3885,11 @@ def support():
 
     <div class="faq-item">
       <button class="faq-q" onclick="toggleFaq(this)">
-        How do I pay for a ride using NFC?
+        Do I need to pay for a ride?
         <span class="arrow">▼</span>
       </button>
       <div class="faq-a">
-        Load credit into your LetsGo wallet from the <strong>Wallet</strong> tab using a debit or credit card. When you board the bus, hold your phone near the NFC reader (the yellow device near the driver). The app will deduct the fare automatically. NFC payments work even without an internet connection — your wallet balance is stored securely on your device.
+        No. Pilot routes on LetsGo are currently free to ride — no ticket, no tap, no fare. Just board the bus when it arrives at your stop.
       </div>
     </div>
 
@@ -3932,7 +3929,7 @@ def support():
         <span class="arrow">▼</span>
       </button>
       <div class="faq-a">
-        To delete your account, email <a href="mailto:support@letsgocayman.com?subject=Account%20Deletion%20Request">support@letsgocayman.com</a> with the subject line <em>Account Deletion Request</em> and include your registered username. We will permanently delete your account and associated personal data within 30 days. Payment transaction records may be retained for up to 7 years to comply with financial regulations. See our <a href="/privacy">Privacy Policy</a> for full details.
+        To delete your account, email <a href="mailto:support@letsgocayman.com?subject=Account%20Deletion%20Request">support@letsgocayman.com</a> with the subject line <em>Account Deletion Request</em> and include your registered username. We will permanently delete your account and associated personal data within 30 days. See our <a href="/privacy">Privacy Policy</a> for full details.
       </div>
     </div>
 
@@ -3957,18 +3954,6 @@ def support():
     </div>
 
     <div class="step-card">
-      <div class="step-icon">💳</div>
-      <h3>NFC payment failing</h3>
-      <ol>
-        <li>Check your wallet balance in the <em>Wallet</em> tab.</li>
-        <li>Go to Settings → NFC and ensure it is enabled.</li>
-        <li>Hold the centre of your phone flat against the reader.</li>
-        <li>Remove your phone case if it contains metal.</li>
-        <li>Restart the app and try again.</li>
-      </ol>
-    </div>
-
-    <div class="step-card">
       <div class="step-icon">🆘</div>
       <h3>SOS not sending</h3>
       <ol>
@@ -3985,7 +3970,7 @@ def support():
       <ol>
         <li>Update LetsGo to the latest version in the App Store or Google Play.</li>
         <li>Restart your phone.</li>
-        <li>Uninstall and reinstall the app (your account and wallet data are saved).</li>
+        <li>Uninstall and reinstall the app (your account data is saved).</li>
         <li>Email us with your device model and iOS/Android version.</li>
       </ol>
     </div>
@@ -4100,7 +4085,7 @@ def privacy_policy():
   <p>Our website uses Google AdSense to display advertising. Google and its partners may use cookies or similar technologies to serve ads based on your prior visits to this or other websites. You can opt out of personalized advertising by visiting <a href="https://adssettings.google.com" target="_blank">Google Ads Settings</a>, or by visiting <a href="https://www.aboutads.info/choices" target="_blank">www.aboutads.info/choices</a> to opt out of third-party vendor use of cookies for personalized advertising.</p>
 
   <h2>Data retention and deletion</h2>
-  <p>You can permanently delete your account and associated data at any time from <a href="/delete-account">our account deletion page</a>. Payment-related records may be retained for up to 7 years to comply with financial regulations.</p>
+  <p>You can permanently delete your account and associated data at any time from <a href="/delete-account">our account deletion page</a>.</p>
 
   <h2>Third parties</h2>
   <p>We use Twilio to deliver SMS alerts and Google services (Maps, AdSense) as described above. We do not sell personal data to third parties.</p>
