@@ -27,8 +27,9 @@ db = SQLAlchemy(app)
 ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'letsgo2026')
 
-GOV_USERNAME = 'admin'
-GOV_PASSWORD = 'admin2026'
+GOV_USERNAME = os.environ.get('GOV_USERNAME', 'admin')
+GOV_PASSWORD = os.environ.get('GOV_PASSWORD', 'admin2026')
+
 
 
 def require_gov(fn):
