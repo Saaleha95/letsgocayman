@@ -5,10 +5,16 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from flask import Response
 import os
+import re
 import json
+import math
+import hmac
+import hashlib
 import secrets
+import threading
 import uuid
-from datetime import datetime
+from html import escape as html_escape
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 CORS(app)
@@ -249,6 +255,67 @@ class JourneySearch(db.Model):
     platform = db.Column(db.String(20), default='')
     client_timestamp = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+# ── NEW TABLES (feature pack) ──────────────────────────────
+# These are brand-new tables, so db.create_all() creates them on an existing
+# database (SQLite or Render Postgres) — no manual migration needed.
+
+class BusTelemetry(db.Model):
+    """One row per bus: the latest position + speed/heading reported by the driver."""
+    id = db.Column(db.Integer, primary_key=True)
+    bus_id = db.Column(db.String(120), unique=True, nullable=False, index=True)
+    lat = db.Column(db.Float, nullable=True)
+    lng = db.Column(db.Float, nullable=True)
+    speed_kmh = db.Column(db.Float, nullable=True)   # None = unknown
+    heading = db.Column(db.Float, nullable=True)     # degrees, 0 = north
+    online = db.Column(db.Boolean, default=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class BusReminder(db.Model):
+    """One-time "tell me when the bus is N minutes away" reminder."""
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), nullable=False, index=True)
+    phone_number = db.Column(db.String(30), default='')
+    push_token = db.Column(db.String(200), default='')
+    via_sms = db.Column(db.Boolean, default=True)
+    bus_id = db.Column(db.String(120), default='')
+    route_id = db.Column(db.String(120), default='')
+    stop_id = db.Column(db.String(60), default='')
+    stop_name = db.Column(db.String(120), default='')
+    stop_lat = db.Column(db.Float, nullable=False)
+    stop_lng = db.Column(db.Float, nullable=False)
+    minutes_before = db.Column(db.Integer, default=5)
+    status = db.Column(db.String(20), default='pending', index=True)  # pending / sent / cancelled / expired
+    seen = db.Column(db.Boolean, default=False)
+    fired_bus_id = db.Column(db.String(120), default='')
+    eta_at_trigger = db.Column(db.Integer, nullable=True)
+    delivery = db.Column(db.String(200), default='')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    expires_at = db.Column(db.DateTime, nullable=True)
+    triggered_at = db.Column(db.DateTime, nullable=True)
+
+
+class ReportUpdate(db.Model):
+    """Status timeline for a community report (what the rider sees as 'updates')."""
+    id = db.Column(db.Integer, primary_key=True)
+    report_id = db.Column(db.Integer, nullable=False, index=True)
+    status = db.Column(db.String(20), nullable=False)
+    note = db.Column(db.Text, default='')
+    actor = db.Column(db.String(80), default='LetsGo team')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class SOSLocationPing(db.Model):
+    """Breadcrumb trail: every position the rider's phone reports during an SOS."""
+    id = db.Column(db.Integer, primary_key=True)
+    sos_id = db.Column(db.Integer, nullable=False, index=True)
+    lat = db.Column(db.Float, nullable=False)
+    lng = db.Column(db.Float, nullable=False)
+    accuracy = db.Column(db.Float, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 
 with app.app_context():
     db.create_all()
@@ -751,12 +818,7 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
   <div class="feat-card featured reveal">
     <div class="feat-num">01 ——</div><div class="feat-icon-wrap">📍</div>
     <div class="feat-title" style="font-size:28px;color:var(--white)">Real-Time Tracking — Online & Offline</div>
-    <div class="feat-desc" style="max-width:560px">See your bus live on the map with ETA, speed, stops, and distance. No signal? The app can send an SMS with your last known location and ETA, so you're not left guessing.</div>
-    <div class="feat-row">
-      <div class="feat-stat"><div class="fs-num">Live</div><div class="fs-lbl">GPS updates</div></div>
-      <div class="feat-stat"><div class="fs-num">SMS</div><div class="fs-lbl">Offline backup</div></div>
-    </div>
-    <span class="feat-pill">LIVE MAP · SMS BACKUP · FREE PILOT</span>
+    <div class="feat-desc" style="max-width:560px">See your bus live on the map with ETA, speed, stops, and distance.</div>
   </div>
 
   <div class="feat-card reveal reveal-delay-2">
@@ -1851,9 +1913,13 @@ def show_community_reports():
         <option value="resolved">Resolved</option>
       </select>
     </div>
-    <div class="form-group" style="margin-bottom:20px">
+    <div class="form-group" style="margin-bottom:16px">
       <label>Message</label>
       <textarea id="rep-edit-msg" rows="3"></textarea>
+    </div>
+    <div class="form-group" style="margin-bottom:20px">
+      <label>Note to rider (optional — shown in their report timeline &amp; texted to them)</label>
+      <textarea id="rep-edit-note" rows="2" placeholder="e.g. Crew scheduled to repair the shelter on Friday"></textarea>
     </div>
     <div class="modal-btns">
       <button class="btn btn-ghost" onclick="closeModal('rep-edit-overlay')">Cancel</button>
@@ -1877,10 +1943,10 @@ def show_community_reports():
 {ADMIN_JS}
 <script>
 let pendingRepDeleteId=null;
-function openRepEdit(id,status,msg){{document.getElementById('rep-edit-id').value=id;document.getElementById('rep-edit-status').value=status;document.getElementById('rep-edit-msg').value=msg;openModal('rep-edit-overlay');}}
+function openRepEdit(id,status,msg){{document.getElementById('rep-edit-id').value=id;document.getElementById('rep-edit-status').value=status;document.getElementById('rep-edit-msg').value=msg;document.getElementById('rep-edit-note').value='';openModal('rep-edit-overlay');}}
 async function saveRepEdit(){{
   const id=document.getElementById('rep-edit-id').value;
-  const body={{status:document.getElementById('rep-edit-status').value,message:document.getElementById('rep-edit-msg').value}};
+  const body={{status:document.getElementById('rep-edit-status').value,message:document.getElementById('rep-edit-msg').value,note:document.getElementById('rep-edit-note').value}};
   try{{const res=await fetch(`/api/community/reports/${{id}}`,{{method:'PATCH',headers:{{'Content-Type':'application/json'}},body:JSON.stringify(body)}});const data=await res.json();if(res.ok){{closeModal('rep-edit-overlay');showToast('✓ Report updated');refreshReports();}}else showToast('✗ '+data.message,'error');}}catch(e){{showToast('✗ Update failed','error');}}
 }}
 function confirmRepDelete(id){{pendingRepDeleteId=id;document.getElementById('rep-del-msg').textContent=`Delete report #${{id}} permanently?`;openModal('rep-del-overlay');}}
@@ -2484,49 +2550,73 @@ def update_user(user_id):
 @app.route('/api/community/reports/', methods=['GET', 'POST'])
 def community_reports():
     if request.method == 'GET':
-        reports = CommunityReport.query.order_by(CommunityReport.created_at.desc()).all()
+        # Optional filters: ?status= ?routeId= ?stopName= ?limit=
+        #   ?username=<me>            → fills in upvotedByMe correctly
+        #   ?username=<me>&mine=1     → only my reports
+        #   ?include=updates          → attach each report's status timeline
+        viewer = _clean_text(request.args.get('username'), 80)
+        q = CommunityReport.query
+        if viewer and request.args.get('mine') in ('1', 'true', 'yes'):
+            q = q.filter(CommunityReport.username == viewer)
+        for arg, col in (('status', CommunityReport.status), ('routeId', CommunityReport.route_id),
+                         ('stopName', CommunityReport.stop_name)):
+            v = (request.args.get(arg) or '').strip()
+            if v:
+                q = q.filter(col == v)
+        q = q.order_by(CommunityReport.created_at.desc())
+        limit = _to_float(request.args.get('limit'))
+        if limit and limit > 0:
+            q = q.limit(int(min(limit, 500)))
+        reports = q.all()
+
+        timeline = None
+        if request.args.get('include') == 'updates':
+            timeline = {}
+            if reports:
+                ups = (ReportUpdate.query.filter(ReportUpdate.report_id.in_([r.id for r in reports]))
+                       .order_by(ReportUpdate.created_at.asc(), ReportUpdate.id.asc()).all())
+                for u in ups:
+                    timeline.setdefault(u.report_id, []).append(_report_update_json(u))
         return jsonify({
             'total': len(reports),
-            'reports': [{
-                'id': r.id,
-                'category': r.category,
-                'message': r.message,
-                'stopName': r.stop_name,
-                'routeId': r.route_id,
-                'upvotes': r.upvotes,
-                'upvotedByMe': False,
-                'status': r.status,
-                'username': r.username,
-                'createdAt': r.created_at.isoformat(),
-            } for r in reports]
+            'reports': [_report_json(r, viewer, None if timeline is None else timeline.get(r.id, []))
+                        for r in reports],
         })
 
-    data = request.get_json()
+    data = request.get_json(force=True, silent=True)
     if not data:
         return jsonify({'message': 'No data provided'}), 400
 
+    username = _clean_text(data.get('username'), 80) or 'anonymous'
+    message = _clean_text(data.get('message'), 1000)
+    if not message:
+        return jsonify({'message': 'Please describe the issue'}), 400
+
+    # light spam guard (anonymous posts share one, higher, budget)
+    hourly_cap = 60 if username == 'anonymous' else REPORT_MAX_PER_HOUR
+    recent = CommunityReport.query.filter(CommunityReport.username == username,
+                                          CommunityReport.created_at >= _utcnow() - timedelta(hours=1)).count()
+    if recent >= hourly_cap:
+        return jsonify({'message': 'You have sent a lot of reports in the last hour — please try again later'}), 429
+
     report = CommunityReport(
-        category=data.get('category', 'other'),
-        message=data.get('message', ''),
-        stop_name=data.get('stopName', ''),
-        route_id=data.get('routeId', 'Any'),
-        username=data.get('username', 'anonymous'),
+        category=_clean_text(data.get('category'), 50) or 'other',
+        message=message,
+        stop_name=_clean_text(data.get('stopName'), 120),
+        route_id=_clean_text(data.get('routeId'), 20) or 'Any',
+        username=username,
     )
     db.session.add(report)
+    db.session.flush()                      # need report.id for the timeline
+    db.session.add(ReportUpdate(report_id=report.id, status='open', actor='LetsGo',
+                                note='Report received — our team will look into it.'))
     db.session.commit()
 
-    return jsonify({'report': {
-        'id': report.id,
-        'category': report.category,
-        'message': report.message,
-        'stopName': report.stop_name,
-        'routeId': report.route_id,
-        'upvotes': 0,
-        'upvotedByMe': False,
-        'status': report.status,
-        'username': report.username,
-        'createdAt': report.created_at.isoformat(),
-    }}), 201
+    return jsonify({
+        'message': "Thanks! We've received your report and will update you here as soon as we act on it.",
+        'report': _report_json(report, username, [_report_update_json(u) for u in
+                                                  ReportUpdate.query.filter_by(report_id=report.id).all()]),
+    }), 201
 
 
 @app.route('/api/community/reports/<int:report_id>', methods=['PATCH', 'DELETE'])
@@ -2540,12 +2630,24 @@ def community_report_detail(report_id):
         db.session.commit()
         return jsonify({'message': f'Report #{report_id} deleted'}), 200
 
-    data = request.get_json()
+    data = request.get_json(force=True, silent=True) or {}
+    old_status = report.status
     if 'status' in data:
-        report.status = data['status']
+        new_status = str(data['status']).strip()
+        if new_status not in REPORT_STATUSES:
+            return jsonify({'message': f"status must be one of: {', '.join(REPORT_STATUSES)}"}), 400
+        report.status = new_status
     if 'message' in data:
         report.message = data['message']
+    note = _clean_text(data.get('note'), 500)     # optional note the rider will see
+    changed = report.status != old_status
+    if changed or note:
+        actor = ('Admin' if session.get('admin_logged_in')
+                 else 'Gov team' if session.get('gov_logged_in') else 'LetsGo team')
+        db.session.add(ReportUpdate(report_id=report.id, status=report.status, note=note, actor=actor))
     db.session.commit()
+    if changed or note:
+        _run_async(_notify_report_author, report.id, report.status, note)
     return jsonify({'message': 'Report updated'}), 200
 
 
@@ -2850,8 +2952,12 @@ def sos_alert():
     username = (data.get('username') or 'Unknown').strip()
     route_id = str(data.get('routeId') or 'Unknown')
     bus_id = str(data.get('busId') or 'Unknown')
-    lat = str(data.get('lat') or data.get('latitude') or '19.2869')
-    lng = str(data.get('lng') or data.get('longitude') or '-81.3674')
+    _lat = _to_float(data.get('lat') if data.get('lat') is not None else data.get('latitude'))
+    _lng = _to_float(data.get('lng') if data.get('lng') is not None else data.get('longitude'))
+    if _valid_latlng(_lat, _lng):
+        lat, lng = f'{_lat:.6f}', f'{_lng:.6f}'
+    else:                                   # no usable GPS fix → George Town default (as before)
+        lat, lng = '19.2869', '-81.3674'
     contacts = data.get('emergencyContacts') or []
 
     if not contacts:
@@ -2877,6 +2983,8 @@ def sos_alert():
     )
     db.session.add(sos)
     db.session.commit()
+    db.session.add(SOSLocationPing(sos_id=sos.id, lat=float(lat), lng=float(lng)))   # first point of the trail
+    db.session.commit()
 
     sos_url = f'https://www.letsgocayman.com/sos/{sos.token}'
     maps_url = f'https://maps.google.com/?q={lat},{lng}'
@@ -2891,7 +2999,7 @@ def sos_alert():
             f"🚨 HELP NEEDED — {username} needs help!\n"
             f"They pressed SOS on Bus {bus_id} (Route {route_id}).\n"
             f"📍 Location: {maps_url}\n"
-            f"🔗 Live SOS page: {sos_url}\n"
+            f"🔗 Live tracking (updates automatically): {sos_url}\n"
             f"👉 Call 911 if urgent."
         )
         meta = {'username': username, 'message_type': 'sos', 'route_id': route_id,
@@ -2903,6 +3011,10 @@ def sos_alert():
         'success': True,
         'sosId': sos.token,
         'sosUrl': sos_url,
+        # The app keeps the phone's position fresh by POSTing {lat, lng, accuracy, updateKey}
+        # to locationEndpoint every ~5 s until the SOS is resolved.
+        'updateKey': _sos_update_key(sos.token),
+        'locationEndpoint': f'/api/safety/sos/{sos.token}/location',
         'smsResults': sms_results,
     }), 201
 
@@ -2937,6 +3049,8 @@ def bus_location():
     session.updated_at = datetime.utcnow()
     db.session.commit()
 
+    _ingest_bus_location('CaymanBus', _to_float(data['lat']), _to_float(data['lng']), True, data)
+
     return jsonify({"status": "ok"}), 200
 
 
@@ -2967,7 +3081,9 @@ def start_tracking():
     db.session.commit()
 
     track_url = f'https://www.letsgocayman.com/track/{session_obj.token}'
-    if contact_phone:
+    shared_with = []
+    # contactPhone (single, as before) + optional `contacts` list + shareWithEmergencyContacts
+    for person in _journey_recipients(username, data):
         body = (
             f'🚌 {username} is sharing their journey with you!\n'
             f'Bus: {bus_id} ({bus_name})\n'
@@ -2976,9 +3092,11 @@ def start_tracking():
         meta = {'username': username, 'message_type': 'journey_share', 'route_id': str(route_id),
                 'bus_id': str(bus_id), 'bus_name': str(bus_name), 'lat': str(lat), 'lng': str(lng),
                 'track_url': track_url}
-        _send_twilio(contact_phone, body, meta)
+        ok, _detail = _send_twilio(person['phone'], body, meta)
+        shared_with.append({'name': person['name'], 'phone': person['phone'], 'sent': ok})
 
-    return jsonify({'success': True, 'token': session_obj.token, 'trackUrl': track_url}), 201
+    return jsonify({'success': True, 'token': session_obj.token, 'trackUrl': track_url,
+                    'sharedWith': shared_with}), 201
 
 
 @app.route('/api/tracking/update', methods=['POST'])
@@ -3069,6 +3187,8 @@ def buses_registered():
 
         db.session.commit()
 
+        _ingest_bus_location(bus_id, lat, lng, active, data)
+
         return jsonify({
             'ok': True,
             'busId': bus_id,
@@ -3093,6 +3213,7 @@ def buses_registered():
     # ── 1. Live locations keyed by bus_id ─────────────────────────────────
     active_sessions = TrackingSession.query.filter_by(active=True).all()
     live_by_bus = {}
+    _tel = _telemetry_lookup()
     for s in active_sessions:
         try:
             live_by_bus[s.bus_id] = {
@@ -3100,6 +3221,7 @@ def buses_registered():
                 'lat': float(s.lat),
                 'lng': float(s.lng),
                 'updatedAt': s.updated_at.isoformat() if s.updated_at else None,
+                **_tel.get(s.bus_id, {}),
             }
         except (ValueError, TypeError):
             continue
@@ -3262,6 +3384,8 @@ def buses_coordinates():
 
         db.session.commit()
 
+        _ingest_bus_location(bus_id, lat, lng, active, data)
+
         return jsonify({
             'ok': True,
             'busId': bus_id,
@@ -3279,6 +3403,7 @@ def buses_coordinates():
     ).order_by(TrackingSession.updated_at.desc()).first()
 
     cayman_bus_live = None
+    _tel = _telemetry_lookup()
     if pi_session:
         try:
             cayman_bus_live = {
@@ -3286,6 +3411,7 @@ def buses_coordinates():
                 'lng': float(pi_session.lng),
                 'busId': pi_session.bus_id,
                 'updatedAt': pi_session.updated_at.isoformat() if pi_session.updated_at else None,
+                **_tel.get(pi_session.bus_id, {}),
             }
         except (ValueError, TypeError):
             cayman_bus_live = None
@@ -3301,6 +3427,7 @@ def buses_coordinates():
                 'lng': float(s.lng),
                 'busId': s.bus_id,
                 'updatedAt': s.updated_at.isoformat() if s.updated_at else None,
+                **_tel.get(s.bus_id, {}),
             }
             if s.route_id:
                 live_by_route[s.route_id] = loc
@@ -4122,6 +4249,8 @@ def admin_sms_alerts():
         'sos': ('🆘', '#ef4444', 'SOS Alert'),
         'journey_share': ('🗺', '#F5C518', 'Journey Share'),
         'offline': ('📵', '#fb923c', 'Offline Reminder'),
+        'bus_reminder': ('⏰', '#38bdf8', 'Bus Reminder'),
+        'report_update': ('📣', '#a3e635', 'Report Update'),
         'general': ('💬', '#818cf8', 'General'),
     }
 
@@ -4266,6 +4395,8 @@ async function refreshSMS() {{
       'sos':           ['🆘', '#ef4444', 'SOS Alert'],
       'journey_share': ['🗺', '#F5C518', 'Journey Share'],
       'offline':       ['📵', '#fb923c', 'Offline Reminder'],
+      'bus_reminder':  ['⏰', '#38bdf8', 'Bus Reminder'],
+      'report_update': ['📣', '#a3e635', 'Report Update'],
       'general':       ['💬', '#818cf8', 'General'],
     }};
 
@@ -5124,6 +5255,26 @@ def api_tracking_session(token):
         except (TypeError, ValueError):
             pass
 
+    # Prefer the driver's own telemetry: rider-session rows can hold a viewer's GPS, not the bus's.
+    live_extra = {}
+    try:
+        tel = BusTelemetry.query.filter_by(bus_id=sess.bus_id).first()
+        if tel is not None and tel.online and tel.lat is not None:
+            bus_lat, bus_lng = tel.lat, tel.lng
+            bus_updated = tel.updated_at.isoformat() if tel.updated_at else bus_updated
+            st = _bus_state(sess.bus_id, sess.route_id or '')
+            if st:
+                nxt = st['ahead'][0] if st['ahead'] else None
+                live_extra = {
+                    'speedKmh': st['speedKmh'], 'heading': st['heading'], 'stale': st['stale'],
+                    'direction': st['direction'], 'onRoute': st['onRoute'],
+                    'nextStop': nxt, 'upcomingStops': st['ahead'][:8],
+                    'distanceKm': nxt['distanceKm'] if nxt else None,
+                    'etaMinutes': nxt['etaMinutes'] if nxt else None,
+                }
+    except Exception:
+        app.logger.exception('telemetry enrichment failed for session %s', token)
+
     return jsonify({
         'found': True,
         'active': sess.active,
@@ -5140,6 +5291,7 @@ def api_tracking_session(token):
         'busLng': bus_lng,
         'busUpdated': bus_updated,
         'updatedAt': sess.updated_at.strftime('%H:%M:%S') if sess.updated_at else 'N/A',
+        **live_extra,
     })
 
 
@@ -5265,6 +5417,23 @@ body{{display:flex;flex-direction:column}}
       <div class="sub">bus time</div>
     </div>
   </div>
+  <div class="info-row">
+    <div class="info-item">
+      <div class="lbl">Speed</div>
+      <div class="val" id="spd-val">—</div>
+      <div class="sub" id="spd-sub">live</div>
+    </div>
+    <div class="info-item">
+      <div class="lbl">Distance</div>
+      <div class="val" id="dist-val">—</div>
+      <div class="sub" id="dist-sub">to your stop</div>
+    </div>
+    <div class="info-item">
+      <div class="lbl">Next stop</div>
+      <div class="val" id="next-val" style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px;margin-left:auto;margin-right:auto">—</div>
+      <div class="sub" id="next-sub"></div>
+    </div>
+  </div>
   <div class="coords-bar">
     <span class="ctxt" id="coords-txt">Acquiring your location…</span>
     <span class="rnote" id="freq-note"></span>
@@ -5376,7 +5545,10 @@ function calcETA(stops) {{
   const subEl = document.getElementById('eta-stop');
   if (busLat!==null) {{
     const dist   = hav(busLat,busLng,nearest.lat,nearest.lng);
-    const etaMin = Math.max(0,Math.round(dist/30*60));
+    const spd    = (SESSION && SESSION.speedKmh>=10) ? Math.min(60,Math.max(15,SESSION.speedKmh)) : 30;
+    const etaMin = Math.max(0,Math.round(dist*1.3/spd*60));
+    document.getElementById('dist-val').textContent = dist<1 ? Math.round(dist*1000)+' m' : dist.toFixed(1)+' km';
+    document.getElementById('dist-sub').textContent = 'to '+nearest.name;
     if (etaMin===0) {{ etaEl.textContent='Now';        etaEl.style.color='#16a34a'; subEl.textContent='Bus arriving!'; }}
     else if (etaMin===1) {{ etaEl.textContent='1 min'; etaEl.style.color='#ea580c'; subEl.textContent=nearest.name; }}
     else                {{ etaEl.textContent=etaMin+' min'; etaEl.style.color=SESSION?.routeColor||'#F5C518'; subEl.textContent=nearest.name; }}
@@ -5386,6 +5558,19 @@ function calcETA(stops) {{
     etaEl.style.color = '#94a3b8';
     subEl.textContent = 'walk to '+nearest.name;
   }}
+}}
+
+/* ── speed + next stop (from the driver's live telemetry) ── */
+function renderLive(d) {{
+  const sp = document.getElementById('spd-val');
+  sp.textContent = (d.speedKmh===null || d.speedKmh===undefined) ? '—' : Math.round(d.speedKmh)+' km/h';
+  document.getElementById('spd-sub').textContent =
+    d.stale ? 'signal lost' : (d.heading!==null && d.heading!==undefined ? 'heading '+d.heading+'°' : 'live');
+  const n = d.nextStop;
+  document.getElementById('next-val').textContent = n ? n.name : '—';
+  document.getElementById('next-sub').textContent = n
+    ? (n.distanceKm<1 ? Math.round(n.distanceKm*1000)+' m' : n.distanceKm.toFixed(1)+' km')+' · '+(n.etaMinutes<=0 ? 'now' : n.etaMinutes+' min')
+    : '';
 }}
 
 /* ── fetch session + bus location ── */
@@ -5440,6 +5625,7 @@ async function fetchSession() {{
     }}
 
     calcETA(data.stops);
+    renderLive(data);
 
     /* hide loading overlay */
     document.getElementById('loading-overlay').style.display='none';
@@ -5535,8 +5721,8 @@ def sos_page(token):
         phone_number = sos.phone_number
         route_id = sos.route_id
         bus_id = sos.bus_id
-        lat = sos.lat or '19.3465'
-        lng = sos.lng or '-81.3958'
+        lat = _coord_str(sos.lat, '19.3465')
+        lng = _coord_str(sos.lng, '-81.3958')
         triggered_at = sos.created_at.strftime('%d %b %Y at %H:%M UTC')
         contacts = json.loads(sos.contacts or '[]')
         resolved = sos.resolved
@@ -5581,8 +5767,8 @@ def sos_page(token):
 
     contact_items = ''
     for i, c in enumerate(contacts):
-        name = c.get('name', 'Contact')
-        phone = c.get('phone', '')
+        name = html_escape(str(c.get('name', 'Contact')))
+        phone = html_escape(str(c.get('phone', '')))
         av = name[:1].upper()
         colors = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#a855f7']
         col = colors[i % len(colors)]
@@ -5611,6 +5797,20 @@ def sos_page(token):
           <p>No emergency contacts on file</p>
           <span>Contacts will appear here when the rider sets them up in the app</span>
         </div>'''
+
+    # Escape everything rendered into the page (names/phones come from the rider's app).
+    username = html_escape(str(username or ''))
+    phone_number = html_escape(str(phone_number or ''))
+    bus_id = html_escape(str(bus_id or ''))
+    route_id = html_escape(str(route_id or ''))
+    initials = html_escape(initials)
+    popup_js = json.dumps(
+        '<div style="font-family:system-ui;color:#0a0a0a;padding:4px 2px"><strong style="font-size:14px">'
+        + username + '</strong><br><span style="font-size:12px;color:#555">Bus ' + bus_id
+        + ' · Route ' + route_id + '</span></div>').replace('</', '<\\/')
+    token_js = json.dumps(token).replace('</', '<\\/')
+    sos_live_js = 'true' if sos else 'false'      # demo page (unknown token) doesn't poll
+    resolved_js = 'true' if resolved else 'false'
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -5724,11 +5924,13 @@ body{{font-family:var(--font-body);background:var(--bg);color:var(--text);min-he
   <div class="info-strip">
     <div class="info-box highlight"><div class="info-box-label">Bus ID</div><div class="info-box-value">{bus_id}</div></div>
     <div class="info-box highlight"><div class="info-box-label">Route</div><div class="info-box-value">{route_id}</div></div>
+    <div class="info-box"><div class="info-box-label">Bus speed</div><div class="info-box-value" id="sos-speed">—</div></div>
+    <div class="info-box"><div class="info-box-label">Last update</div><div class="info-box-value" id="sos-age">—</div></div>
   </div>
   <div class="section-label">GPS Location</div>
   <div class="coords-box">
-    <div class="coords-text"><strong>{lat}, {lng}</strong><br>Last known position</div>
-    <a href="{maps_url}" target="_blank" class="coords-link">Open Maps →</a>
+    <div class="coords-text"><strong id="sos-coords">{lat}, {lng}</strong><br><span id="sos-live-note">Last known position</span></div>
+    <a href="{maps_url}" target="_blank" class="coords-link" id="sos-maps-link">Open Maps →</a>
   </div>
   <div class="map-wrap" style="margin-bottom:4px">
     <div id="sos-map"></div>
@@ -5740,7 +5942,7 @@ body{{font-family:var(--font-body);background:var(--bg);color:var(--text);min-he
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.8 19.79 19.79 0 01.22 1.18 2 2 0 012.2 0h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L6.91 7.91a16 16 0 006.16 6.16l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>
       CALL 911
     </a>
-    <a href="{maps_url}" target="_blank" class="btn-maps">
+    <a href="{maps_url}" target="_blank" class="btn-maps" id="sos-maps-link2">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0112 2a8 8 0 018 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>
       View on Maps
     </a>
@@ -5769,11 +5971,903 @@ const si=L.divIcon({{
   <style>@keyframes ripple{{from{{opacity:.8;transform:scale(1)}}to{{opacity:0;transform:scale(2)}}}}</style>`,
   iconSize:[52,52],iconAnchor:[26,26],className:''
 }});
-L.marker([{lat},{lng}],{{icon:si}}).addTo(map).bindPopup(`<div style="font-family:system-ui;color:#0a0a0a;padding:4px 2px"><strong style="font-size:14px">{username}</strong><br><span style="font-size:12px;color:#555">Bus {bus_id} · Route {route_id}</span></div>`,{{maxWidth:220}}).openPopup();
-L.circle([{lat},{lng}],{{color:'#ef4444',fillColor:'#ef4444',fillOpacity:.07,weight:1.5,radius:80}}).addTo(map);
+const sosMarker=L.marker([{lat},{lng}],{{icon:si}}).addTo(map).bindPopup({popup_js},{{maxWidth:220}}).openPopup();
+const sosCircle=L.circle([{lat},{lng}],{{color:'#ef4444',fillColor:'#ef4444',fillOpacity:.07,weight:1.5,radius:80}}).addTo(map);
+const sosTrail=L.polyline([],{{color:'#ef4444',weight:3,opacity:.65,dashArray:'6 6'}}).addTo(map);
+const busIcon=L.divIcon({{
+  html:'<div style="width:34px;height:34px;border-radius:50%;background:#F5C518;border:3px solid #fff;display:flex;align-items:center;justify-content:center;font-size:17px;box-shadow:0 2px 10px rgba(245,197,24,.6)">🚌</div>',
+  iconSize:[34,34],iconAnchor:[17,17],className:''
+}});
+let busMarker=null, userPanned=false;
+map.on('dragstart',()=>{{userPanned=true;}});
+
+const SOS_TOKEN={token_js};
+const SOS_LIVE={sos_live_js};
+const SOS_WAS_RESOLVED={resolved_js};
+
+function ago(s){{
+  if(s===null||s===undefined) return '—';
+  if(s<5) return 'just now';
+  if(s<60) return s+'s ago';
+  if(s<3600) return Math.floor(s/60)+'m ago';
+  return Math.floor(s/3600)+'h ago';
+}}
+
+async function pollSOS(){{
+  try{{
+    const r=await fetch('/api/safety/sos/'+encodeURIComponent(SOS_TOKEN)+'/live',{{cache:'no-store'}});
+    if(!r.ok) return;
+    const d=await r.json();
+    if(d.lat!==null&&d.lng!==null){{
+      const ll=[d.lat,d.lng];
+      sosMarker.setLatLng(ll); sosCircle.setLatLng(ll);
+      document.getElementById('sos-coords').textContent=d.lat.toFixed(5)+', '+d.lng.toFixed(5);
+      const mu='https://maps.google.com/?q='+d.lat+','+d.lng;
+      document.getElementById('sos-maps-link').href=mu;
+      document.getElementById('sos-maps-link2').href=mu;
+      if(!userPanned) map.panTo(ll,{{animate:true}});
+    }}
+    sosTrail.setLatLngs((d.trail||[]).map(p=>[p.lat,p.lng]));
+    document.getElementById('sos-age').textContent=ago(d.ageSeconds);
+    document.getElementById('sos-live-note').textContent=d.resolved?'Final position':'Live · updated '+ago(d.ageSeconds);
+    if(d.bus&&d.bus.lat!==null){{
+      const bl=[d.bus.lat,d.bus.lng];
+      if(!busMarker) busMarker=L.marker(bl,{{icon:busIcon,zIndexOffset:-100}}).addTo(map).bindTooltip('Bus '+d.bus.busId);
+      else busMarker.setLatLng(bl);
+      document.getElementById('sos-speed').textContent=(d.bus.speedKmh===null||d.bus.speedKmh===undefined)?'—':Math.round(d.bus.speedKmh)+' km/h';
+    }}
+    if(d.resolved&&!SOS_WAS_RESOLVED) location.reload();   /* switch to the green “resolved” page */
+  }}catch(e){{}}
+}}
+if(SOS_LIVE&&!SOS_WAS_RESOLVED){{ pollSOS(); setInterval(pollSOS,5000); }}
 </script>
 </body>
 </html>"""
+
+
+# ═══════════════════════════════════════════════════════════
+# FEATURE PACK
+#   1. Real-time tracking  — speed · heading · distance · ETA · upcoming stops
+#   2. Bus reminders       — one-time alert when the bus is N (default 5) min away
+#   3. Community reports   — status timeline + notify the rider when we update it
+#   4. Live SOS & sharing  — SOS page follows the rider live; share with several people
+# ═══════════════════════════════════════════════════════════
+
+# ── tunables ───────────────────────────────────────────────
+TELEMETRY_STALE_SECONDS = 90      # no GPS fix for this long → bus is "stale"
+ROUTE_ROAD_FACTOR = 1.15          # stop-to-stop straight lines → real road distance
+STRAIGHT_ROAD_FACTOR = 1.30       # bus → arbitrary point straight line → road distance
+DEFAULT_BUS_SPEED_KMH = 30.0      # ETA speed when bus speed is unknown or it is stopped
+MIN_ETA_SPEED_KMH = 15.0
+MAX_ETA_SPEED_KMH = 60.0
+STOP_DWELL_SECONDS = 20           # extra time per intermediate stop
+ON_ROUTE_MAX_KM = 0.6             # farther than this from the route line = "off route"
+ARRIVING_KM = 0.15                # within 150 m of the stop = arriving
+MOVING_KMH = 5.0
+
+REMINDER_DEFAULT_MINUTES = 5
+REMINDER_DEFAULT_VALID_MIN = 180  # a reminder that never fires expires after 3 h
+REMINDER_MAX_VALID_MIN = 720
+REMINDER_MAX_PENDING_PER_USER = 10
+
+REPORT_MAX_PER_HOUR = 10
+REPORT_STATUSES = ('open', 'in_progress', 'resolved')
+REPORT_STATUS_LABELS = {'open': 'Open', 'in_progress': 'In Progress', 'resolved': 'Resolved'}
+
+SOS_MAX_PINGS = 1200              # per SOS; oldest are trimmed beyond this
+
+
+# ── small utilities ────────────────────────────────────────
+def _utcnow():
+    return datetime.utcnow()
+
+
+def _iso_z(dt):
+    return (dt.isoformat() + 'Z') if dt else None
+
+
+def _to_float(v):
+    try:
+        f = float(v)
+    except (TypeError, ValueError):
+        return None
+    return f if math.isfinite(f) else None
+
+
+def _valid_latlng(lat, lng):
+    return (lat is not None and lng is not None
+            and -90 <= lat <= 90 and -180 <= lng <= 180)
+
+
+def _coord_str(v, default):
+    """Force a stored coordinate string into a plain number string (safe to embed in a page)."""
+    f = _to_float(v)
+    return f'{f:.6f}' if f is not None else default
+
+
+def _clean_text(value, max_len=500):
+    """Trim, drop control chars and angle brackets (values are shown in admin tables)."""
+    s = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f<>]', '', str(value if value is not None else ''))
+    return s.strip()[:max_len]
+
+
+def _run_async(fn, *args, **kwargs):
+    """Run fn in a background thread inside an app context (inline when app.config TESTING)."""
+    if app.config.get('TESTING'):
+        return fn(*args, **kwargs)
+
+    def _worker():
+        with app.app_context():
+            try:
+                fn(*args, **kwargs)
+            except Exception:
+                app.logger.exception('background task %s failed', getattr(fn, '__name__', fn))
+                try:
+                    db.session.rollback()
+                except Exception:
+                    pass
+            finally:
+                db.session.remove()
+
+    threading.Thread(target=_worker, daemon=True).start()
+
+
+# ── geometry ───────────────────────────────────────────────
+def _hav_km(lat1, lng1, lat2, lng2):
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dphi, dl = p2 - p1, math.radians(lng2 - lng1)
+    a = math.sin(dphi / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return 2 * 6371.0088 * math.asin(min(1.0, math.sqrt(a)))
+
+
+def _bearing(lat1, lng1, lat2, lng2):
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dl = math.radians(lng2 - lng1)
+    y = math.sin(dl) * math.cos(p2)
+    x = math.cos(p1) * math.sin(p2) - math.sin(p1) * math.cos(p2) * math.cos(dl)
+    return (math.degrees(math.atan2(y, x)) + 360.0) % 360.0
+
+
+def _angle_diff(a, b):
+    d = abs(a - b) % 360.0
+    return 360.0 - d if d > 180.0 else d
+
+
+def _project_to_segment_km(p, a, b):
+    """Distance (km) from point p to segment a→b, using a local flat-earth approximation."""
+    kx = 111.320 * math.cos(math.radians((a[0] + b[0]) / 2.0))
+    ky = 110.574
+    ax, ay, bx, by, px, py = a[1] * kx, a[0] * ky, b[1] * kx, b[0] * ky, p[1] * kx, p[0] * ky
+    dx, dy = bx - ax, by - ay
+    l2 = dx * dx + dy * dy
+    t = 0.0 if l2 == 0 else max(0.0, min(1.0, ((px - ax) * dx + (py - ay) * dy) / l2))
+    return t, math.hypot(px - (ax + t * dx), py - (ay + t * dy))
+
+
+# ── routes & stops ─────────────────────────────────────────
+def _coerce_stops(stops_json, route_id):
+    """DriverRoute.stops_json → [{'id','name','lat','lng'}] (same ids as /api/buses/registered)."""
+    try:
+        raw = json.loads(stops_json or '[]')
+    except (json.JSONDecodeError, TypeError):
+        return []
+    out = []
+    for i, s in enumerate(raw):
+        try:
+            if isinstance(s, (list, tuple)):
+                name = str(s[0]) if len(s) > 0 else 'Stop'
+                lat = float(s[1]) if len(s) > 1 else 0.0
+                lng = float(s[2]) if len(s) > 2 else 0.0
+            elif isinstance(s, dict):
+                name = s.get('name') or s.get('stopName') or s.get('stop_name') or 'Stop'
+                lat = float(s.get('lat') or s.get('latitude') or s.get('Lat') or 0)
+                lng = float(s.get('lng') or s.get('lon') or s.get('longitude') or s.get('Lng') or 0)
+            else:
+                continue
+            if lat == 0.0 and lng == 0.0:
+                continue
+            out.append({'id': f"{route_id}-S{i + 1:02}", 'name': name, 'lat': lat, 'lng': lng})
+        except (ValueError, TypeError, IndexError):
+            continue
+    return out
+
+
+def _route_info(bus_id='', route_id=''):
+    """Latest registered route for a bus (or route) → {'routeId','routeName','color','stops'}."""
+    d = None
+    if bus_id:
+        d = DriverRoute.query.filter_by(bus_id=bus_id).order_by(DriverRoute.id.desc()).first()
+    if d is None and route_id:
+        d = DriverRoute.query.filter_by(route_id=route_id).order_by(DriverRoute.id.desc()).first()
+    if d is not None:
+        return {'routeId': d.route_id, 'routeName': d.route_name,
+                'color': d.route_color or '#F5C518',
+                'stops': _coerce_stops(d.stops_json, d.route_id or d.bus_id)}
+    for r in CAYMAN_ROUTES:
+        if r.get('route_number') in (route_id, bus_id):
+            rid = r['route_number']
+            return {'routeId': rid, 'routeName': r.get('name', ''), 'color': r.get('color', '#F5C518'),
+                    'stops': [{'id': f"{rid}-S{i + 1:02}", 'name': n, 'lat': la, 'lng': ln}
+                              for i, (n, la, ln) in enumerate(r['stops'])]}
+    return None
+
+
+def _match_stop(stops, lat, lng, max_km=0.1):
+    """The route stop within max_km of (lat, lng), if any."""
+    best = None
+    for s in stops:
+        d = _hav_km(lat, lng, s['lat'], s['lng'])
+        if d <= max_km and (best is None or d < best[0]):
+            best = (d, s)
+    return best[1] if best else None
+
+
+# ── telemetry (speed / heading) ────────────────────────────
+def _record_bus_telemetry(bus_id, lat, lng, active=True, speed_kmh=None, heading=None):
+    """Upsert BusTelemetry. Derives speed/heading from consecutive fixes unless the
+    driver app sends them. Never raises — tracking must not break the driver's request."""
+    bus_id = (bus_id or '').strip()
+    if not bus_id:
+        return None
+    try:
+        now = _utcnow()
+        t = BusTelemetry.query.filter_by(bus_id=bus_id).first()
+        if t is None:
+            t = BusTelemetry(bus_id=bus_id)
+            db.session.add(t)
+
+        if not active:
+            t.online, t.speed_kmh, t.updated_at = False, 0.0, now
+            db.session.commit()
+            return t
+
+        if not _valid_latlng(lat, lng):
+            db.session.rollback()
+            return None
+
+        derived_speed = derived_heading = None
+        if t.lat is not None and t.lng is not None and t.updated_at is not None:
+            dt = (now - t.updated_at).total_seconds()
+            moved_m = _hav_km(t.lat, t.lng, lat, lng) * 1000.0
+            if 0.5 <= dt <= 120:
+                derived_speed = 0.0 if moved_m < 3 else min(moved_m / dt * 3.6, 120.0)  # <3 m = GPS jitter
+            if moved_m >= 8:
+                derived_heading = _bearing(t.lat, t.lng, lat, lng)
+
+        if speed_kmh is not None and speed_kmh >= 0:
+            spd = min(speed_kmh, 120.0)
+        elif derived_speed is not None:
+            spd = derived_speed if t.speed_kmh is None else 0.6 * derived_speed + 0.4 * t.speed_kmh
+        else:
+            spd = None
+
+        t.lat, t.lng, t.speed_kmh, t.online, t.updated_at = lat, lng, spd, True, now
+        if heading is not None:
+            t.heading = heading % 360.0
+        elif derived_heading is not None:
+            t.heading = derived_heading
+        db.session.commit()
+        return t
+    except Exception:
+        db.session.rollback()
+        app.logger.exception('telemetry update failed for bus %s', bus_id)
+        return None
+
+
+def _ingest_bus_location(bus_id, lat, lng, active=True, data=None):
+    """Called by every driver-location endpoint after it has saved its own data."""
+    data = data or {}
+    if not isinstance(active, bool):
+        active = str(active).strip().lower() not in ('false', '0', 'no', 'off')
+    speed = _to_float(data.get('speedKmh'))
+    if speed is None:                       # GPS speed is metres/second (expo-location, W3C)
+        ms = _to_float(data.get('speed'))
+        speed = ms * 3.6 if ms is not None and ms >= 0 else None
+    heading = _to_float(data.get('heading'))
+    if heading is not None and not 0 <= heading <= 360:
+        heading = None
+    _record_bus_telemetry(bus_id, lat, lng, active, speed, heading)
+    if active:
+        _run_async(_check_reminders, (bus_id or '').strip())
+
+
+def _telemetry_lookup():
+    """{bus_id: {'speedKmh','heading'}} — merged into existing liveLocation payloads."""
+    try:
+        return {t.bus_id: {'speedKmh': None if t.speed_kmh is None else round(t.speed_kmh, 1),
+                           'heading': None if t.heading is None else round(t.heading)}
+                for t in BusTelemetry.query.filter_by(online=True).all()}
+    except Exception:
+        return {}
+
+
+# ── ETA engine ─────────────────────────────────────────────
+def _eta_speed(speed_kmh):
+    v = speed_kmh if (speed_kmh is not None and speed_kmh >= 10) else DEFAULT_BUS_SPEED_KMH
+    return max(MIN_ETA_SPEED_KMH, min(MAX_ETA_SPEED_KMH, v))
+
+
+def _plan_ahead(lat, lng, speed_kmh, heading, stops):
+    """Which stops are still ahead of the bus and how far along the route each one is.
+    Stops are assumed to be listed in travel order; a bus driving the other way along
+    the same road (detected from its heading) gets the list reversed."""
+    result = {'direction': 'unknown', 'onRoute': False, 'ahead': []}
+    n = len(stops)
+    if n == 0:
+        return result
+    if n == 1:
+        s = stops[0]
+        result['ahead'] = [{'stop': s, 'km': _hav_km(lat, lng, s['lat'], s['lng']) * STRAIGHT_ROAD_FACTOR}]
+        return result
+
+    best = None
+    for i in range(n - 1):
+        a, b = stops[i], stops[i + 1]
+        t, d = _project_to_segment_km((lat, lng), (a['lat'], a['lng']), (b['lat'], b['lng']))
+        if best is None or d < best[0]:
+            best = (d, i, t)
+    off_km, i, t = best
+    on_route = off_km <= ON_ROUTE_MAX_KM
+    result['onRoute'] = on_route
+
+    if not on_route:   # can't follow the line → straight-line distance, nearest stop first
+        result['ahead'] = sorted(
+            ({'stop': s, 'km': _hav_km(lat, lng, s['lat'], s['lng']) * STRAIGHT_ROAD_FACTOR} for s in stops),
+            key=lambda x: x['km'])
+        return result
+
+    reverse = False
+    if speed_kmh is not None and speed_kmh >= MOVING_KMH and heading is not None:
+        seg = _bearing(stops[i]['lat'], stops[i]['lng'], stops[i + 1]['lat'], stops[i + 1]['lng'])
+        reverse = _angle_diff(heading, seg) > 110
+        result['direction'] = 'reverse' if reverse else 'forward'
+
+    # Projection clamped to an end of the line = the bus is before the first stop / past the last one.
+    before_first = i == 0 and t <= 0.0
+    past_last = i == n - 2 and t >= 1.0
+    if reverse:
+        order = range(n - 1 if past_last else i, -1, -1)
+        if before_first and off_km > ARRIVING_KM:
+            order = range(0)                 # heading away from the start of the route: nothing ahead
+    else:
+        order = range(0 if before_first else i + 1, n)
+        if past_last and off_km > ARRIVING_KM:
+            order = range(0)                 # already beyond the terminus
+    cum, prev = 0.0, (lat, lng)
+    for idx in order:
+        s = stops[idx]
+        cum += _hav_km(prev[0], prev[1], s['lat'], s['lng'])
+        prev = (s['lat'], s['lng'])
+        result['ahead'].append({'stop': s, 'km': cum * ROUTE_ROAD_FACTOR})
+    return result
+
+
+def _build_bus_state(bus_id, route_id=''):
+    t = BusTelemetry.query.filter_by(bus_id=bus_id).first()
+    if t is None or t.lat is None or t.lng is None:
+        return None
+    age = max(0, int((_utcnow() - t.updated_at).total_seconds())) if t.updated_at else None
+    info = _route_info(bus_id, route_id) or {}
+    stops = info.get('stops', [])
+    plan = _plan_ahead(t.lat, t.lng, t.speed_kmh, t.heading, stops)
+    v = _eta_speed(t.speed_kmh)
+    ahead = []
+    for k, item in enumerate(plan['ahead']):
+        s, km = item['stop'], item['km']
+        secs = km / v * 3600.0 + STOP_DWELL_SECONDS * k
+        ahead.append({'id': s['id'], 'name': s['name'], 'lat': s['lat'], 'lng': s['lng'],
+                      'distanceKm': round(km, 2), 'etaSeconds': int(round(secs)),
+                      'etaMinutes': int(round(secs / 60.0))})
+    return {
+        'busId': bus_id,
+        'routeId': info.get('routeId') or route_id or '',
+        'routeName': info.get('routeName') or '',
+        'color': info.get('color') or '#F5C518',
+        'online': bool(t.online),
+        'stale': age is None or age > TELEMETRY_STALE_SECONDS,
+        'ageSeconds': age,
+        'updatedAt': _iso_z(t.updated_at),
+        'lat': t.lat, 'lng': t.lng,
+        'speedKmh': None if t.speed_kmh is None else round(t.speed_kmh, 1),
+        'heading': None if t.heading is None else int(round(t.heading)),
+        'moving': t.speed_kmh is None or t.speed_kmh >= MOVING_KMH,   # unknown speed ≠ parked
+        'direction': plan['direction'],
+        'onRoute': plan['onRoute'],
+        'stops': stops,
+        'ahead': ahead,
+    }
+
+
+def _bus_state(bus_id, route_id='', cache=None):
+    if cache is None:
+        return _build_bus_state(bus_id, route_id)
+    key = (bus_id, route_id)
+    if key not in cache:
+        cache[key] = _build_bus_state(bus_id, route_id)
+    return cache[key]
+
+
+def _public_state(st, limit=8):
+    return {
+        'busId': st['busId'], 'routeId': st['routeId'], 'routeName': st['routeName'],
+        'color': st['color'], 'online': st['online'], 'stale': st['stale'],
+        'ageSeconds': st['ageSeconds'], 'updatedAt': st['updatedAt'],
+        'position': {'lat': st['lat'], 'lng': st['lng']},
+        'speedKmh': st['speedKmh'], 'heading': st['heading'],
+        'direction': st['direction'], 'onRoute': st['onRoute'],
+        'totalStops': len(st['stops']),
+        'nextStop': st['ahead'][0] if st['ahead'] else None,
+        'upcomingStops': st['ahead'][:limit],
+    }
+
+
+def _eta_to_target(state, lat, lng):
+    """ETA of one bus to an arbitrary point (a stop the rider picked).
+    status: approaching | arriving | passed | away."""
+    stop = _match_stop(state['stops'], lat, lng)
+    if stop is not None and state['onRoute']:
+        for a in state['ahead']:
+            if a['id'] == stop['id']:
+                return {'status': 'arriving' if a['distanceKm'] <= ARRIVING_KM else 'approaching',
+                        'distanceKm': a['distanceKm'], 'etaSeconds': a['etaSeconds']}
+        return {'status': 'passed', 'distanceKm': None, 'etaSeconds': None}
+
+    km = _hav_km(state['lat'], state['lng'], lat, lng)
+    if (state['speedKmh'] is not None and state['speedKmh'] >= MOVING_KMH
+            and state['heading'] is not None and km > ARRIVING_KM
+            and _angle_diff(state['heading'], _bearing(state['lat'], state['lng'], lat, lng)) > 100):
+        return {'status': 'away', 'distanceKm': round(km * STRAIGHT_ROAD_FACTOR, 2), 'etaSeconds': None}
+    km *= STRAIGHT_ROAD_FACTOR
+    return {'status': 'arriving' if km <= ARRIVING_KM else 'approaching',
+            'distanceKm': round(km, 2),
+            'etaSeconds': int(round(km / _eta_speed(state['speedKmh']) * 3600.0))}
+
+
+def _target_json(info, name='', lat=None, lng=None):
+    return {'name': name, 'lat': lat, 'lng': lng, 'status': info['status'],
+            'distanceKm': info['distanceKm'], 'etaSeconds': info['etaSeconds'],
+            'etaMinutes': None if info['etaSeconds'] is None else int(round(info['etaSeconds'] / 60.0))}
+
+
+# ── 1. REAL-TIME TRACKING API ──────────────────────────────
+@app.route('/api/tracking/live', methods=['GET'])
+def api_live_all():
+    """Every bus that is currently online, with speed / heading / next stop."""
+    cache, buses = {}, []
+    for t in BusTelemetry.query.filter_by(online=True).all():
+        st = _bus_state(t.bus_id, cache=cache)
+        if st:
+            buses.append(_public_state(st, limit=1))
+    return jsonify({'total': len(buses), 'buses': buses, 'generatedAt': _iso_z(_utcnow())}), 200
+
+
+@app.route('/api/tracking/live/<bus_id>', methods=['GET'])
+def api_live_bus(bus_id):
+    """Live view of one bus.
+
+    Optional query params
+      stopId | stopLat+stopLng   → adds `target` (distance + ETA to that stop)
+      lat+lng                    → adds `rider.distanceToBusKm`
+      limit                      → number of upcoming stops to return (default 8)
+    """
+    st = _bus_state(bus_id, (request.args.get('routeId') or '').strip())
+    if st is None:
+        return jsonify({'busId': bus_id, 'online': False,
+                        'message': 'This bus has not reported a location yet'}), 404
+
+    limit = max(1, min(int(_to_float(request.args.get('limit')) or 8), 50))
+    out = _public_state(st, limit)
+
+    t_lat = t_lng = None
+    t_name = ''
+    stop_id = (request.args.get('stopId') or '').strip()
+    if stop_id:
+        s = next((x for x in st['stops'] if x['id'] == stop_id), None)
+        if s:
+            t_lat, t_lng, t_name = s['lat'], s['lng'], s['name']
+    else:
+        t_lat, t_lng = _to_float(request.args.get('stopLat')), _to_float(request.args.get('stopLng'))
+        t_name = _clean_text(request.args.get('stopName'), 120)
+    if _valid_latlng(t_lat, t_lng):
+        out['target'] = _target_json(_eta_to_target(st, t_lat, t_lng), t_name, t_lat, t_lng)
+
+    r_lat, r_lng = _to_float(request.args.get('lat')), _to_float(request.args.get('lng'))
+    if _valid_latlng(r_lat, r_lng):
+        out['rider'] = {'distanceToBusKm': round(_hav_km(r_lat, r_lng, st['lat'], st['lng']), 2)}
+    return jsonify(out), 200
+
+
+# ── 2. BUS REMINDERS ───────────────────────────────────────
+def _reminder_json(r):
+    return {
+        'id': r.id, 'username': r.username,
+        'busId': r.bus_id or None, 'routeId': r.route_id or None,
+        'stopId': r.stop_id or None, 'stopName': r.stop_name,
+        'stopLat': r.stop_lat, 'stopLng': r.stop_lng,
+        'minutesBefore': r.minutes_before, 'status': r.status, 'seen': bool(r.seen),
+        'etaAtTrigger': r.eta_at_trigger, 'firedBusId': r.fired_bus_id or None,
+        'delivery': r.delivery or '',
+        'createdAt': _iso_z(r.created_at), 'expiresAt': _iso_z(r.expires_at),
+        'triggeredAt': _iso_z(r.triggered_at),
+    }
+
+
+def _reminder_bus_ids(rem):
+    if rem.bus_id:
+        return [rem.bus_id]
+    if rem.route_id:
+        return sorted({d.bus_id for d in DriverRoute.query.filter_by(route_id=rem.route_id).all() if d.bus_id})
+    return []
+
+
+def _best_candidate(rem, cache):
+    """Soonest live, non-stale bus that is heading towards the reminder's stop."""
+    best = None
+    for bid in _reminder_bus_ids(rem):
+        st = _bus_state(bid, rem.route_id or '', cache)
+        if not st or not st['online'] or st['stale']:
+            continue
+        info = _eta_to_target(st, rem.stop_lat, rem.stop_lng)
+        if info['status'] not in ('approaching', 'arriving'):
+            continue          # already passed it, or driving away from it
+        if best is None or info['etaSeconds'] < best[1]['etaSeconds']:
+            best = (st, info)
+    return best
+
+
+def _send_expo_push(token, title, body, data=None):
+    """Optional push via Expo. Only used when the app supplied an Expo push token."""
+    import urllib.request
+    if not (token.startswith('ExponentPushToken[') or token.startswith('ExpoPushToken[')):
+        return False, 'not an Expo push token'
+    req = urllib.request.Request(
+        'https://exp.host/--/api/v2/push/send',
+        data=json.dumps({'to': token, 'title': title, 'body': body, 'sound': 'default',
+                         'priority': 'high', 'data': data or {}}).encode('utf-8'),
+        headers={'Content-Type': 'application/json', 'Accept': 'application/json'}, method='POST')
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            return 200 <= resp.status < 300, f'HTTP {resp.status}'
+    except Exception as ex:
+        return False, str(ex)[:150]
+
+
+def _try_fire_reminder(rem, cache):
+    best = _best_candidate(rem, cache)
+    if not best:
+        return False
+    st, info = best
+    if info['etaSeconds'] > rem.minutes_before * 60:
+        return False
+    if not st['moving'] and info['status'] != 'arriving':
+        return False          # parked / stuck at a light — wait until it actually moves
+
+    now = _utcnow()
+    eta_min = max(0, int(round(info['etaSeconds'] / 60.0)))
+    # Atomic claim: if two workers race, only one of them flips pending → sent.
+    claimed = BusReminder.query.filter_by(id=rem.id, status='pending').update(
+        {'status': 'sent', 'triggered_at': now, 'eta_at_trigger': eta_min,
+         'fired_bus_id': st['busId']}, synchronize_session=False)
+    db.session.commit()
+    if claimed != 1:
+        return False
+
+    stop = rem.stop_name or 'your stop'
+    if eta_min <= 0 or info['status'] == 'arriving':
+        body = f"🚌 LetsGo: Bus {st['busId']} is arriving at {stop} now!"
+    else:
+        body = f"🚌 LetsGo: Bus {st['busId']} is about {eta_min} min from {stop}. Time to head out!"
+    body += f"\n📍 https://maps.google.com/?q={st['lat']},{st['lng']}"
+
+    parts = []
+    if rem.via_sms and rem.phone_number:
+        ok, _detail = _send_twilio(rem.phone_number, body, {
+            'username': rem.username, 'message_type': 'bus_reminder', 'route_id': st['routeId'],
+            'bus_id': st['busId'], 'eta_minutes': eta_min, 'lat': str(st['lat']), 'lng': str(st['lng'])})
+        parts.append('sms:ok' if ok else 'sms:failed')
+    else:
+        parts.append('sms:skipped')
+    if rem.push_token:
+        ok, _detail = _send_expo_push(rem.push_token, 'Your bus is close', body.split('\n')[0],
+                                      {'type': 'bus_reminder', 'reminderId': rem.id, 'busId': st['busId']})
+        parts.append('push:ok' if ok else 'push:failed')
+    BusReminder.query.filter_by(id=rem.id).update({'delivery': ','.join(parts)}, synchronize_session=False)
+    db.session.commit()
+    return True
+
+
+def _check_reminders(bus_id=None):
+    """Fire every pending reminder whose bus is now ≤ N minutes away. Returns how many fired.
+    Runs after each driver location update (bus_id given) and from /api/reminders/check."""
+    now = _utcnow()
+    BusReminder.query.filter(BusReminder.status == 'pending', BusReminder.expires_at.isnot(None),
+                             BusReminder.expires_at < now).update({'status': 'expired'}, synchronize_session=False)
+    db.session.commit()
+
+    pending = BusReminder.query.filter_by(status='pending').all()
+    if bus_id:
+        route_ids = {d.route_id for d in DriverRoute.query.filter_by(bus_id=bus_id).all()}
+        pending = [r for r in pending if r.bus_id == bus_id or (not r.bus_id and r.route_id in route_ids)]
+
+    cache, fired = {}, 0
+    for rem in pending:
+        try:
+            if _try_fire_reminder(rem, cache):
+                fired += 1
+        except Exception:
+            db.session.rollback()
+            app.logger.exception('reminder %s check failed', rem.id)
+    return fired
+
+
+@app.route('/api/reminders', methods=['GET', 'POST'])
+def reminders_collection():
+    if request.method == 'GET':
+        username = _clean_text(request.args.get('username'), 80)
+        if not username:
+            return jsonify({'reminders': []}), 200
+        status = (request.args.get('status') or 'active').strip()
+        q = BusReminder.query.filter_by(username=username)
+        if status == 'active':      # pending + anything that fired in the last day
+            q = q.filter(db.or_(BusReminder.status == 'pending',
+                                db.and_(BusReminder.status == 'sent',
+                                        BusReminder.triggered_at >= _utcnow() - timedelta(days=1))))
+        elif status != 'all':
+            q = q.filter_by(status=status)
+        rows = q.order_by(BusReminder.created_at.desc()).limit(50).all()
+        return jsonify({'reminders': [_reminder_json(r) for r in rows]}), 200
+
+    # ── create ──
+    data = request.get_json(force=True, silent=True) or {}
+    username = _clean_text(data.get('username'), 80)
+    bus_id = _clean_text(data.get('busId'), 120)
+    route_id = _clean_text(data.get('routeId'), 120)
+    if not username:
+        return jsonify({'success': False, 'message': 'username is required'}), 400
+    if not bus_id and not route_id:
+        return jsonify({'success': False, 'message': 'busId or routeId is required'}), 400
+
+    stops = (_route_info(bus_id, route_id) or {}).get('stops', [])
+    stop_id = _clean_text(data.get('stopId'), 60)
+    stop = next((s for s in stops if s['id'] == stop_id), None) if stop_id else None
+    if stop:
+        lat, lng, stop_name = stop['lat'], stop['lng'], stop['name']
+    else:
+        lat = _to_float(data.get('stopLat', data.get('lat')))
+        lng = _to_float(data.get('stopLng', data.get('lng')))
+        if not _valid_latlng(lat, lng):
+            return jsonify({'success': False,
+                            'message': 'stopId (a stop on this route) or stopLat + stopLng is required'}), 400
+        stop_name = _clean_text(data.get('stopName'), 120)
+        near = _match_stop(stops, lat, lng)
+        if near:
+            stop_id, stop_name = near['id'], stop_name or near['name']
+
+    minutes = int(_to_float(data.get('minutesBefore')) or REMINDER_DEFAULT_MINUTES)
+    minutes = max(1, min(minutes, 30))
+    valid_min = int(_to_float(data.get('validForMinutes')) or REMINDER_DEFAULT_VALID_MIN)
+    valid_min = max(5, min(valid_min, REMINDER_MAX_VALID_MIN))
+
+    existing = BusReminder.query.filter_by(username=username, status='pending',
+                                           bus_id=bus_id, route_id=route_id).all()
+    for d in existing:                # setting the same reminder twice is a no-op
+        if abs(d.stop_lat - lat) < 1e-4 and abs(d.stop_lng - lng) < 1e-4:
+            return jsonify({'success': True, 'duplicate': True, 'reminder': _reminder_json(d),
+                            'message': 'You already have a reminder for this stop'}), 200
+    if BusReminder.query.filter_by(username=username, status='pending').count() >= REMINDER_MAX_PENDING_PER_USER:
+        return jsonify({'success': False, 'message': 'Too many active reminders — cancel one first'}), 429
+
+    phone = _clean_text(data.get('phoneNumber') or data.get('phone'), 30)
+    if not phone:
+        u = User.query.filter_by(username=username).first()
+        phone = (u.phone_number or '').strip() if u else ''
+
+    via_sms = data.get('sms', True)
+    rem = BusReminder(
+        username=username, phone_number=phone, push_token=_clean_text(data.get('pushToken'), 200),
+        via_sms=via_sms if isinstance(via_sms, bool) else str(via_sms).lower() not in ('false', '0', 'no'),
+        bus_id=bus_id, route_id=route_id, stop_id=stop_id, stop_name=stop_name,
+        stop_lat=lat, stop_lng=lng, minutes_before=minutes,
+        expires_at=_utcnow() + timedelta(minutes=valid_min))
+    db.session.add(rem)
+    db.session.commit()
+
+    current = None
+    best = _best_candidate(rem, {})
+    if best:
+        current = {'busId': best[0]['busId'], 'status': best[1]['status'],
+                   'etaMinutes': int(round(best[1]['etaSeconds'] / 60.0)),
+                   'distanceKm': best[1]['distanceKm']}
+    _run_async(_check_reminders, None)      # fires straight away if the bus is already that close
+    db.session.refresh(rem)
+    return jsonify({'success': True, 'reminder': _reminder_json(rem), 'currentEta': current,
+                    'message': f"Reminder set — we'll alert you when the bus is {minutes} min away"}), 201
+
+
+@app.route('/api/reminders/<int:reminder_id>', methods=['DELETE'])
+def reminder_cancel(reminder_id):
+    rem = db.session.get(BusReminder, reminder_id)
+    if not rem:
+        return jsonify({'success': False, 'message': 'Reminder not found'}), 404
+    body = request.get_json(force=True, silent=True) or {}
+    username = _clean_text(request.args.get('username') or body.get('username'), 80)
+    if username != rem.username:
+        return jsonify({'success': False, 'message': 'Not your reminder'}), 403
+    if rem.status == 'pending':
+        rem.status = 'cancelled'
+        db.session.commit()
+    return jsonify({'success': True, 'reminder': _reminder_json(rem)}), 200
+
+
+@app.route('/api/reminders/<int:reminder_id>/seen', methods=['POST'])
+def reminder_seen(reminder_id):
+    """The app calls this after showing the alert so it isn't shown twice."""
+    rem = db.session.get(BusReminder, reminder_id)
+    if not rem:
+        return jsonify({'success': False, 'message': 'Reminder not found'}), 404
+    rem.seen = True
+    db.session.commit()
+    return jsonify({'success': True}), 200
+
+
+@app.route('/api/reminders/check', methods=['GET', 'POST'])
+def reminders_sweep():
+    """Optional safety net for a cron job (e.g. every minute). Set REMINDER_CRON_KEY to protect it."""
+    key = os.environ.get('REMINDER_CRON_KEY', '')
+    if key and not hmac.compare_digest(request.headers.get('X-Cron-Key', ''), key):
+        return jsonify({'message': 'forbidden'}), 403
+    return jsonify({'success': True, 'fired': _check_reminders(None)}), 200
+
+
+# ── 3. COMMUNITY REPORTS: status timeline + rider notification ─
+def _report_update_json(u):
+    return {'status': u.status, 'statusLabel': REPORT_STATUS_LABELS.get(u.status, u.status),
+            'note': u.note or '', 'actor': u.actor or 'LetsGo team', 'createdAt': _iso_z(u.created_at)}
+
+
+def _report_json(r, viewer='', updates=None):
+    try:
+        upvoted = viewer in json.loads(r.upvoted_by or '[]') if viewer else False
+    except (ValueError, TypeError):
+        upvoted = False
+    out = {
+        'id': r.id, 'category': r.category, 'message': r.message, 'stopName': r.stop_name,
+        'routeId': r.route_id, 'upvotes': r.upvotes, 'upvotedByMe': upvoted,
+        'status': r.status, 'statusLabel': REPORT_STATUS_LABELS.get(r.status, r.status),
+        'username': r.username, 'createdAt': r.created_at.isoformat(),
+    }
+    if updates is not None:
+        out['updates'] = updates
+        out['lastUpdate'] = updates[-1] if updates else None
+    return out
+
+
+def _notify_report_author(report_id, status, note):
+    """Text the rider when we change the status of their report (set REPORT_SMS_UPDATES=0 to disable)."""
+    if os.environ.get('REPORT_SMS_UPDATES', '1') != '1':
+        return
+    r = db.session.get(CommunityReport, report_id)
+    if not r or r.username in ('', 'anonymous'):
+        return
+    u = User.query.filter_by(username=r.username).first()
+    phone = (u.phone_number or '').strip() if u else ''
+    if not phone:
+        return
+    where = f' at {r.stop_name}' if r.stop_name else ''
+    if status == 'resolved':
+        body = f"✅ LetsGo: your report #{r.id}{where} has been resolved. Thanks for helping improve the bus network!"
+    elif status == 'in_progress':
+        body = f"🛠 LetsGo: we're looking into your report #{r.id}{where}. Status: In Progress."
+    else:
+        body = f"LetsGo: your report #{r.id}{where} was updated. Status: {REPORT_STATUS_LABELS.get(status, status)}."
+    if note:
+        body += f"\nNote from our team: {note}"
+    _send_twilio(phone, body[:480], {'username': r.username, 'message_type': 'report_update'})
+
+
+@app.route('/api/community/reports/<int:report_id>/updates', methods=['GET'])
+def community_report_updates(report_id):
+    r = db.session.get(CommunityReport, report_id)
+    if not r:
+        return jsonify({'message': 'Report not found'}), 404
+    ups = ReportUpdate.query.filter_by(report_id=report_id).order_by(ReportUpdate.created_at.asc(),
+                                                                     ReportUpdate.id.asc()).all()
+    return jsonify({'reportId': r.id, 'status': r.status,
+                    'statusLabel': REPORT_STATUS_LABELS.get(r.status, r.status),
+                    'updates': [_report_update_json(u) for u in ups]}), 200
+
+
+# ── 4. LIVE SOS ────────────────────────────────────────────
+def _sos_update_key(token):
+    """Secret only the rider's phone receives (in the POST /api/safety/sos response).
+    Derived from SECRET_KEY, so nothing extra is stored. Contacts only get the read-only link."""
+    return hmac.new(app.secret_key.encode('utf-8'), f'sos-update:{token}'.encode('utf-8'),
+                    hashlib.sha256).hexdigest()[:24]
+
+
+@app.route('/api/safety/sos/<token>/location', methods=['POST'])
+def sos_location_update(token):
+    """Rider's phone streams its position here while an SOS is active (every ~5 s)."""
+    sos = SOSAlert.query.filter_by(token=token).first()
+    if not sos:
+        return jsonify({'success': False, 'message': 'SOS not found'}), 404
+    data = request.get_json(force=True, silent=True) or {}
+    if not hmac.compare_digest(str(data.get('updateKey') or ''), _sos_update_key(token)):
+        return jsonify({'success': False, 'message': 'Invalid updateKey'}), 403
+    if sos.resolved:
+        return jsonify({'success': False, 'resolved': True, 'message': 'SOS already resolved'}), 409
+    lat = _to_float(data.get('lat', data.get('latitude')))
+    lng = _to_float(data.get('lng', data.get('longitude')))
+    if not _valid_latlng(lat, lng):
+        return jsonify({'success': False, 'message': 'valid lat and lng are required'}), 400
+
+    db.session.add(SOSLocationPing(sos_id=sos.id, lat=lat, lng=lng, accuracy=_to_float(data.get('accuracy'))))
+    sos.lat, sos.lng = f'{lat:.6f}', f'{lng:.6f}'      # admin / gov SOS pages show the latest fix
+    if 'busId' in data:
+        sos.bus_id = _clean_text(data.get('busId'), 40) or sos.bus_id
+    db.session.commit()
+
+    total = SOSLocationPing.query.filter_by(sos_id=sos.id).count()
+    if total > SOS_MAX_PINGS:                            # keep the trail bounded
+        cutoff = (SOSLocationPing.query.filter_by(sos_id=sos.id).order_by(SOSLocationPing.id.desc())
+                  .offset(SOS_MAX_PINGS - 200).first())
+        if cutoff:
+            SOSLocationPing.query.filter(SOSLocationPing.sos_id == sos.id,
+                                         SOSLocationPing.id < cutoff.id).delete(synchronize_session=False)
+            db.session.commit()
+    return jsonify({'success': True}), 200
+
+
+@app.route('/api/safety/sos/<token>/live', methods=['GET'])
+def sos_live(token):
+    """Read-only live data for the /sos/<token> page (the token in the link is the access key)."""
+    sos = SOSAlert.query.filter_by(token=token).first()
+    if not sos:
+        return jsonify({'found': False}), 404
+    pings = (SOSLocationPing.query.filter_by(sos_id=sos.id)
+             .order_by(SOSLocationPing.id.desc()).limit(150).all())[::-1]
+    latest = pings[-1] if pings else None
+    lat = latest.lat if latest else _to_float(sos.lat)
+    lng = latest.lng if latest else _to_float(sos.lng)
+    updated = latest.created_at if latest else sos.created_at
+    bus = None
+    if sos.bus_id:
+        st = _bus_state(sos.bus_id, sos.route_id or '')
+        if st:
+            bus = {'busId': st['busId'], 'lat': st['lat'], 'lng': st['lng'], 'speedKmh': st['speedKmh'],
+                   'heading': st['heading'], 'online': st['online'], 'ageSeconds': st['ageSeconds'],
+                   'nextStop': st['ahead'][0] if st['ahead'] else None}
+    return jsonify({
+        'found': True, 'resolved': bool(sos.resolved), 'username': sos.username,
+        'busId': sos.bus_id, 'routeId': sos.route_id,
+        'lat': lat, 'lng': lng, 'updatedAt': _iso_z(updated),
+        'ageSeconds': max(0, int((_utcnow() - updated).total_seconds())) if updated else None,
+        'trail': [{'lat': p.lat, 'lng': p.lng, 't': _iso_z(p.created_at)} for p in pings],
+        'bus': bus,
+    }), 200
+
+
+def _journey_recipients(username, data):
+    """Everyone a journey should be shared with: the single contactPhone (existing behaviour),
+    a `contacts` list, and/or the rider's saved emergency contacts (shareWithEmergencyContacts)."""
+    seen, out = set(), []
+
+    def add(name, phone):
+        phone = (phone or '').strip()
+        digits = re.sub(r'\D', '', phone)
+        if len(digits) < 7 or digits in seen:
+            return
+        seen.add(digits)
+        out.append({'name': (name or '').strip() or 'Friend', 'phone': phone})
+
+    add(data.get('contactName'), data.get('contactPhone'))
+    for c in (data.get('contacts') or []):
+        if isinstance(c, dict):
+            add(c.get('name'), c.get('phone') or c.get('phoneNumber'))
+    if data.get('shareWithEmergencyContacts'):
+        for c in EmergencyContact.query.filter_by(username=username).all():
+            add(c.contact_name, c.phone_number)
+    return out[:5]
 
 
 # ═══════════════════════════════════════════════════════════
