@@ -817,7 +817,7 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
    <div class="features-grid">
   <div class="feat-card featured reveal">
     <div class="feat-num">01 ——</div><div class="feat-icon-wrap">📍</div>
-    <div class="feat-title" style="font-size:28px;color:var(--white)">Real-Time Tracking — Online & Offline</div>
+    <div class="feat-title" style="font-size:28px;color:var(--white)">Real-Time Tracking</div>
     <div class="feat-desc" style="max-width:560px">See your bus live on the map with ETA, speed, stops, and distance.</div>
   </div>
 
@@ -833,6 +833,13 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
     <div class="feat-title">Community Reports</div>
     <div class="feat-desc">Riders flag broken stops, overcrowding, and delays in real time. We collect that data, analyse it, and resolve issues as fast as possible — making the entire bus network smarter and more reliable for everyone.</div>
     <span class="feat-pill">CROWDSOURCED · REAL TIME · RESOLVED FAST</span>
+  </div>
+
+  <div class="feat-card reveal reveal-delay-2">
+    <div class="feat-num">04 ——</div><div class="feat-icon-wrap">⏰</div>
+    <div class="feat-title">Smart Bus Reminders</div>
+    <div class="feat-desc">Never miss your bus again. Set a one-time reminder for your stop and we'll watch the bus's live position for you, alerting you the moment it's about 5 minutes away — with a wake-up vibration alarm included.</div>
+    <span class="feat-pill">ONE-TAP · 5-MIN ALERT · NEVER MISS IT</span>
   </div>
 </div>
   </section>
