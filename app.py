@@ -687,14 +687,12 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
   <ul class="nav-links">
   <li><a href="#" onclick="showPage('home')">Home</a></li>
   <li><a href="#" onclick="showPage('home');setTimeout(...)">Features</a></li>
-  <li><a href="#" onclick="showPage('team')">Our Team</a></li>
   <li><a href="/drivers" style="color:var(--gold)">🚌 Drivers</a></li>
 </ul>
   <a href="#dl" class="nav-dl" onclick="showPage('home')">Download App</a>
 </nav>
 <div class="page-nav">
   <button class="pnav-btn active" id="tab-home" onclick="showPage('home')">Home</button>
-  <button class="pnav-btn" id="tab-team" onclick="showPage('team')">Meet Our Team</button>
   <button class="pnav-btn" onclick="window.location.href='/drivers'">For Drivers</button>
 </div>
 <div class="page active" id="page-home">
@@ -870,40 +868,7 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
   </section>
   <footer>
     <div class="footer-logo">&#128652; LetsGo</div>
-    <div class="footer-links"><a href="#" onclick="showPage('home')">Home</a><a href="#features" onclick="showPage('home')">Features</a><a href="#" onclick="showPage('team')">Team</a></div>
-    <div class="footer-copy">&#169; 2026 LetsGo · Cayman Islands</div>
-    <a href="/admin/login" class="footer-admin">Admin</a>
-  </footer>
-</div>
-<div class="page" id="page-team">
-  <section class="team-hero">
-    <div class="section-eyebrow" style="color:var(--gold)">The people behind the app</div>
-    <h2 class="section-title">MEET THE <span class="accent">MINDS</span><br>BEHIND LETSGO</h2>
-    <p class="team-hero-sub">A passionate team that believed Cayman deserved smarter, more connected public transport — and built it.</p>
-    <svg viewBox="0 0 1440 80" preserveAspectRatio="none" style="position:absolute;bottom:0;left:0;right:0;display:block"><path d="M0,40 C480,90 960,10 1440,50 L1440,80 L0,80Z" fill="#F9F4E8"/></svg>
-  </section>
-  <section class="team-main">
-    <div class="team-intro reveal"><p>LetsGo was born from a simple frustration — getting around Grand Cayman on public transport shouldn't be a guessing game. This small team of technologists decided to do something about it.</p></div>
-    <div class="team-grid">
-      <div class="team-card reveal">
-        <div class="team-card-header bg1"><div class="team-avatar">SA</div><div class="team-hdr-info"><div class="team-name">Saaleha AbrarAli</div><div class="team-role-badge">Founder</div></div></div>
-        <div class="team-body"><p class="team-quote">"It was really cool to bring up the idea and make it live in Cayman Island, mainly for bus transport."</p><a href="https://www.linkedin.com/in/saaleha-aafreen-a56b49105/" target="_blank" class="team-linkedin"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>Connect on LinkedIn</a></div>
-      </div>
-      <div class="team-card reveal reveal-delay-1">
-        <div class="team-card-header bg2"><div class="team-avatar">SF</div><div class="team-hdr-info"><div class="team-name">Safee</div><div class="team-role-badge">Co-Founder</div></div></div>
-        <div class="team-body"><p class="team-quote">"Every line of code was written with one goal — making daily life in Cayman easier, safer, and more connected."</p><a href="https://www.linkedin.com/in/mohammad-safeeullah-a64007a5/" target="_blank" class="team-linkedin"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>Connect on LinkedIn</a></div>
-      </div>
-    </div>
-    <div style="max-width:860px;margin:64px auto 0;background:var(--navy);border-radius:24px;padding:48px;text-align:center" class="reveal">
-      <div class="section-eyebrow" style="color:var(--gold);margin-bottom:16px">Our mission</div>
-      <h3 style="font-family:'Playfair Display',serif;font-size:clamp(24px,4vw,38px);font-weight:900;color:var(--white);line-height:1.1;margin-bottom:16px">To make public transport in the Cayman Islands as <span style="color:var(--gold)">reliable, safe, and effortless</span> as the island life itself.</h3>
-      <p style="color:rgba(255,255,255,.45);font-size:15px;line-height:1.7;max-width:500px;margin:0 auto">We believe every Caymanian deserves to know exactly when their bus is coming — whether they have signal or not.</p>
-    </div>
-  </section>
-  <div class="love-banner reveal"><div class="love-text">Made with <span class="gold">love</span> in the Cayman Islands &#127472;&#127486;</div><div class="love-sub">GRAND CAYMAN · CAYMAN BRAC · LITTLE CAYMAN</div></div>
-  <footer>
-    <div class="footer-logo">&#128652; LetsGo</div>
-    <div class="footer-links"><a href="#" onclick="showPage('home')">Home</a><a href="#" onclick="showPage('team')">Team</a></div>
+    <div class="footer-links"><a href="#" onclick="showPage('home')">Home</a><a href="#features" onclick="showPage('home')">Features</a></div>
     <div class="footer-copy">&#169; 2026 LetsGo · Cayman Islands</div>
     <a href="/admin/login" class="footer-admin">Admin</a>
   </footer>
