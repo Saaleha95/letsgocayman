@@ -130,6 +130,7 @@ class DriverRoute(db.Model):
     frequency = db.Column(db.String(40), default='Every 15 minutes')
     description = db.Column(db.Text, default='')
     stops_json = db.Column(db.Text, default='[]')  # JSON array
+    wheelchair_accessible = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
@@ -468,7 +469,7 @@ LANDING_HTML = r"""<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LetsGo Cayman — Smart Bus Transport</title>
+<title>Eastern Link Shuttle — Government Shuttle Pilot | LetsGo</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -681,9 +682,9 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
     <svg class="palm-left" width="200" height="400" viewBox="0 0 200 400"><path d="M100 400 Q95 300 80 250 Q40 200 10 180 Q50 190 70 220 Q60 170 20 140 Q65 165 80 200 Q75 150 50 110 Q85 145 90 190 Q90 130 70 80 Q100 130 95 200 Q110 130 130 80 Q110 140 115 200 Q120 150 150 110 Q125 155 120 200 Q135 165 180 140 Q145 170 130 220 Q150 190 190 180 Q160 200 120 250 Q105 300 105 400Z" fill="white"/></svg>
     <svg class="palm-right" width="180" height="360" viewBox="0 0 180 360" style="right:0"><path d="M90 360 Q85 270 70 225 Q35 180 8 162 Q45 172 63 198 Q54 153 18 126 Q59 149 72 180 Q68 135 45 99 Q77 131 81 171 Q81 117 63 72 Q90 117 86 180 Q99 117 117 72 Q99 126 103 180 Q108 135 136 99 Q113 139 109 180 Q121 149 162 126 Q131 153 117 198 Q135 172 172 162 Q145 180 110 225 Q95 270 95 360Z" fill="white"/></svg>
     <div class="hero-content">
-      <div class="hero-tag"><span class="live-dot"></span>CAYMAN ISLANDS · SMART BUS TRACKING</div>
-      <h1 class="hero-title">RIDE<br><span class="gold">SMARTER</span><br>CAYMAN</h1>
-      <p class="hero-sub">The Cayman Islands' first smart bus app — live tracking, journey sharing, and safety features built for Grand Cayman life. Currently free to ride on our pilot routes.</p>
+      <div class="hero-tag"><span class="live-dot"></span>GOVERNMENT SHUTTLE PILOT · EASTERN DISTRICTS</div>
+      <h1 class="hero-title">EASTERN LINK<br><span class="gold">SHUTTLE</span></h1>
+      <p class="hero-sub">A free Cayman Islands Government shuttle pilot connecting <strong style="color:#fff">Frank Sound Junction</strong>, <strong style="color:#fff">East End</strong>, and <strong style="color:#fff">North Side / Cayman Kai</strong>. Track it live, see every stop, and know exactly when it's arriving — no other routes to figure out.</p>
       <div class="hero-cta-row">
         <a href="#dl" class="btn-primary" onclick="showPage('home')">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
@@ -695,7 +696,7 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
         </a>
       </div>
       <div class="stats-bar">
-        <div class="stat-item"><div class="num">9+</div><div class="lbl">Active Routes</div></div>
+        <div class="stat-item"><div class="num">34+</div><div class="lbl">Stops &amp; Shelters</div></div>
         <div class="stat-item"><div class="num">Live</div><div class="lbl">Bus Tracking</div></div>
         <div class="stat-item"><div class="num">Free</div><div class="lbl">Pilot Service</div></div>
       </div>
@@ -719,7 +720,7 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
           <rect x="324" y="40" width="62" height="42" rx="8" fill="#0B1F3A" stroke="#F5C518" stroke-width="2"/>
           <rect x="328" y="44" width="54" height="34" rx="5" fill="#1a3a6b" opacity=".9"/>
           <rect x="60" y="103" width="320" height="16" rx="4" fill="#0B1F3A"/>
-          <text x="220" y="115" text-anchor="middle" fill="#F5C518" font-family="monospace" font-size="10" font-weight="bold">&#8594; GEORGE TOWN &#183; SEVEN MILE BEACH</text>
+          <text x="220" y="115" text-anchor="middle" fill="#F5C518" font-family="monospace" font-size="10" font-weight="bold">&#8594; FRANK SOUND &#183; EAST END &#183; NORTH SIDE</text>
           <text x="215" y="152" text-anchor="middle" fill="#0B1F3A" font-family="serif" font-size="16" font-weight="900" letter-spacing="5">LETSGO</text>
           <rect x="410" y="78" width="40" height="78" rx="5" fill="#E8B400" stroke="#0B1F3A" stroke-width="1.5"/>
           <line x1="430" y1="80" x2="430" y2="154" stroke="#0B1F3A" stroke-width="1.5"/>
@@ -739,19 +740,26 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
     <div class="section-eyebrow">Built for Cayman</div>
     <div class="why-grid">
       <div class="why-text reveal">
-        <h2 class="section-title">TRANSPORT<br>THAT KNOWS<br><span class="accent">GRAND CAYMAN</span></h2>
-        <p style="margin-top:24px">Getting around Grand Cayman just got smarter. Whether you're heading to work in George Town, school in Bodden Town, or the beach on Seven Mile — <strong>LetsGo has your route covered</strong>.</p>
-        <p>We know the roads, the schedules, and the Cayman way of life. No more guessing when the next bus comes. No more missed rides. Just tap and go.</p>
+        <h2 class="section-title">ONE SHUTTLE.<br>THE WHOLE<br><span class="accent">EASTERN DISTRICT</span></h2>
+        <p style="margin-top:24px">The Eastern Link Shuttle is a <strong>Cayman Islands Government pilot service</strong> running from Frank Sound Junction out to East End and North Side / Cayman Kai. <strong>There's no network to navigate</strong> — open the app and the shuttle, its stops, and your live ETA are right there.</p>
+        <p>Three loops make up the one service: 7A and 9A cover East End in opposite directions, and 8A covers North Side / Cayman Kai. Whichever comes first, it's the same free shuttle.</p>
         <div class="why-highlights">
           <div class="why-hl reveal reveal-delay-1">
             <div class="why-hl-icon">&#128652;</div>
             <div>
-              <div class="why-hl-text">Eastern Link Routes</div>
+              <div class="why-hl-text">Three Loops, One Shuttle</div>
               <div class="why-hl-sub">
                 <strong style="color:var(--gold2)">7A</strong> East End Loop via East End &nbsp;·&nbsp;
                 <strong style="color:var(--gold2)">9A</strong> East End Loop via Queen's Highway &nbsp;·&nbsp;
                 <strong style="color:var(--gold2)">8A</strong> North Side / Cayman Kai
               </div>
+            </div>
+          </div>
+          <div class="why-hl reveal reveal-delay-1" style="border-left-color:var(--coral)">
+            <div class="why-hl-icon">&#128336;</div>
+            <div>
+              <div class="why-hl-text">Hours of Operation</div>
+              <div class="why-hl-sub">[Service days &amp; times to confirm — see note below]</div>
             </div>
           </div>
           <div class="why-hl reveal reveal-delay-1" style="border-left-color:var(--teal)">
@@ -761,8 +769,9 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
               <div class="why-hl-sub">No fare required — this is a government pilot route, free to ride for everyone</div>
             </div>
           </div>
-          <div class="why-hl reveal reveal-delay-2"><div class="why-hl-icon">&#127754;</div><div><div class="why-hl-text">Works in Dead Zones</div><div class="why-hl-sub">Full offline support — even along the coast roads</div></div></div>
-          <div class="why-hl reveal reveal-delay-3"><div class="why-hl-icon">&#127472;&#127486;</div><div><div class="why-hl-text">Made for Caymanians</div><div class="why-hl-sub">Local team, local knowledge, local pride</div></div></div>
+          <div class="why-hl reveal reveal-delay-2"><div class="why-hl-icon">&#128205;</div><div><div class="why-hl-text">Live Location &amp; ETA</div><div class="why-hl-sub">See exactly where the shuttle is right now, and when it reaches your stop</div></div></div>
+          <div class="why-hl reveal reveal-delay-2" style="border-left-color:var(--teal)"><div class="why-hl-icon">&#9855;</div><div><div class="why-hl-text">&#9855; Wheelchair Accessible</div><div class="why-hl-sub">One of the Eastern Link Shuttle buses is wheelchair accessible — the app marks it live, so you know before it arrives</div></div></div>
+          <div class="why-hl reveal reveal-delay-3"><div class="why-hl-icon">&#127754;</div><div><div class="why-hl-text">Works in Dead Zones</div><div class="why-hl-sub">Full offline support — even along the coast roads</div></div></div>
         </div>
       </div>
       <div class="cayman-visual reveal">
@@ -775,9 +784,9 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
           <circle class="route-dot" cx="200" cy="85" r="5" fill="#00897B"/>
           <circle class="route-dot" cx="270" cy="92" r="5" fill="#F5C518"/>
           <circle class="route-dot" cx="300" cy="95" r="4" fill="#FF6B35"/>
-          <text x="55" y="120" fill="rgba(255,255,255,0.5)" font-family="Outfit" font-size="9">George Town</text>
-          <text x="185" y="78" fill="rgba(255,255,255,0.5)" font-family="Outfit" font-size="9">Seven Mile</text>
-          <text x="262" y="108" fill="rgba(255,255,255,0.5)" font-family="Outfit" font-size="9">Bodden Town</text>
+          <text x="55" y="120" fill="rgba(255,255,255,0.5)" font-family="Outfit" font-size="9">Frank Sound</text>
+          <text x="185" y="78" fill="rgba(255,255,255,0.5)" font-family="Outfit" font-size="9">North Side</text>
+          <text x="262" y="108" fill="rgba(255,255,255,0.5)" font-family="Outfit" font-size="9">East End</text>
           <rect x="145" y="82" width="20" height="10" rx="3" fill="#F5C518"><animateTransform attributeName="transform" type="translate" values="0,0;60,3;0,0" dur="5s" repeatCount="indefinite"/></rect>
           <circle cx="22" cy="170" r="4" fill="#F5C518"/>
           <text x="32" y="174" fill="rgba(255,255,255,0.4)" font-family="Outfit" font-size="9">Your stop</text>
@@ -789,13 +798,32 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
       </div>
     </div>
   </section>
+  <section class="why-section" style="background:var(--white);padding-top:20px">
+    <div class="section-eyebrow">Where It Goes</div>
+    <h2 class="section-title">STOPS ON THE <span class="accent">EASTERN LINK</span></h2>
+    <p style="max-width:640px;margin-top:18px;color:var(--muted);font-size:16px;line-height:1.8">Every loop runs through a shared corridor — Frank Sound Junction, Clifton Hunter High School, Crystal Caves, Old Man Bay, Compass Point, and the South Coast — then splits toward its own district. Full stop-by-stop detail is in the app; here's the shape of it.</p>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:44px">
+      <div class="why-hl reveal" style="flex-direction:column;align-items:flex-start;gap:10px;border-left-color:var(--gold)">
+        <div style="display:flex;align-items:center;gap:12px"><div class="why-hl-icon">&#127749;</div><div class="why-hl-text" style="font-size:16px">7A · East End Loop <span style="color:var(--muted);font-weight:500">(via East End)</span></div></div>
+        <div class="why-hl-sub" style="line-height:1.8">Bo Miller Public Beach &middot; Old Robin Rd &middot; Morritts Shopping Center &middot; Wyndham &middot; Colliers Beach &middot; Cayman Parrot Sanctuary &middot; Wreck of the Ten Sails &middot; George Dixon Park &middot; East End Primary School &middot; Health City</div>
+      </div>
+      <div class="why-hl reveal reveal-delay-1" style="flex-direction:column;align-items:flex-start;gap:10px;border-left-color:var(--teal)">
+        <div style="display:flex;align-items:center;gap:12px"><div class="why-hl-icon">&#127958;&#65039;</div><div class="why-hl-text" style="font-size:16px">8A · North Side / Cayman Kai</div></div>
+        <div class="why-hl-sub" style="line-height:1.8">National Housing Development Trust &middot; Melville's Lane &middot; Rum Point &middot; Kaibo &middot; Cayman Kai Public Beach &middot; Chisholm's Cemetery &middot; Hutland &middot; Over the Edge &middot; North Side Public Beach #5</div>
+      </div>
+      <div class="why-hl reveal reveal-delay-2" style="flex-direction:column;align-items:flex-start;gap:10px;border-left-color:var(--coral)">
+        <div style="display:flex;align-items:center;gap:12px"><div class="why-hl-icon">&#127749;</div><div class="why-hl-text" style="font-size:16px">9A · East End Loop <span style="color:var(--muted);font-weight:500">(via Queen's Highway)</span></div></div>
+        <div class="why-hl-sub" style="line-height:1.8">Same East End district as 7A, run the opposite direction via Queen's Highway — so whichever loop comes first, it still gets you there.</div>
+      </div>
+    </div>
+  </section>
   <section class="features-section" id="features">
     <div class="features-intro reveal"><div class="section-eyebrow">What's inside</div><h2 class="section-title">EVERYTHING<br>YOUR <span class="accent">RIDE</span> NEEDS</h2></div>
    <div class="features-grid">
   <div class="feat-card featured reveal">
     <div class="feat-num">01 ——</div><div class="feat-icon-wrap">📍</div>
     <div class="feat-title" style="font-size:28px;color:var(--white)">Real-Time Tracking</div>
-    <div class="feat-desc" style="max-width:560px">See your bus live on the map with ETA, speed, stops, and distance.</div>
+    <div class="feat-desc" style="max-width:560px">See the Eastern Link Shuttle live on the map with ETA, speed, stops, and distance to your stop.</div>
   </div>
 
   <div class="feat-card reveal reveal-delay-2">
@@ -825,7 +853,7 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
     <h2 class="section-title">HOW IT <span class="accent">WORKS</span></h2>
     <div class="steps-row">
       <div class="step-card reveal"><div class="step-num">1</div><div class="step-title">Download Free</div><div class="step-desc">Get LetsGo on iOS or Android in seconds. Free forever for riders.</div></div>
-      <div class="step-card reveal reveal-delay-1"><div class="step-num">2</div><div class="step-title">Find Your Route</div><div class="step-desc">Type where you're going or browse all 9 Grand Cayman routes on the live map.</div></div>
+      <div class="step-card reveal reveal-delay-1"><div class="step-num">2</div><div class="step-title">Open the App</div><div class="step-desc">The Eastern Link Shuttle is already selected — no routes to browse or figure out.</div></div>
       <div class="step-card reveal reveal-delay-2"><div class="step-num">3</div><div class="step-title">Hop On, Free</div><div class="step-desc">No ticket, no tap — pilot routes are free to ride. Just board when your bus arrives.</div></div>
       <div class="step-card reveal reveal-delay-3"><div class="step-num">4</div><div class="step-title">Track &amp; Ride</div><div class="step-desc">Watch your bus approach in real time. Get notified before it arrives. Sit back, relax.</div></div>
     </div>
@@ -833,7 +861,7 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
   <section class="dl-section" id="dl">
     <p class="section-eyebrow" style="color:rgba(11,31,58,.5)">Free to download</p>
     <h2 class="dl-title">GET ON<br>THE BUS</h2>
-    <p class="dl-sub">Available on iOS and Android. Ride smarter across Grand Cayman starting today.</p>
+    <p class="dl-sub">Available on iOS and Android. Free to ride — serving Frank Sound Junction to East End and North Side / Cayman Kai.</p>
     <div class="dl-btns reveal">
       <a href="https://apps.apple.com/us/app/letsgo-cayman/id6768839802" target="_blank" class="dl-app-btn">
         <svg viewBox="0 0 24 24" fill="currentColor" style="width:26px;height:26px;flex-shrink:0"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
@@ -3268,6 +3296,7 @@ def buses_registered():
             'totalStops': len(stops),
             'liveLocation': live,
             'online': is_online,
+            'wheelchairAccessible': bool(d.wheelchair_accessible),
             'registeredAt': d.created_at.isoformat() if d.created_at else None,
         })
 
@@ -3481,6 +3510,7 @@ def buses_coordinates():
             'totalStops': len(stops),
             'liveLocation': live,
             'online': live is not None,
+            'wheelchairAccessible': bool(db_driver.wheelchair_accessible) if db_driver else False,
         }
         if db_driver:
             route_data['busId'] = db_driver.bus_id
@@ -3510,6 +3540,7 @@ def buses_coordinates():
             'totalStops': len(stops),
             'liveLocation': live,
             'online': is_online,
+            'wheelchairAccessible': bool(d.wheelchair_accessible),
             'busId': d.bus_id,
             'driverName': d.driver_name,
             'registeredAt': d.created_at.isoformat() if d.created_at else None,
@@ -4740,6 +4771,12 @@ def admin_drivers():
             <span style="background:rgba(245,197,24,.1);color:var(--gold);padding:2px 9px;border-radius:20px;font-size:12px;font-weight:600">{stop_count} stop{'s' if stop_count != 1 else ''}</span>
           </td>
           <td>{live_badge}</td>
+          <td>
+            <button class="btn btn-ghost" style="font-size:12px;padding:5px 10px;{'border-color:#22c55e55;color:#4ade80' if d.wheelchair_accessible else ''}"
+              onclick="toggleAccessible({d.id})" id="wc-btn-{d.id}">
+              {'♿ Accessible' if d.wheelchair_accessible else '♿ Mark accessible'}
+            </button>
+          </td>
           <td class="date-cell">{registered}</td>
           <td>
             <button class="btn btn-ghost" style="font-size:12px;padding:5px 10px"
@@ -4750,7 +4787,7 @@ def admin_drivers():
         </tr>"""
 
     if not rows:
-        rows = '<tr><td colspan="10" style="text-align:center;padding:48px;color:#484f58">No drivers registered yet. <a href="/driver" style="color:var(--gold)">Register one →</a></td></tr>'
+        rows = '<tr><td colspan="11" style="text-align:center;padding:48px;color:#484f58">No drivers registered yet. <a href="/driver" style="color:var(--gold)">Register one →</a></td></tr>'
 
     stat_live = sum(1 for d in drivers if TrackingSession.query.filter_by(username=d.username, active=True).first())
 
@@ -4814,6 +4851,7 @@ def admin_drivers():
             <th>Frequency</th>
             <th>Stops</th>
             <th>Status</th>
+            <th>Accessible</th>
             <th>Registered</th>
             <th>Actions</th>
           </tr>
@@ -4879,6 +4917,26 @@ function viewStops(id, name, routeId) {{
     }}).join('');
   }}
   openModal('stops-overlay');
+}}
+
+async function toggleAccessible(id) {{
+  const btn = document.getElementById(`wc-btn-${{id}}`);
+  const currentlyOn = btn.textContent.includes('♿ Accessible');
+  try {{
+    const res = await fetch(`/api/driver/${{id}}`, {{
+      method: 'PATCH',
+      headers: {{ 'Content-Type': 'application/json' }},
+      body: JSON.stringify({{ wheelchairAccessible: !currentlyOn }})
+    }});
+    if (res.ok) {{
+      btn.textContent = !currentlyOn ? '♿ Accessible' : '♿ Mark accessible';
+      btn.style.borderColor = !currentlyOn ? '#22c55e55' : '';
+      btn.style.color = !currentlyOn ? '#4ade80' : '';
+      showToast(!currentlyOn ? '✓ Marked wheelchair accessible' : 'Removed accessible flag');
+    }} else {{
+      showToast('✗ Update failed', 'error');
+    }}
+  }} catch (e) {{ showToast('✗ Update failed', 'error'); }}
 }}
 
 function confirmDrvDelete(id, name) {{
@@ -5028,6 +5086,7 @@ def register_driver():
         frequency=data.get('frequency', 'Every 15 minutes'),
         description=data.get('description', ''),
         stops_json=json.dumps(data.get('stops', [])),
+        wheelchair_accessible=bool(data.get('wheelchairAccessible', False)),
     )
     db.session.add(route)
 
@@ -5071,6 +5130,8 @@ def update_driver(driver_id):
                        ('description', 'description')]:
         if field in data:
             setattr(driver, col, data[field])
+    if 'wheelchairAccessible' in data:
+        driver.wheelchair_accessible = bool(data['wheelchairAccessible'])
     db.session.commit()
     return jsonify({'message': 'Driver updated'}), 200
 
@@ -5094,6 +5155,7 @@ def api_admin_drivers():
             'description': d.description,
             'stops': json.loads(d.stops_json or '[]'),
             'stopCount': len(json.loads(d.stops_json or '[]')),
+            'wheelchairAccessible': bool(d.wheelchair_accessible),
             'isLive': bool(TrackingSession.query.filter_by(username=d.username, active=True).first()),
             'createdAt': d.created_at.strftime('%d %b %Y, %H:%M'),
         } for d in drivers]
