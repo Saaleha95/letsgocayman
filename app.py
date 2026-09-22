@@ -76,18 +76,6 @@ Allow: /
 Allow: /support
 Allow: /privacy
 
-User-agent: Mediapartners-Google
-Disallow: /admin/
-Disallow: /gov
-Disallow: /gov/
-Disallow: /delete-account
-Disallow: /track/
-Disallow: /sos/
-Disallow: /driver
-Disallow: /drivers
-Disallow: /maps
-Disallow: /api/
-
 Sitemap: https://www.letsgocayman.com/sitemap.xml
 """
 
@@ -111,13 +99,6 @@ SITEMAP_XML = """<?xml version="1.0" encoding="UTF-8"?>
 </urlset>
 """
 
-
-ADS_TXT = "google.com, pub-5902518344335566, DIRECT, f08c47fec0942fa0\n"
-
-@app.route('/ads.txt')
-def ads_txt():
-
-    return Response(ADS_TXT, mimetype='text/plain')
 
 @app.route('/robots.txt')
 def robots_txt():
@@ -676,8 +657,6 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
 .notice-bar{position:relative;z-index:210;background:var(--navy);border-bottom:1px solid rgba(245,197,24,.25);color:#fff;text-align:center;padding:10px 20px;font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;letter-spacing:.3px}
 .notice-bar strong{color:var(--gold);font-weight:700}
 </style>
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5902518344335566"
-     crossorigin="anonymous"></script>
 </head>
 <body>
 
@@ -4180,14 +4159,11 @@ def privacy_policy():
     <li>To improve routes and service reliability using aggregated, anonymized usage data.</li>
   </ul>
 
-  <h2>Advertising and cookies</h2>
-  <p>Our website uses Google AdSense to display advertising. Google and its partners may use cookies or similar technologies to serve ads based on your prior visits to this or other websites. You can opt out of personalized advertising by visiting <a href="https://adssettings.google.com" target="_blank">Google Ads Settings</a>, or by visiting <a href="https://www.aboutads.info/choices" target="_blank">www.aboutads.info/choices</a> to opt out of third-party vendor use of cookies for personalized advertising.</p>
-
   <h2>Data retention and deletion</h2>
   <p>You can permanently delete your account and associated data at any time from <a href="/delete-account">our account deletion page</a>.</p>
 
   <h2>Third parties</h2>
-  <p>We use Twilio to deliver SMS alerts and Google services (Maps, AdSense) as described above. We do not sell personal data to third parties.</p>
+  <p>We use Twilio to deliver SMS alerts and Google services (Maps) as described above. We do not sell personal data to third parties.</p>
 
   <h2>Contact us</h2>
   <p>Questions about this policy can be sent to <a href="mailto:support@letsgocayman.com">support@letsgocayman.com</a>.</p>
