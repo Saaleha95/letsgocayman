@@ -299,6 +299,24 @@ class SOSLocationPing(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
+class TripLog(db.Model):
+    """One row per completed (or cancelled) Eastern Link Shuttle trip, submitted by
+    the driver. This is the source of truth for verified passenger/delay/cancellation
+    metrics on the gov portal — as opposed to app-engagement proxies like JourneySearch."""
+    id = db.Column(db.Integer, primary_key=True)
+    bus_id = db.Column(db.String(120), default='')
+    route_id = db.Column(db.String(20), default='')       # loop identifier
+    driver_username = db.Column(db.String(80), default='')
+    passengers = db.Column(db.Integer, nullable=True)      # boarded on this trip
+    delay_minutes = db.Column(db.Integer, default=0)       # 0 = on time
+    cancelled = db.Column(db.Boolean, default=False)
+    cancel_reason = db.Column(db.String(200), default='')
+    notes = db.Column(db.Text, default='')
+    started_at = db.Column(db.DateTime, nullable=True)
+    ended_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
 def _ensure_schema():
     """Defensive auto-migration: add any model columns that are missing from
     the live database (e.g. a field added to a model but never migrated on
@@ -734,9 +752,9 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
       <h1 class="hero-title">EASTERN LINK<br><span class="gold">SHUTTLE</span></h1>
       <p class="hero-sub">Connecting Frank Sound Junction with North Side, Rum Point, Cayman Kai and East End. A free government pilot shuttle, with live GPS tracking so you always know when your bus is coming.</p>
       <div class="hero-route-badges">
-        <span class="route-badge" style="--rc:#F5C518">East End Loop <em>via East End</em></span>
-        <span class="route-badge" style="--rc:#00897B">East End Loop <em>via Queen's Hwy</em></span>
-        <span class="route-badge" style="--rc:#FF6B35">North Side / Cayman Kai</span>
+        <span class="route-badge" style="--rc:#F5C518">7A <em>East End Loop · via East End</em></span>
+        <span class="route-badge" style="--rc:#00897B">9A <em>East End Loop · via Queen's Hwy</em></span>
+        <span class="route-badge" style="--rc:#FF6B35">8A <em>North Side / Cayman Kai</em></span>
       </div>
       <div class="hero-cta-row">
         <a href="#dl" class="btn-primary" onclick="showPage('home')">
@@ -802,9 +820,9 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
             <div>
               <div class="why-hl-text">The Three Loops</div>
               <div class="why-hl-sub">
-                <strong style="color:var(--gold2)">East End Loop via East End</strong> &nbsp;·&nbsp;
-                <strong style="color:var(--gold2)">East End Loop via Queen's Highway</strong> &nbsp;·&nbsp;
-                <strong style="color:var(--gold2)">North Side / Cayman Kai</strong>
+                <strong style="color:var(--gold2)">7A</strong> East End Loop via East End &nbsp;·&nbsp;
+                <strong style="color:var(--gold2)">9A</strong> East End Loop via Queen's Highway &nbsp;·&nbsp;
+                <strong style="color:var(--gold2)">8A</strong> North Side / Cayman Kai
               </div>
             </div>
           </div>
@@ -849,7 +867,7 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
     </div>
     <div class="stops-grid">
       <div class="stop-group reveal reveal-delay-1">
-        <div class="stop-group-hd"><span class="stop-group-dot" style="background:var(--navy)"></span>Shared stops <small>All loops</small></div>
+        <div class="stop-group-hd"><span class="stop-group-dot" style="background:var(--navy)"></span>Shared stops <small>7A · 8A · 9A</small></div>
         <ul class="stop-list">
           <li><span>Frank Sound Junction</span><em>Shelter</em></li>
           <li><span>Clifton Hunter High School</span><em>Shelter</em></li>
@@ -861,7 +879,7 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
         </ul>
       </div>
       <div class="stop-group reveal reveal-delay-2">
-        <div class="stop-group-hd"><span class="stop-group-dot" style="background:#FF6B35"></span>North Side / Cayman Kai</div>
+        <div class="stop-group-hd"><span class="stop-group-dot" style="background:#FF6B35"></span>8A <small>North Side / Cayman Kai</small></div>
         <ul class="stop-list">
           <li><span>National Housing Development Trust</span><em>Shelter</em></li>
           <li><span>Melville's Lane</span><em>Stop only</em></li>
@@ -879,7 +897,7 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
         </ul>
       </div>
       <div class="stop-group reveal reveal-delay-3">
-        <div class="stop-group-hd"><span class="stop-group-dot" style="background:var(--gold)"></span>East End Loop <small>via East End &amp; via Queen's Highway</small></div>
+        <div class="stop-group-hd"><span class="stop-group-dot" style="background:var(--gold)"></span>7A / 9A <small>East End Loop</small></div>
         <ul class="stop-list">
           <li><span>Bo Miller Public Beach <small>(towards East End)</small></span><em>Stop only</em></li>
           <li><span>Bo Miller Public Beach <small>(towards North Side)</small></span><em>Stop only</em></li>
@@ -934,7 +952,7 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
     <h2 class="section-title">HOW IT <span class="accent">WORKS</span></h2>
     <div class="steps-row">
       <div class="step-card reveal"><div class="step-num">1</div><div class="step-title">Download Free</div><div class="step-desc">Get LetsGo on iOS or Android in seconds. Free forever for riders.</div></div>
-      <div class="step-card reveal reveal-delay-1"><div class="step-num">2</div><div class="step-title">Pick Your Loop</div><div class="step-desc">Choose East End Loop via East End, East End Loop via Queen's Highway, or North Side / Cayman Kai depending on your stop, and see it live on the map.</div></div>
+      <div class="step-card reveal reveal-delay-1"><div class="step-num">2</div><div class="step-title">Pick Your Loop</div><div class="step-desc">Choose 7A, 8A or 9A depending on your stop, and see it live on the map.</div></div>
       <div class="step-card reveal reveal-delay-2"><div class="step-num">3</div><div class="step-title">Hop On, Free</div><div class="step-desc">No ticket, no tap — pilot routes are free to ride. Just board when your bus arrives.</div></div>
       <div class="step-card reveal reveal-delay-3"><div class="step-num">4</div><div class="step-title">Track &amp; Ride</div><div class="step-desc">Watch your bus approach in real time. Get notified before it arrives. Sit back, relax.</div></div>
     </div>
@@ -1265,12 +1283,150 @@ async function resolveReport(id){{
 </body>
 </html>"""
 
+_ROUTE_LABELS = {
+    '7A': "East End Loop (via East End)",
+    '9A': "East End Loop (via Queen's Highway)",
+    '8A': 'North Side / Cayman Kai',
+}
+
+
+def _route_label(rid):
+    return _ROUTE_LABELS.get((rid or '').strip(), rid or 'Unknown')
+
+
+def _bar_row(label, count, max_count, color='#F5C518'):
+    pct = round((count / max_count) * 100) if max_count else 0
+    return f"""
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <div style="width:150px;font-size:12px;color:#8b949e;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{label}</div>
+      <div style="flex:1;background:#0d1117;border-radius:6px;height:18px;overflow:hidden">
+        <div style="width:{max(pct, count and 2)}%;background:{color};height:100%;border-radius:6px"></div>
+      </div>
+      <div style="width:44px;text-align:right;font-size:12px;color:#f0f6fc;font-weight:600;flex-shrink:0">{count}</div>
+    </div>"""
+
+
 @app.route('/gov/journey-tracking')
 @require_gov
 def gov_journey_tracking():
     searches = JourneySearch.query.order_by(JourneySearch.created_at.desc()).limit(500).all()
+    all_searches = JourneySearch.query.order_by(JourneySearch.created_at.desc()).limit(5000).all()
+    trip_logs = TripLog.query.order_by(TripLog.created_at.desc()).limit(3000).all()
+    reports = CommunityReport.query.order_by(CommunityReport.created_at.desc()).limit(3000).all()
+
     stop_count = sum(1 for s in searches if s.source == 'stop_search')
     bus_count = sum(1 for s in searches if s.source == 'nearest_bus')
+
+    now = datetime.utcnow()
+    last_7 = now - timedelta(days=7)
+    prev_7 = now - timedelta(days=14)
+    last_30 = now - timedelta(days=30)
+
+    # ── Journey demand: weekly trend ──────────────────────────
+    demand_last7 = sum(1 for s in all_searches if s.created_at and s.created_at >= last_7)
+    demand_prev7 = sum(1 for s in all_searches if s.created_at and prev_7 <= s.created_at < last_7)
+    demand_delta = None
+    if demand_prev7:
+        demand_delta = round(((demand_last7 - demand_prev7) / demand_prev7) * 100)
+
+    # ── Peak operating periods: searches by hour of day ───────
+    hour_buckets = [0] * 24
+    for s in all_searches:
+        if s.created_at:
+            hour_buckets[s.created_at.hour] += 1
+    max_hour = max(hour_buckets) if hour_buckets else 0
+    peak_hour = hour_buckets.index(max_hour) if max_hour else None
+    hour_bars = ''.join(
+        _bar_row(f'{h:02d}:00–{h:02d}:59', hour_buckets[h], max_hour, '#818cf8')
+        for h in range(24) if hour_buckets[h] or True
+    )
+
+    # ── Route utilisation ──────────────────────────────────────
+    route_trip_counts = {}
+    for t in trip_logs:
+        if not t.cancelled:
+            route_trip_counts[t.route_id] = route_trip_counts.get(t.route_id, 0) + 1
+    utilisation_source = 'verified trips'
+    if route_trip_counts:
+        route_counts = route_trip_counts
+    else:
+        utilisation_source = 'app engagement (journey searches) — no verified trip data yet'
+        route_counts = {}
+        for s in all_searches:
+            if s.route_id:
+                route_counts[s.route_id] = route_counts.get(s.route_id, 0) + 1
+    max_route = max(route_counts.values()) if route_counts else 0
+    route_bars = ''.join(
+        _bar_row(_route_label(rid), c, max_route, '#4ade80')
+        for rid, c in sorted(route_counts.items(), key=lambda kv: -kv[1])
+    ) or '<div style="color:#484f58;font-size:13px;padding:12px 0">No route activity recorded yet.</div>'
+
+    # ── Journey demand by stop (proxy: search activity) ───────
+    stop_demand = {}
+    for s in all_searches:
+        if s.stop_name:
+            stop_demand[s.stop_name] = stop_demand.get(s.stop_name, 0) + 1
+    top_stops = sorted(stop_demand.items(), key=lambda kv: -kv[1])[:10]
+    max_stop = top_stops[0][1] if top_stops else 0
+    stop_bars = ''.join(
+        _bar_row(name, c, max_stop, '#F5C518') for name, c in top_stops
+    ) or '<div style="color:#484f58;font-size:13px;padding:12px 0">No stop-level search activity recorded yet.</div>'
+
+    # ── Passengers per trip (verified, from driver trip logs) ─
+    completed = [t for t in trip_logs if not t.cancelled]
+    with_counts = [t for t in completed if t.passengers is not None]
+    total_passengers = sum(t.passengers for t in with_counts)
+    avg_passengers = round(total_passengers / len(with_counts), 1) if with_counts else None
+
+    # ── Service delays (verified) ──────────────────────────────
+    delayed = [t for t in completed if (t.delay_minutes or 0) > 0]
+    avg_delay = round(sum(t.delay_minutes for t in delayed) / len(delayed), 1) if delayed else None
+    on_time_rate = round((1 - len(delayed) / len(completed)) * 100) if completed else None
+    delay_keywords = ('delay', 'late', 'slow', 'waiting', 'long wait')
+    delay_mentions = sum(
+        1 for r in reports
+        if r.created_at and r.created_at >= last_30 and
+        any(k in (r.category or '').lower() or k in (r.message or '').lower() for k in delay_keywords)
+    )
+
+    # ── Cancellations (verified) ───────────────────────────────
+    cancelled_trips = [t for t in trip_logs if t.cancelled]
+    cancel_rate = round((len(cancelled_trips) / len(trip_logs)) * 100) if trip_logs else None
+
+    # ── Issue reports ───────────────────────────────────────────
+    report_total = len(reports)
+    report_open = sum(1 for r in reports if r.status == 'open')
+    report_resolved = sum(1 for r in reports if r.status == 'resolved')
+    category_counts = {}
+    for r in reports:
+        cat = (r.category or 'other').strip() or 'other'
+        category_counts[cat] = category_counts.get(cat, 0) + 1
+    max_cat = max(category_counts.values()) if category_counts else 0
+    category_bars = ''.join(
+        _bar_row(cat, c, max_cat, '#fb923c')
+        for cat, c in sorted(category_counts.items(), key=lambda kv: -kv[1])[:8]
+    ) or '<div style="color:#484f58;font-size:13px;padding:12px 0">No issue reports yet.</div>'
+
+    # ── Potential recurring operational issues ─────────────────
+    recurring_map = {}
+    for r in reports:
+        if not r.created_at or r.created_at < last_30:
+            continue
+        key = (r.stop_name or 'Unspecified stop', (r.category or 'other').strip() or 'other')
+        recurring_map[key] = recurring_map.get(key, 0) + 1
+    recurring = sorted(
+        [(k, v) for k, v in recurring_map.items() if v >= 2], key=lambda kv: -kv[1]
+    )[:8]
+    recurring_rows = ''.join(f"""
+        <tr>
+          <td style="color:#f0f6fc;font-weight:600">{stop}</td>
+          <td><span style="background:rgba(251,146,60,.12);color:#fb923c;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600">{cat}</span></td>
+          <td style="color:var(--gold);font-weight:700">{count} reports</td>
+          <td style="color:#6e7681;font-size:12px">Last 30 days</td>
+        </tr>""" for (stop, cat), count in recurring) or (
+        '<tr><td colspan="4" style="text-align:center;padding:28px;color:#484f58">'
+        'No stop/category combination has repeated 2+ times in the last 30 days.</td></tr>'
+    )
 
     rows = ""
     for s in searches:
@@ -1306,6 +1462,12 @@ def gov_journey_tracking():
     if not rows:
         rows = '<tr><td colspan="12" style="text-align:center;padding:48px;color:#484f58">No journey searches recorded yet.</td></tr>'
 
+    delta_html = ''
+    if demand_delta is not None:
+        arrow = '▲' if demand_delta >= 0 else '▼'
+        dcolor = '#4ade80' if demand_delta >= 0 else '#f87171'
+        delta_html = f'<span style="color:{dcolor};font-size:12px;font-weight:600">{arrow} {abs(demand_delta)}% vs prior 7 days</span>'
+
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1320,31 +1482,94 @@ def gov_journey_tracking():
   .sc-icon{{font-size:20px;width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}}
   .sc-num{{font-size:24px;font-weight:700;color:#f0f6fc;line-height:1}}
   .sc-lbl{{font-size:12px;color:#6e7681;margin-top:3px}}
+  .metric-card{{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:20px 22px}}
+  .metric-card h3{{font-size:14px;color:#f0f6fc;margin:0 0 4px}}
+  .metric-note{{font-size:11.5px;color:#6e7681;margin-bottom:14px}}
+  .data-pill{{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.3px;padding:2px 9px;border-radius:20px;margin-left:8px;vertical-align:middle}}
+  .pill-live{{background:rgba(74,222,128,.12);color:#4ade80}}
+  .pill-pending{{background:rgba(139,148,158,.15);color:#8b949e}}
+  .section-hd{{display:flex;align-items:center;justify-content:space-between;margin:36px 0 14px}}
+  .section-hd h2{{font-size:16px;color:#f0f6fc;margin:0;display:flex;align-items:center;gap:8px}}
 </style>
 </head>
 <body>
 {gov_nav_html('journeys')}
 <div class="admin-main">
   <div class="page-header">
-    <div><h1>🧭 Journey Tracking</h1><p>Rider searches and nearest-bus taps in the Journey tab (read-only, last 500)</p></div>
-    <span class="badge">{len(searches)} search(es)</span>
+    <div><h1>🧭 Journey Tracking</h1><p>Eastern Link Shuttle operational &amp; passenger metrics, plus rider search activity</p></div>
+    <span class="badge">{len(searches)} search(es) shown</span>
   </div>
 
-  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px">
+  <div style="background:rgba(245,197,24,.08);border:1px solid rgba(245,197,24,.25);border-radius:10px;padding:12px 16px;font-size:12.5px;color:#c9b458;margin-bottom:8px">
+    🔒 The metrics below are anonymised and aggregated — no rider names, phone numbers, or individual journeys are shown in this section. Cards marked <span class="data-pill pill-pending" style="margin:0 4px">PENDING</span> will populate automatically once drivers begin submitting trip data via <code>/api/driver/trip-log</code>.
+  </div>
+
+  <div class="section-hd"><h2>🚌 Eastern Link Shuttle — Service Overview</h2></div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:8px">
     <div class="stat-card">
-      <div class="sc-icon" style="background:rgba(245,197,24,.1)">🧭</div>
-      <div><div class="sc-num">{len(searches)}</div><div class="sc-lbl">Total (last 500)</div></div>
+      <div class="sc-icon" style="background:rgba(245,197,24,.1)">🧍</div>
+      <div><div class="sc-num">{avg_passengers if avg_passengers is not None else '—'}</div><div class="sc-lbl">Avg. Passengers / Trip{'' if avg_passengers is not None else ' <span class="data-pill pill-pending">PENDING</span>'}</div></div>
     </div>
     <div class="stat-card">
-      <div class="sc-icon" style="background:rgba(129,140,248,.1)">🔍</div>
-      <div><div class="sc-num" style="color:#818cf8">{stop_count}</div><div class="sc-lbl">Stop Searches</div></div>
+      <div class="sc-icon" style="background:rgba(74,222,128,.1)">✅</div>
+      <div><div class="sc-num" style="color:#4ade80">{f'{on_time_rate}%' if on_time_rate is not None else '—'}</div><div class="sc-lbl">On-Time Rate{'' if on_time_rate is not None else ' <span class="data-pill pill-pending">PENDING</span>'}</div></div>
     </div>
     <div class="stat-card">
-      <div class="sc-icon" style="background:rgba(74,222,128,.1)">🚌</div>
-      <div><div class="sc-num" style="color:#4ade80">{bus_count}</div><div class="sc-lbl">Nearest Bus Taps</div></div>
+      <div class="sc-icon" style="background:rgba(248,113,113,.1)">🚫</div>
+      <div><div class="sc-num" style="color:#f87171">{f'{cancel_rate}%' if cancel_rate is not None else '—'}</div><div class="sc-lbl">Cancellation Rate{'' if cancel_rate is not None else ' <span class="data-pill pill-pending">PENDING</span>'}</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="sc-icon" style="background:rgba(129,140,248,.1)">🧭</div>
+      <div><div class="sc-num" style="color:#818cf8">{demand_last7}</div><div class="sc-lbl">Journey Searches (7d) {delta_html}</div></div>
     </div>
   </div>
 
+  <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:16px;margin-top:18px">
+    <div class="metric-card">
+      <h3>🕐 Peak Operating Periods <span class="data-pill pill-live">LIVE</span></h3>
+      <div class="metric-note">Journey-tab activity by hour of day (last 5,000 searches){f' · busiest hour: {peak_hour:02d}:00–{peak_hour:02d}:59' if peak_hour is not None else ''}</div>
+      {hour_bars}
+    </div>
+    <div class="metric-card">
+      <h3>📊 Route Utilisation</h3>
+      <div class="metric-note">Split across the three Eastern Link loops, based on {utilisation_source}</div>
+      {route_bars}
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+    <div class="metric-card">
+      <h3>📍 Journey Demand by Stop <span class="data-pill pill-live">LIVE (proxy)</span></h3>
+      <div class="metric-note">Top 10 stops by search/journey-lookup activity — a demand proxy, not verified boarding counts</div>
+      {stop_bars}
+    </div>
+    <div class="metric-card">
+      <h3>⚠️ Service Delays</h3>
+      <div class="metric-note">
+        {f'Avg delay on late trips: <strong style="color:#f0f6fc">{avg_delay} min</strong> · {len(delayed)} of {len(completed)} verified trips ran late.' if delayed else 'No verified delay data yet from driver trip logs.'}
+        <br>Rider-reported delay/lateness mentions (last 30 days): <strong style="color:#f0f6fc">{delay_mentions}</strong>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-hd"><h2>📣 Issue Reports</h2><span class="badge">{report_total} total · {report_open} open · {report_resolved} resolved</span></div>
+  <div class="metric-card">
+    <div class="metric-note">Community-submitted issue categories, most frequent first</div>
+    {category_bars}
+  </div>
+
+  <div class="section-hd"><h2>🔁 Potential Recurring Operational Issues</h2></div>
+  <div class="card">
+    <div class="metric-note" style="padding:14px 16px 0">Stop + category combinations reported 2 or more times in the last 30 days — worth investigating for a systemic cause</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Stop</th><th>Category</th><th>Frequency</th><th>Window</th></tr></thead>
+        <tbody>{recurring_rows}</tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section-hd"><h2>🔍 Raw Journey Search Log</h2><span class="badge">Last 500 · staff use only</span></div>
   <div class="card">
     <div class="table-wrap">
       <table>
@@ -4056,7 +4281,7 @@ def support():
         <span class="arrow">▼</span>
       </button>
       <div class="faq-a">
-        Open the app and tap <strong>Track</strong> on the home screen. Select your loop — <strong>East End Loop via East End</strong>, <strong>East End Loop via Queen's Highway</strong>, or <strong>North Side / Cayman Kai</strong> — for the Eastern Link Shuttle. A live map will appear showing the bus location and an estimated arrival time updated every few seconds. GPS must be enabled on your device for the best accuracy.
+        Open the app and tap <strong>Track</strong> on the home screen. Select your loop — <strong>7A</strong>, <strong>8A</strong>, or <strong>9A</strong> — for the Eastern Link Shuttle. A live map will appear showing the bus location and an estimated arrival time updated every few seconds. GPS must be enabled on your device for the best accuracy.
       </div>
     </div>
 
@@ -5249,6 +5474,52 @@ def update_driver(driver_id):
         driver.frequency = _format_frequency(data['frequency'])
     db.session.commit()
     return jsonify({'message': 'Driver updated'}), 200
+
+
+@app.route('/api/driver/trip-log', methods=['POST'])
+def submit_trip_log():
+    """Driver app calls this at the end of (or in place of) a trip to feed the
+    gov portal's verified passenger/delay/cancellation metrics."""
+    data = request.get_json(force=True, silent=True) or {}
+    bus_id = str(data.get('busId', ''))[:120]
+    route_id = str(data.get('routeId', ''))[:20]
+    if not bus_id and not route_id:
+        return jsonify({'message': 'busId or routeId required'}), 400
+
+    def _parse_dt(val):
+        if not val:
+            return None
+        try:
+            return datetime.fromisoformat(str(val).replace('Z', '+00:00')).replace(tzinfo=None)
+        except Exception:
+            return None
+
+    passengers = data.get('passengers')
+    try:
+        passengers = max(0, int(passengers)) if passengers is not None else None
+    except Exception:
+        passengers = None
+
+    try:
+        delay_minutes = max(0, int(data.get('delayMinutes', 0) or 0))
+    except Exception:
+        delay_minutes = 0
+
+    log = TripLog(
+        bus_id=bus_id,
+        route_id=route_id,
+        driver_username=str(data.get('username', ''))[:80],
+        passengers=passengers,
+        delay_minutes=delay_minutes,
+        cancelled=bool(data.get('cancelled', False)),
+        cancel_reason=str(data.get('cancelReason', ''))[:200],
+        notes=str(data.get('notes', ''))[:2000],
+        started_at=_parse_dt(data.get('startedAt')),
+        ended_at=_parse_dt(data.get('endedAt')),
+    )
+    db.session.add(log)
+    db.session.commit()
+    return jsonify({'message': 'Trip logged', 'id': log.id}), 201
 
 
 @app.route('/api/admin/drivers')
