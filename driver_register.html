@@ -59,6 +59,17 @@ input::placeholder,textarea::placeholder{color:var(--dim)}
 .color-swatch:hover{transform:scale(1.15)}
 .color-swatch.selected{border-color:white;transform:scale(1.1)}
 
+.toggle-row{display:flex;align-items:center;gap:12px;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:12px 14px;cursor:pointer;transition:border-color .2s}
+.toggle-row:hover{border-color:var(--border2)}
+.toggle-switch{position:relative;width:42px;height:24px;flex-shrink:0}
+.toggle-switch input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
+.toggle-track{position:absolute;inset:0;background:var(--border);border-radius:20px;transition:background .2s}
+.toggle-track::before{content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:var(--text);transition:transform .2s}
+.toggle-switch input:checked + .toggle-track{background:var(--teal)}
+.toggle-switch input:checked + .toggle-track::before{transform:translateX(18px);background:white}
+.toggle-label{font-size:14px;color:var(--text)}
+.toggle-label .sub{font-size:12px;color:var(--muted);margin-top:2px;display:block}
+
 .stops-header{display:flex;align-items:center;justify-content:space-between;padding:18px 24px;border-bottom:1px solid var(--border2);background:var(--surface2);border-radius:14px 14px 0 0}
 .stops-count-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(245,197,24,.12);border:1px solid rgba(245,197,24,.3);color:var(--gold);font-family:'Syne',sans-serif;font-size:13px;font-weight:800;padding:5px 14px;border-radius:20px;transition:all .3s}
 .stops-count-badge.has-stops{background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.35);color:var(--green)}
@@ -250,6 +261,19 @@ input::placeholder,textarea::placeholder{color:var(--dim)}
           <label>Route Description</label>
           <textarea id="routeDesc" rows="2" placeholder="Key areas covered, e.g. George Town → Seven Mile Beach → West Bay"></textarea>
         </div>
+        <div class="form-group full">
+          <label>Accessibility</label>
+          <label class="toggle-row" for="wheelchairAccessible">
+            <span class="toggle-switch">
+              <input type="checkbox" id="wheelchairAccessible">
+              <span class="toggle-track"></span>
+            </span>
+            <span class="toggle-label">
+              ♿ Wheelchair accessible bus
+              <span class="sub">Turn this on if the bus has a ramp/lift and space for a wheelchair</span>
+            </span>
+          </label>
+        </div>
       </div>
     </div>
   </div>
@@ -316,60 +340,41 @@ var OTHER_OPT = 'Other (specify name below)';
    8A is the separate North Side / Cayman Kai line. Two stops (H.M. Botanic Garden,
    Blow Holes) are marked "unofficial — heavily requested" in the source doc but are
    included here since they're listed as serviced. */
-/* ── PTU-corrected stop lists (per PTU review round 2).
-   Changes from the original list:
-   - Removed Crystal Caves / Old Man Bay Dock / North Side stops from 7A and 9A —
-     PTU confirmed those routes go Frank Sound -> East End via Queens Highway and
-     do NOT enter Old Man Bay / North Side. That corridor belongs to 8A only.
-   - Deduped directional twins (Bo Miller, Cayman Parrot Sanctuary) down to one
-     stop each, per PTU: same physical place, opposite side of the road, no need
-     for two entries.
-   - Reordered 8A into geographic sequence (Frank Sound -> North Side -> Hutland
-     -> Rum Point -> Cayman Kai). This ordering is my best-effort reconstruction
-     from general road geography, NOT a surveyed sequence — PTU should confirm
-     before this goes live for drivers.
-   - Added stops PTU named that have NO CONFIRMED GPS COORDINATES yet: Ocean
-     Frontier, East End Primary School (John Mclean Dr), Hutland Junction Bus
-     Shelter, and Jacks Gas Station Bus Shelter. These will show in the dropdown
-     as "manual" (no auto-pin) until PTU supplies exact coordinates to add to
-     STOP_COORDS. */
 var ROUTE_STOPS = {
   '7A': [
     'Frank Sound Junction Bus Shelter','Clifton Hunter High School Bus Shelter',
-    'Compass Point Bus Stop','South Coast Bar and Grill Bus Shelter',
-    'H.M. Botanic Garden (entrance of road)','George Dixon Park Bus Shelter',
-    'Health City Bus Shelter','East End Primary School Bus Shelter',
-    'East End Primary School (John Mclean Dr)','Ocean Frontier',
-    'Cayman Parrot Sanctuary Bus Stop','Wreck of the Ten Sails Bus Shelter',
-    'Old Robin Rd Bus Stop','Colliers Beach Bus Shelter',
-    'Morritts Shopping Center Bus Shelter','Wyndham Bus Shelter',
-    'Bo Miller Public Beach Bus Stop','Jacks Gas Station Bus Shelter',
+    'Crystal Caves Bus Stop','Old Man Bay Dock Bus Shelter','Old Man Bay Dock Bus Stop',
+    'Bo Miller Public Beach Bus Stop towards EE','Bo Miller Public Beach Bus Stop towards NS',
+    'Old Robin Rd Bus Stop','Morritts Shopping Center Bus Shelter','Wyndham Bus Shelter',
+    'Colliers Beach Bus Shelter','Cayman Parrot Sanctuary Bus Stop',
+    'Cayman Parrot Sanctuary Bus Stop towards Tukka','Wreck of the Ten Sails Bus Shelter',
+    'Compass Point Bus Stop','George Dixon Park Bus Shelter',
+    'East End Primary School Bus Shelter','Health City Bus Shelter',
+    'South Coast Bar and Grill Bus Shelter','H.M. Botanic Garden (entrance of road)',
     'Blow Holes ( Sea View Rd)'
   ],
   '9A': [
     'Frank Sound Junction Bus Shelter','Clifton Hunter High School Bus Shelter',
-    'Compass Point Bus Stop','South Coast Bar and Grill Bus Shelter',
-    'H.M. Botanic Garden (entrance of road)','George Dixon Park Bus Shelter',
-    'Health City Bus Shelter','East End Primary School Bus Shelter',
-    'East End Primary School (John Mclean Dr)','Ocean Frontier',
-    'Cayman Parrot Sanctuary Bus Stop','Wreck of the Ten Sails Bus Shelter',
-    'Old Robin Rd Bus Stop','Colliers Beach Bus Shelter',
-    'Morritts Shopping Center Bus Shelter','Wyndham Bus Shelter',
-    'Bo Miller Public Beach Bus Stop','Jacks Gas Station Bus Shelter',
+    'Crystal Caves Bus Stop','Old Man Bay Dock Bus Shelter','Old Man Bay Dock Bus Stop',
+    'Bo Miller Public Beach Bus Stop towards EE','Bo Miller Public Beach Bus Stop towards NS',
+    'Old Robin Rd Bus Stop','Morritts Shopping Center Bus Shelter','Wyndham Bus Shelter',
+    'Colliers Beach Bus Shelter','Cayman Parrot Sanctuary Bus Stop',
+    'Cayman Parrot Sanctuary Bus Stop towards Tukka','Wreck of the Ten Sails Bus Shelter',
+    'Compass Point Bus Stop','George Dixon Park Bus Shelter',
+    'East End Primary School Bus Shelter','Health City Bus Shelter',
+    'South Coast Bar and Grill Bus Shelter','H.M. Botanic Garden (entrance of road)',
     'Blow Holes ( Sea View Rd)'
   ],
   '8A': [
     'Frank Sound Junction Bus Shelter','Clifton Hunter High School Bus Shelter',
-    'Compass Point Bus Stop','South Coast Bar and Grill Bus Shelter',
-    'H.M. Botanic Garden (entrance of road)','Crystal Caves Bus Stop',
-    'Old Man Bay Dock Bus Shelter','Old Man Bay Dock Bus Stop',
-    'National Housing Development Trust Bus Shelter','Hutland Bus Shelter',
-    'Hutland Junction Bus Shelter','Jacks Gas Station Bus Shelter',
-    'Chisholms Cemetery Bus Stop','Melvilles Lane Bus Stop',
-    'Over the Edge Bus Shelter','Rum Point Exit Sign Bus Stop',
-    'Rum Point Otto\u2019s Ave Bus Stop','Kaibo Bus Stop','Rum Point Bus Stop',
-    'Rum Point Bus Shelter','Rum Point Bus Stop #2',
-    'Cayman Kai Public Beach Bus Stop','North Side Public Beach #5'
+    'Crystal Caves Bus Stop','Old Man Bay Dock Bus Shelter',
+    'National Housing Development Trust Bus Shelter','Melvilles Lane Bus Stop',
+    'Rum Point Bus Stop','Rum Point Bus Shelter','Rum Point Bus Stop #2','Kaibo Bus Stop',
+    'Cayman Kai Public Beach Bus Stop','Rum Point Exit Sign Bus Stop',
+    'Rum Point Otto\u2019s Ave Bus Stop','Chisholms Cemetery Bus Stop','Hutland Bus Shelter',
+    'Old Man Bay Dock Bus Stop','Over the Edge Bus Shelter','Compass Point Bus Stop',
+    'North Side Public Beach #5','South Coast Bar and Grill Bus Shelter',
+    'H.M. Botanic Garden (entrance of road)'
   ]
 };
 
@@ -385,7 +390,6 @@ function currentPresets() {
 var STOP_COORDS = {
   'al thompsons bt bus shelter': [19.284245, -81.243578],
   'blow holes ( sea view rd)': [19.2926, -81.0651],
-  'bo miller public beach bus stop': [19.346744, -81.174160],
   'bo miller public beach bus stop towards ee': [19.346745, -81.174171],
   'bo miller public beach bus stop towards ns': [19.346742, -81.174148],
   'bodden town play field bus shelter': [19.283267, -81.244784],
@@ -756,30 +760,6 @@ function updateProgress() {
   if (el) el.addEventListener('input', updateProgress);
 });
 
-/* ── format "HH:MM" (24h) -> "7:30am" ── */
-function formatTime12(hhmm) {
-  if (!hhmm) return '';
-  var parts = hhmm.split(':');
-  var h = parseInt(parts[0], 10);
-  var m = parts[1];
-  var suffix = h >= 12 ? 'pm' : 'am';
-  var h12 = h % 12; if (h12 === 0) h12 = 12;
-  return h12 + ':' + m + suffix;
-}
-
-/* ── build a short human-readable label from the structured frequency fields.
-   The backend's `frequency` DB column is a plain String(40), so this is what
-   actually gets stored/displayed there; the full structured object is sent
-   alongside as `frequencyDetails` for anything that wants to parse it. ── */
-function buildFrequencyLabel(freq) {
-  if (freq.intervalMinutes === 0) return 'On demand';
-  var offsetLabel = freq.offsetMinutes === 30 ? ':30' : ':00';
-  var range = (freq.firstDeparture && freq.lastDeparture)
-    ? ' \u00b7 ' + formatTime12(freq.firstDeparture) + '\u2013' + formatTime12(freq.lastDeparture)
-    : '';
-  return 'Every ' + freq.intervalMinutes + ' min at ' + offsetLabel + range;
-}
-
 /* ── submit ── */
 async function submitForm() {
   stops.forEach(function(s) {
@@ -822,14 +802,14 @@ async function submitForm() {
   var routeId        = document.getElementById('routeId').value;
   var routeName      = document.getElementById('routeName').value.trim();
   var routeColor     = document.getElementById('routeColor').value;
-  var frequencyDetails = {
+  var frequency = {
     intervalMinutes: parseInt(document.getElementById('freqInterval').value, 10) || 0,
     offsetMinutes:   parseInt(document.getElementById('freqOffset').value, 10) || 0,
     firstDeparture:  document.getElementById('freqFirst').value,
     lastDeparture:   document.getElementById('freqLast').value
   };
-  var frequency = buildFrequencyLabel(frequencyDetails);
   var routeDesc      = document.getElementById('routeDesc').value.trim();
+  var wheelchairAccessible = document.getElementById('wheelchairAccessible').checked;
 
   if (!driverName)     { showToast('Please enter your full name', 'error'); return; }
   if (!driverPhone)    { showToast('Please enter your phone number', 'error'); return; }
@@ -867,8 +847,8 @@ async function submitForm() {
     routeName: routeName || routeId,
     routeColor: routeColor,
     frequency: frequency,
-    frequencyDetails: frequencyDetails,
     description: routeDesc,
+    wheelchairAccessible: wheelchairAccessible,
     stops: stops.map(function(s, i) {
     var idPrefix = (routeId === 'custom')
       ? (routeName || 'custom').replace(/\s+/g, '-').toLowerCase()
@@ -918,6 +898,7 @@ function resetAll() {
   document.getElementById('freqOffset').value = '0';
   document.getElementById('routeId').value = '';
   document.getElementById('routeColor').value = '#F5C518';
+  document.getElementById('wheelchairAccessible').checked = false;
   document.querySelectorAll('.color-swatch').forEach(function(s,i){ s.classList.toggle('selected', i === 0); });
   updateBadge(); updateProgress();
 }
