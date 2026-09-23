@@ -299,8 +299,40 @@ class SOSLocationPing(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
+def _ensure_schema():
+    """Defensive auto-migration: add any model columns that are missing from
+    the live database (e.g. a field added to a model but never migrated on
+    Render Postgres). db.create_all() only creates brand-new tables — it does
+    NOT add new columns to tables that already exist, which is exactly the
+    class of bug this guards against. Purely additive: never drops or alters
+    existing columns, and any failure here is logged, not fatal, so a bad
+    permission or an unsupported type can't block app startup."""
+    from sqlalchemy import inspect, text
+    try:
+        inspector = inspect(db.engine)
+        existing_tables = set(inspector.get_table_names())
+        for table in db.metadata.sorted_tables:
+            if table.name not in existing_tables:
+                continue  # brand-new table — db.create_all() already handled it
+            existing_cols = {c['name'] for c in inspector.get_columns(table.name)}
+            for col in table.columns:
+                if col.name in existing_cols:
+                    continue
+                try:
+                    col_type = col.type.compile(dialect=db.engine.dialect)
+                    ddl = f'ALTER TABLE {table.name} ADD COLUMN {col.name} {col_type}'
+                    with db.engine.begin() as conn:
+                        conn.execute(text(ddl))
+                    print(f'[schema] added missing column: {table.name}.{col.name}')
+                except Exception as col_err:
+                    print(f'[schema] could not add {table.name}.{col.name}: {col_err}')
+    except Exception as e:
+        print(f'[schema] auto-migration check failed: {e}')
+
+
 with app.app_context():
     db.create_all()
+    _ensure_schema()
 
 # ═══════════════════════════════════════════════════════════
 # SHARED CSS / JS HELPERS
@@ -469,7 +501,7 @@ LANDING_HTML = r"""<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Eastern Link Shuttle — Government Shuttle Pilot | LetsGo</title>
+<title>Eastern Link Shuttle — LetsGo Cayman Government Pilot</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -511,6 +543,9 @@ nav.scrolled{background:rgba(11,31,58,0.97);box-shadow:0 2px 30px rgba(0,0,0,0.3
 h1.hero-title{font-family:'Playfair Display',serif;font-size:clamp(54px,8vw,96px);font-weight:900;line-height:.95;color:var(--white);animation:fadeUp .8s .1s ease both}
 h1.hero-title .gold{color:var(--gold)}
 .hero-sub{font-size:17px;color:rgba(255,255,255,.6);line-height:1.75;margin-top:22px;max-width:480px;animation:fadeUp .8s .2s ease both}
+.hero-route-badges{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px;animation:fadeUp .8s .25s ease both}
+.route-badge{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-left:4px solid var(--rc,var(--gold));border-radius:10px;padding:8px 14px;font-family:'Outfit',sans-serif;font-size:13px;font-weight:800;color:var(--gold)}
+.route-badge em{font-style:normal;font-weight:500;font-size:12px;color:rgba(255,255,255,.6)}
 .hero-cta-row{display:flex;gap:14px;margin-top:40px;flex-wrap:wrap;animation:fadeUp .8s .3s ease both}
 .btn-primary{display:flex;align-items:center;gap:10px;background:var(--gold);color:var(--navy);padding:15px 30px;border-radius:50px;font-weight:700;font-size:14px;text-decoration:none;transition:transform .2s,box-shadow .2s}
 .btn-primary:hover{transform:translateY(-3px);box-shadow:0 16px 48px rgba(245,197,24,.35)}
@@ -555,6 +590,18 @@ h1.hero-title .gold{color:var(--gold)}
 .route-dot{animation:routePulse 2s ease-in-out infinite}
 .route-dot:nth-child(2){animation-delay:.4s}.route-dot:nth-child(3){animation-delay:.8s}.route-dot:nth-child(4){animation-delay:1.2s}
 @keyframes routePulse{0%,100%{r:5}50%{r:8}}
+.stops-section{padding:100px 60px;background:var(--white)}
+.stops-intro{max-width:760px;margin:0 auto 50px;text-align:left}
+.stops-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:28px}
+.stop-group{background:var(--sand);border-radius:20px;padding:26px 26px 10px;border:1px solid rgba(11,31,58,.06)}
+.stop-group-hd{font-family:'Outfit',sans-serif;font-weight:800;font-size:14px;color:var(--navy);display:flex;align-items:center;gap:8px;margin-bottom:14px;letter-spacing:.3px}
+.stop-group-hd small{font-weight:500;color:var(--muted);font-size:12px}
+.stop-group-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.stop-list{list-style:none;display:flex;flex-direction:column;gap:0}
+.stop-list li{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px dashed rgba(11,31,58,.1);font-size:13.5px;color:var(--text)}
+.stop-list li:last-child{border-bottom:none}
+.stop-list li small{color:var(--muted);font-weight:400}
+.stop-list li em{font-style:normal;font-size:11px;font-weight:600;color:var(--teal);white-space:nowrap;text-align:right}
 .features-section{padding:100px 60px;background:var(--white)}
 .features-intro{max-width:600px;margin-bottom:64px}
 .features-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:24px}
@@ -647,10 +694,10 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
   .pnav-btn{padding:10px 16px;font-size:11px}
   .hero{padding:120px 20px 80px}
   .hero-bus-wrap{display:none}
-  .why-grid,.features-grid,.steps-row,.team-grid{grid-template-columns:1fr}
+  .why-grid,.features-grid,.steps-row,.team-grid,.stops-grid{grid-template-columns:1fr}
   .feat-card.featured{grid-column:span 1}
   .feat-card.featured .feat-row{grid-template-columns:1fr}
-  .why-section,.features-section,.how-section,.dl-section,
+  .why-section,.features-section,.stops-section,.how-section,.dl-section,
   .team-hero,.team-main,.love-banner{padding-left:20px;padding-right:20px}
   footer{padding:30px 20px;flex-direction:column;text-align:center}
   .stats-bar{gap:24px;flex-wrap:wrap}
@@ -663,9 +710,10 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
 
 <div class="cur" id="cur"></div>
 <nav id="nav">
-  <a class="nav-logo" href="#"><span class="dot"></span> LetsGo</a>
+  <a class="nav-logo" href="#"><span class="dot"></span><span style="display:flex;flex-direction:column;line-height:1.1"><span>LetsGo</span><small style="font-family:'Outfit',sans-serif;font-size:9px;font-weight:600;letter-spacing:.5px;opacity:.55">EASTERN LINK SHUTTLE</small></span></a>
   <ul class="nav-links">
   <li><a href="#" onclick="showPage('home')">Home</a></li>
+  <li><a href="#stops" onclick="showPage('home')">Stops</a></li>
   <li><a href="#" onclick="showPage('home');setTimeout(...)">Features</a></li>
   <li><a href="/drivers" style="color:var(--gold)">🚌 Drivers</a></li>
 </ul>
@@ -682,9 +730,14 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
     <svg class="palm-left" width="200" height="400" viewBox="0 0 200 400"><path d="M100 400 Q95 300 80 250 Q40 200 10 180 Q50 190 70 220 Q60 170 20 140 Q65 165 80 200 Q75 150 50 110 Q85 145 90 190 Q90 130 70 80 Q100 130 95 200 Q110 130 130 80 Q110 140 115 200 Q120 150 150 110 Q125 155 120 200 Q135 165 180 140 Q145 170 130 220 Q150 190 190 180 Q160 200 120 250 Q105 300 105 400Z" fill="white"/></svg>
     <svg class="palm-right" width="180" height="360" viewBox="0 0 180 360" style="right:0"><path d="M90 360 Q85 270 70 225 Q35 180 8 162 Q45 172 63 198 Q54 153 18 126 Q59 149 72 180 Q68 135 45 99 Q77 131 81 171 Q81 117 63 72 Q90 117 86 180 Q99 117 117 72 Q99 126 103 180 Q108 135 136 99 Q113 139 109 180 Q121 149 162 126 Q131 153 117 198 Q135 172 172 162 Q145 180 110 225 Q95 270 95 360Z" fill="white"/></svg>
     <div class="hero-content">
-      <div class="hero-tag"><span class="live-dot"></span>GOVERNMENT SHUTTLE PILOT · EASTERN DISTRICTS</div>
+      <div class="hero-tag"><span class="live-dot"></span>GOVERNMENT SHUTTLE PILOT · FREE TO RIDE</div>
       <h1 class="hero-title">EASTERN LINK<br><span class="gold">SHUTTLE</span></h1>
-      <p class="hero-sub">A free Cayman Islands Government shuttle pilot connecting <strong style="color:#fff">Frank Sound Junction</strong>, <strong style="color:#fff">East End</strong>, and <strong style="color:#fff">North Side / Cayman Kai</strong>. Track it live, see every stop, and know exactly when it's arriving — no other routes to figure out.</p>
+      <p class="hero-sub">Connecting Frank Sound Junction with North Side, Rum Point, Cayman Kai and East End. A free government pilot shuttle, with live GPS tracking so you always know when your bus is coming.</p>
+      <div class="hero-route-badges">
+        <span class="route-badge" style="--rc:#F5C518">7A <em>East End Loop · via East End</em></span>
+        <span class="route-badge" style="--rc:#00897B">9A <em>East End Loop · via Queen's Hwy</em></span>
+        <span class="route-badge" style="--rc:#FF6B35">8A <em>North Side / Cayman Kai</em></span>
+      </div>
       <div class="hero-cta-row">
         <a href="#dl" class="btn-primary" onclick="showPage('home')">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
@@ -696,8 +749,8 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
         </a>
       </div>
       <div class="stats-bar">
-        <div class="stat-item"><div class="num">34+</div><div class="lbl">Stops &amp; Shelters</div></div>
-        <div class="stat-item"><div class="num">Live</div><div class="lbl">Bus Tracking</div></div>
+        <div class="stat-item"><div class="num">3</div><div class="lbl">Loop Directions</div></div>
+        <div class="stat-item"><div class="num">34</div><div class="lbl">Stops &amp; Shelters</div></div>
         <div class="stat-item"><div class="num">Free</div><div class="lbl">Pilot Service</div></div>
       </div>
     </div>
@@ -720,7 +773,7 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
           <rect x="324" y="40" width="62" height="42" rx="8" fill="#0B1F3A" stroke="#F5C518" stroke-width="2"/>
           <rect x="328" y="44" width="54" height="34" rx="5" fill="#1a3a6b" opacity=".9"/>
           <rect x="60" y="103" width="320" height="16" rx="4" fill="#0B1F3A"/>
-          <text x="220" y="115" text-anchor="middle" fill="#F5C518" font-family="monospace" font-size="10" font-weight="bold">&#8594; FRANK SOUND &#183; EAST END &#183; NORTH SIDE</text>
+          <text x="220" y="115" text-anchor="middle" fill="#F5C518" font-family="monospace" font-size="10" font-weight="bold">&#8594; GEORGE TOWN &#183; SEVEN MILE BEACH</text>
           <text x="215" y="152" text-anchor="middle" fill="#0B1F3A" font-family="serif" font-size="16" font-weight="900" letter-spacing="5">LETSGO</text>
           <rect x="410" y="78" width="40" height="78" rx="5" fill="#E8B400" stroke="#0B1F3A" stroke-width="1.5"/>
           <line x1="430" y1="80" x2="430" y2="154" stroke="#0B1F3A" stroke-width="1.5"/>
@@ -737,17 +790,17 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
     <svg class="hero-waves" viewBox="0 0 1440 80" preserveAspectRatio="none" style="display:block"><path d="M0,60 C360,100 1080,20 1440,60 L1440,80 L0,80Z" fill="#F9F4E8" opacity=".5"/></svg>
   </section>
   <section class="why-section">
-    <div class="section-eyebrow">Built for Cayman</div>
+    <div class="section-eyebrow">Government Shuttle Pilot</div>
     <div class="why-grid">
       <div class="why-text reveal">
-        <h2 class="section-title">ONE SHUTTLE.<br>THE WHOLE<br><span class="accent">EASTERN DISTRICT</span></h2>
-        <p style="margin-top:24px">The Eastern Link Shuttle is a <strong>Cayman Islands Government pilot service</strong> running from Frank Sound Junction out to East End and North Side / Cayman Kai. <strong>There's no network to navigate</strong> — open the app and the shuttle, its stops, and your live ETA are right there.</p>
-        <p>Three loops make up the one service: 7A and 9A cover East End in opposite directions, and 8A covers North Side / Cayman Kai. Whichever comes first, it's the same free shuttle.</p>
+        <h2 class="section-title">ONE SHUTTLE.<br>THREE LOOPS.<br><span class="accent">THE EASTERN DISTRICTS.</span></h2>
+        <p style="margin-top:24px">The Eastern Link Shuttle connects <strong>Frank Sound Junction</strong> with <strong>North Side, Rum Point, Cayman Kai</strong> and <strong>East End</strong>. There's no network to figure out — just pick the loop that passes your stop.</p>
+        <p>We know the roads, the stops, and the Eastern Cayman way of life. No more guessing when the next bus comes. No more missed rides. Just tap and go.</p>
         <div class="why-highlights">
           <div class="why-hl reveal reveal-delay-1">
             <div class="why-hl-icon">&#128652;</div>
             <div>
-              <div class="why-hl-text">Three Loops, One Shuttle</div>
+              <div class="why-hl-text">The Three Loops</div>
               <div class="why-hl-sub">
                 <strong style="color:var(--gold2)">7A</strong> East End Loop via East End &nbsp;·&nbsp;
                 <strong style="color:var(--gold2)">9A</strong> East End Loop via Queen's Highway &nbsp;·&nbsp;
@@ -755,23 +808,15 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
               </div>
             </div>
           </div>
-          <div class="why-hl reveal reveal-delay-1" style="border-left-color:var(--coral)">
-            <div class="why-hl-icon">&#128336;</div>
-            <div>
-              <div class="why-hl-text">Hours of Operation</div>
-              <div class="why-hl-sub">[Service days &amp; times to confirm — see note below]</div>
-            </div>
-          </div>
           <div class="why-hl reveal reveal-delay-1" style="border-left-color:var(--teal)">
             <div class="why-hl-icon">&#127991;&#65039;</div>
             <div>
               <div class="why-hl-text">Free Pilot Service</div>
-              <div class="why-hl-sub">No fare required — this is a government pilot route, free to ride for everyone</div>
+              <div class="why-hl-sub">No fare required — this is a government pilot shuttle, free to ride for everyone</div>
             </div>
           </div>
-          <div class="why-hl reveal reveal-delay-2"><div class="why-hl-icon">&#128205;</div><div><div class="why-hl-text">Live Location &amp; ETA</div><div class="why-hl-sub">See exactly where the shuttle is right now, and when it reaches your stop</div></div></div>
-          <div class="why-hl reveal reveal-delay-2" style="border-left-color:var(--teal)"><div class="why-hl-icon">&#9855;</div><div><div class="why-hl-text">&#9855; Wheelchair Accessible</div><div class="why-hl-sub">One of the Eastern Link Shuttle buses is wheelchair accessible — the app marks it live, so you know before it arrives</div></div></div>
-          <div class="why-hl reveal reveal-delay-3"><div class="why-hl-icon">&#127754;</div><div><div class="why-hl-text">Works in Dead Zones</div><div class="why-hl-sub">Full offline support — even along the coast roads</div></div></div>
+          <div class="why-hl reveal reveal-delay-2"><div class="why-hl-icon">&#127754;</div><div><div class="why-hl-text">Works in Dead Zones</div><div class="why-hl-sub">Full offline support — even along the coast roads</div></div></div>
+          <div class="why-hl reveal reveal-delay-3"><div class="why-hl-icon">&#127472;&#127486;</div><div><div class="why-hl-text">Made for Caymanians</div><div class="why-hl-sub">Local team, local knowledge, local pride</div></div></div>
         </div>
       </div>
       <div class="cayman-visual reveal">
@@ -784,9 +829,9 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
           <circle class="route-dot" cx="200" cy="85" r="5" fill="#00897B"/>
           <circle class="route-dot" cx="270" cy="92" r="5" fill="#F5C518"/>
           <circle class="route-dot" cx="300" cy="95" r="4" fill="#FF6B35"/>
-          <text x="55" y="120" fill="rgba(255,255,255,0.5)" font-family="Outfit" font-size="9">Frank Sound</text>
-          <text x="185" y="78" fill="rgba(255,255,255,0.5)" font-family="Outfit" font-size="9">North Side</text>
-          <text x="262" y="108" fill="rgba(255,255,255,0.5)" font-family="Outfit" font-size="9">East End</text>
+          <text x="35" y="120" fill="rgba(255,255,255,0.5)" font-family="Outfit" font-size="9">Frank Sound Jct</text>
+          <text x="170" y="78" fill="rgba(255,255,255,0.5)" font-family="Outfit" font-size="9">North Side / Rum Point</text>
+          <text x="255" y="108" fill="rgba(255,255,255,0.5)" font-family="Outfit" font-size="9">East End</text>
           <rect x="145" y="82" width="20" height="10" rx="3" fill="#F5C518"><animateTransform attributeName="transform" type="translate" values="0,0;60,3;0,0" dur="5s" repeatCount="indefinite"/></rect>
           <circle cx="22" cy="170" r="4" fill="#F5C518"/>
           <text x="32" y="174" fill="rgba(255,255,255,0.4)" font-family="Outfit" font-size="9">Your stop</text>
@@ -798,22 +843,58 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
       </div>
     </div>
   </section>
-  <section class="why-section" style="background:var(--white);padding-top:20px">
-    <div class="section-eyebrow">Where It Goes</div>
-    <h2 class="section-title">STOPS ON THE <span class="accent">EASTERN LINK</span></h2>
-    <p style="max-width:640px;margin-top:18px;color:var(--muted);font-size:16px;line-height:1.8">Every loop runs through a shared corridor — Frank Sound Junction, Clifton Hunter High School, Crystal Caves, Old Man Bay, Compass Point, and the South Coast — then splits toward its own district. Full stop-by-stop detail is in the app; here's the shape of it.</p>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:44px">
-      <div class="why-hl reveal" style="flex-direction:column;align-items:flex-start;gap:10px;border-left-color:var(--gold)">
-        <div style="display:flex;align-items:center;gap:12px"><div class="why-hl-icon">&#127749;</div><div class="why-hl-text" style="font-size:16px">7A · East End Loop <span style="color:var(--muted);font-weight:500">(via East End)</span></div></div>
-        <div class="why-hl-sub" style="line-height:1.8">Bo Miller Public Beach &middot; Old Robin Rd &middot; Morritts Shopping Center &middot; Wyndham &middot; Colliers Beach &middot; Cayman Parrot Sanctuary &middot; Wreck of the Ten Sails &middot; George Dixon Park &middot; East End Primary School &middot; Health City</div>
+  <section class="stops-section" id="stops">
+    <div class="stops-intro reveal"><div class="section-eyebrow">Where it stops</div><h2 class="section-title">ALL 34 <span class="accent">STOPS &amp; SHELTERS</span></h2>
+      <p style="margin-top:16px;max-width:640px;color:var(--muted)">Every stop below is served by at least one loop. Shelters offer covered seating; stop-only locations are flag stops with a sign. Two locations marked <em>unofficial</em> are heavily-requested stops the shuttle already serves.</p>
+    </div>
+    <div class="stops-grid">
+      <div class="stop-group reveal reveal-delay-1">
+        <div class="stop-group-hd"><span class="stop-group-dot" style="background:var(--navy)"></span>Shared stops <small>7A · 8A · 9A</small></div>
+        <ul class="stop-list">
+          <li><span>Frank Sound Junction</span><em>Shelter</em></li>
+          <li><span>Clifton Hunter High School</span><em>Shelter</em></li>
+          <li><span>Crystal Caves</span><em>Stop only</em></li>
+          <li><span>Old Man Bay Dock</span><em>Shelter &amp; Stop</em></li>
+          <li><span>Compass Point</span><em>Stop only</em></li>
+          <li><span>South Coast Bar &amp; Grill</span><em>Shelter</em></li>
+          <li><span>H.M. Botanic Garden <small>(unofficial)</small></span><em>Heavily requested</em></li>
+        </ul>
       </div>
-      <div class="why-hl reveal reveal-delay-1" style="flex-direction:column;align-items:flex-start;gap:10px;border-left-color:var(--teal)">
-        <div style="display:flex;align-items:center;gap:12px"><div class="why-hl-icon">&#127958;&#65039;</div><div class="why-hl-text" style="font-size:16px">8A · North Side / Cayman Kai</div></div>
-        <div class="why-hl-sub" style="line-height:1.8">National Housing Development Trust &middot; Melville's Lane &middot; Rum Point &middot; Kaibo &middot; Cayman Kai Public Beach &middot; Chisholm's Cemetery &middot; Hutland &middot; Over the Edge &middot; North Side Public Beach #5</div>
+      <div class="stop-group reveal reveal-delay-2">
+        <div class="stop-group-hd"><span class="stop-group-dot" style="background:#FF6B35"></span>8A <small>North Side / Cayman Kai</small></div>
+        <ul class="stop-list">
+          <li><span>National Housing Development Trust</span><em>Shelter</em></li>
+          <li><span>Melville's Lane</span><em>Stop only</em></li>
+          <li><span>Rum Point</span><em>Stop only</em></li>
+          <li><span>Rum Point</span><em>Shelter</em></li>
+          <li><span>Rum Point #2</span><em>Stop only</em></li>
+          <li><span>Kaibo</span><em>Stop only</em></li>
+          <li><span>Cayman Kai Public Beach</span><em>Stop only</em></li>
+          <li><span>Rum Point Exit Sign</span><em>Stop only</em></li>
+          <li><span>Rum Point Otto's Ave</span><em>Stop only</em></li>
+          <li><span>Chisholm's Cemetery</span><em>Stop only</em></li>
+          <li><span>Hutland</span><em>Shelter</em></li>
+          <li><span>Over the Edge</span><em>Shelter</em></li>
+          <li><span>North Side Public Beach #5</span><em>Stop only</em></li>
+        </ul>
       </div>
-      <div class="why-hl reveal reveal-delay-2" style="flex-direction:column;align-items:flex-start;gap:10px;border-left-color:var(--coral)">
-        <div style="display:flex;align-items:center;gap:12px"><div class="why-hl-icon">&#127749;</div><div class="why-hl-text" style="font-size:16px">9A · East End Loop <span style="color:var(--muted);font-weight:500">(via Queen's Highway)</span></div></div>
-        <div class="why-hl-sub" style="line-height:1.8">Same East End district as 7A, run the opposite direction via Queen's Highway — so whichever loop comes first, it still gets you there.</div>
+      <div class="stop-group reveal reveal-delay-3">
+        <div class="stop-group-hd"><span class="stop-group-dot" style="background:var(--gold)"></span>7A / 9A <small>East End Loop</small></div>
+        <ul class="stop-list">
+          <li><span>Bo Miller Public Beach <small>(towards East End)</small></span><em>Stop only</em></li>
+          <li><span>Bo Miller Public Beach <small>(towards North Side)</small></span><em>Stop only</em></li>
+          <li><span>Old Robin Road</span><em>Stop only</em></li>
+          <li><span>Morritts Shopping Center</span><em>Shelter</em></li>
+          <li><span>Wyndham</span><em>Shelter</em></li>
+          <li><span>Colliers Beach</span><em>Shelter</em></li>
+          <li><span>Cayman Parrot Sanctuary</span><em>Stop only</em></li>
+          <li><span>Cayman Parrot Sanctuary <small>(towards Tukka)</small></span><em>Stop only</em></li>
+          <li><span>Wreck of the Ten Sails</span><em>Shelter</em></li>
+          <li><span>George Dixon Park</span><em>Shelter</em></li>
+          <li><span>East End Primary School</span><em>Shelter</em></li>
+          <li><span>Health City</span><em>Shelter</em></li>
+          <li><span>Blow Holes <small>(Sea View Rd, unofficial)</small></span><em>Heavily requested</em></li>
+        </ul>
       </div>
     </div>
   </section>
@@ -823,7 +904,7 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
   <div class="feat-card featured reveal">
     <div class="feat-num">01 ——</div><div class="feat-icon-wrap">📍</div>
     <div class="feat-title" style="font-size:28px;color:var(--white)">Real-Time Tracking</div>
-    <div class="feat-desc" style="max-width:560px">See the Eastern Link Shuttle live on the map with ETA, speed, stops, and distance to your stop.</div>
+    <div class="feat-desc" style="max-width:560px">See your bus live on the map with ETA, speed, stops, and distance.</div>
   </div>
 
   <div class="feat-card reveal reveal-delay-2">
@@ -836,7 +917,7 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
   <div class="feat-card reveal reveal-delay-1">
     <div class="feat-num">03 ——</div><div class="feat-icon-wrap">📣</div>
     <div class="feat-title">Community Reports</div>
-    <div class="feat-desc">Riders flag broken stops, overcrowding, and delays in real time. We collect that data, analyse it, and resolve issues as fast as possible — making the entire bus network smarter and more reliable for everyone.</div>
+    <div class="feat-desc">Riders flag broken stops, overcrowding, and delays in real time. We collect that data, analyse it, and resolve issues as fast as possible — making the shuttle service smarter and more reliable for everyone.</div>
     <span class="feat-pill">CROWDSOURCED · REAL TIME · RESOLVED FAST</span>
   </div>
 
@@ -853,7 +934,7 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
     <h2 class="section-title">HOW IT <span class="accent">WORKS</span></h2>
     <div class="steps-row">
       <div class="step-card reveal"><div class="step-num">1</div><div class="step-title">Download Free</div><div class="step-desc">Get LetsGo on iOS or Android in seconds. Free forever for riders.</div></div>
-      <div class="step-card reveal reveal-delay-1"><div class="step-num">2</div><div class="step-title">Open the App</div><div class="step-desc">The Eastern Link Shuttle is already selected — no routes to browse or figure out.</div></div>
+      <div class="step-card reveal reveal-delay-1"><div class="step-num">2</div><div class="step-title">Pick Your Loop</div><div class="step-desc">Choose 7A, 8A or 9A depending on your stop, and see it live on the map.</div></div>
       <div class="step-card reveal reveal-delay-2"><div class="step-num">3</div><div class="step-title">Hop On, Free</div><div class="step-desc">No ticket, no tap — pilot routes are free to ride. Just board when your bus arrives.</div></div>
       <div class="step-card reveal reveal-delay-3"><div class="step-num">4</div><div class="step-title">Track &amp; Ride</div><div class="step-desc">Watch your bus approach in real time. Get notified before it arrives. Sit back, relax.</div></div>
     </div>
@@ -861,7 +942,7 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
   <section class="dl-section" id="dl">
     <p class="section-eyebrow" style="color:rgba(11,31,58,.5)">Free to download</p>
     <h2 class="dl-title">GET ON<br>THE BUS</h2>
-    <p class="dl-sub">Available on iOS and Android. Free to ride — serving Frank Sound Junction to East End and North Side / Cayman Kai.</p>
+    <p class="dl-sub">Available on iOS and Android. Ride the Eastern Link Shuttle free, starting today.</p>
     <div class="dl-btns reveal">
       <a href="https://apps.apple.com/us/app/letsgo-cayman/id6768839802" target="_blank" class="dl-app-btn">
         <svg viewBox="0 0 24 24" fill="currentColor" style="width:26px;height:26px;flex-shrink:0"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
@@ -875,7 +956,7 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
   </section>
   <footer>
     <div class="footer-logo">&#128652; LetsGo</div>
-    <div class="footer-links"><a href="#" onclick="showPage('home')">Home</a><a href="#features" onclick="showPage('home')">Features</a></div>
+    <div class="footer-links"><a href="#" onclick="showPage('home')">Home</a><a href="#stops" onclick="showPage('home')">Stops</a><a href="#features" onclick="showPage('home')">Features</a></div>
     <div class="footer-copy">&#169; 2026 LetsGo · Cayman Islands</div>
     <a href="/admin/login" class="footer-admin">Admin</a>
   </footer>
@@ -3296,7 +3377,6 @@ def buses_registered():
             'totalStops': len(stops),
             'liveLocation': live,
             'online': is_online,
-            'wheelchairAccessible': bool(d.wheelchair_accessible),
             'registeredAt': d.created_at.isoformat() if d.created_at else None,
         })
 
@@ -3510,7 +3590,6 @@ def buses_coordinates():
             'totalStops': len(stops),
             'liveLocation': live,
             'online': live is not None,
-            'wheelchairAccessible': bool(db_driver.wheelchair_accessible) if db_driver else False,
         }
         if db_driver:
             route_data['busId'] = db_driver.bus_id
@@ -3540,7 +3619,6 @@ def buses_coordinates():
             'totalStops': len(stops),
             'liveLocation': live,
             'online': is_online,
-            'wheelchairAccessible': bool(d.wheelchair_accessible),
             'busId': d.bus_id,
             'driverName': d.driver_name,
             'registeredAt': d.created_at.isoformat() if d.created_at else None,
@@ -3978,7 +4056,7 @@ def support():
         <span class="arrow">▼</span>
       </button>
       <div class="faq-a">
-        Open the app and tap <strong>Track</strong> on the home screen. Select your route from the list of all 9 Grand Cayman routes. A live map will appear showing the bus location and an estimated arrival time updated every few seconds. GPS must be enabled on your device for the best accuracy.
+        Open the app and tap <strong>Track</strong> on the home screen. Select your loop — <strong>7A</strong>, <strong>8A</strong>, or <strong>9A</strong> — for the Eastern Link Shuttle. A live map will appear showing the bus location and an estimated arrival time updated every few seconds. GPS must be enabled on your device for the best accuracy.
       </div>
     </div>
 
@@ -4728,66 +4806,100 @@ def driver_page():
 def admin_drivers():
     drivers = DriverRoute.query.order_by(DriverRoute.created_at.desc()).all()
 
+    def _safe_stops(stops_json):
+        try:
+            val = json.loads(stops_json) if stops_json else []
+            return val if isinstance(val, list) else []
+        except Exception:
+            return []
+
+    def _safe_date(dt):
+        try:
+            return dt.strftime('%d %b %Y, %H:%M')
+        except Exception:
+            return '—'
+
+    def _safe_initials(name):
+        try:
+            letters = ''.join(w[0].upper() for w in (name or '').split()[:2])
+            return letters or '?'
+        except Exception:
+            return '?'
+
+    def _js_str(s):
+        # Safe to drop into a single-quoted JS string inside an HTML attribute
+        return (s or '').replace('\\', '\\\\').replace("'", "\\'").replace('"', '&quot;')
+
     rows = ''
     for d in drivers:
-        stops = json.loads(d.stops_json or '[]')
-        stop_count = len(stops)
-        registered = d.created_at.strftime('%d %b %Y, %H:%M')
-        initials = ''.join(w[0].upper() for w in d.driver_name.split()[:2])
-        color_dot = f'<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:{d.route_color};border:1px solid rgba(255,255,255,.2);flex-shrink:0"></span>'
+        try:
+            stops = _safe_stops(d.stops_json)
+            stop_count = len(stops)
+            registered = _safe_date(d.created_at)
+            initials = _safe_initials(d.driver_name)
+            route_color = d.route_color or '#F5C518'
+            color_dot = f'<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:{html_escape(route_color)};border:1px solid rgba(255,255,255,.2);flex-shrink:0"></span>'
 
-        # check if driver has an active tracking session
-        sess = TrackingSession.query.filter_by(username=d.username, active=True).first()
-        live_badge = (
-            '<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(34,197,94,.12);'
-            'border:1px solid rgba(34,197,94,.3);color:#4ade80;padding:2px 8px;border-radius:20px;'
-            'font-size:10px;font-weight:700">'
-            '<span style="width:5px;height:5px;border-radius:50%;background:#4ade80;animation:blink_ 1s infinite"></span>'
-            'LIVE</span>'
-        ) if sess else (
-            '<span style="background:#21262d;color:#6e7681;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600">offline</span>'
-        )
+            driver_name = d.driver_name or '(no name)'
+            route_name = d.route_name or ''
+            route_id = d.route_id or ''
 
-        rows += f"""
+            # check if driver has an active tracking session
+            sess = TrackingSession.query.filter_by(username=d.username, active=True).first()
+            live_badge = (
+                '<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(34,197,94,.12);'
+                'border:1px solid rgba(34,197,94,.3);color:#4ade80;padding:2px 8px;border-radius:20px;'
+                'font-size:10px;font-weight:700">'
+                '<span style="width:5px;height:5px;border-radius:50%;background:#4ade80;animation:blink_ 1s infinite"></span>'
+                'LIVE</span>'
+            ) if sess else (
+                '<span style="background:#21262d;color:#6e7681;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600">offline</span>'
+            )
+
+            rows += f"""
         <tr id="drv-row-{d.id}">
-          <td><div class="avatar">{initials}</div></td>
+          <td><div class="avatar">{html_escape(initials)}</div></td>
           <td>
-            <div style="font-weight:600;color:#f0f6fc">{d.driver_name}</div>
-            <div style="font-size:11px;color:#6e7681;margin-top:2px;font-family:monospace">{d.driver_phone}</div>
+            <div style="font-weight:600;color:#f0f6fc">{html_escape(driver_name)}</div>
+            <div style="font-size:11px;color:#6e7681;margin-top:2px;font-family:monospace">{html_escape(d.driver_phone or '')}</div>
           </td>
-          <td style="font-family:monospace;font-size:12px;color:#8b949e">{d.username}</td>
-          <td style="font-family:monospace;font-size:12px;color:#8b949e">{d.bus_id}</td>
+          <td style="font-family:monospace;font-size:12px;color:#8b949e">{html_escape(d.username or '')}</td>
+          <td style="font-family:monospace;font-size:12px;color:#8b949e">{html_escape(d.bus_id or '')}</td>
           <td>
             <div style="display:flex;align-items:center;gap:6px">
               {color_dot}
               <div>
-                <div style="font-weight:600;color:#f0f6fc;font-size:13px">{d.route_id}</div>
-                <div style="font-size:11px;color:#6e7681">{d.route_name[:30] + ('…' if len(d.route_name) > 30 else '')}</div>
+                <div style="font-weight:600;color:#f0f6fc;font-size:13px">{html_escape(route_id)}{' <span title=\"Wheelchair accessible\" style=\"margin-left:4px\">&#9855;</span>' if d.wheelchair_accessible else ''}</div>
+                <div style="font-size:11px;color:#6e7681">{html_escape(route_name[:30] + ('…' if len(route_name) > 30 else ''))}</div>
               </div>
             </div>
           </td>
-          <td style="font-size:12px;color:#8b949e">{d.frequency}</td>
+          <td style="font-size:12px;color:#8b949e">{html_escape(d.frequency or '')}</td>
           <td>
             <span style="background:rgba(245,197,24,.1);color:var(--gold);padding:2px 9px;border-radius:20px;font-size:12px;font-weight:600">{stop_count} stop{'s' if stop_count != 1 else ''}</span>
           </td>
           <td>{live_badge}</td>
-          <td>
-            <button class="btn btn-ghost" style="font-size:12px;padding:5px 10px;{'border-color:#22c55e55;color:#4ade80' if d.wheelchair_accessible else ''}"
-              onclick="toggleAccessible({d.id})" id="wc-btn-{d.id}">
-              {'♿ Accessible' if d.wheelchair_accessible else '♿ Mark accessible'}
-            </button>
-          </td>
           <td class="date-cell">{registered}</td>
           <td>
             <button class="btn btn-ghost" style="font-size:12px;padding:5px 10px"
-              onclick="viewStops({d.id}, '{d.driver_name.replace(chr(39), '')}', '{d.route_id}')">Stops</button>
+              onclick="viewStops({d.id}, '{_js_str(driver_name)}', '{_js_str(route_id)}')">Stops</button>
             <button class="btn btn-danger" style="font-size:12px;padding:5px 10px;margin-left:4px"
-              onclick="confirmDrvDelete({d.id}, '{d.driver_name.replace(chr(39), '')}')">Delete</button>
+              onclick="confirmDrvDelete({d.id}, '{_js_str(driver_name)}')">Delete</button>
+          </td>
+        </tr>"""
+        except Exception as e:
+            print(f"[admin_drivers] failed to render driver id={getattr(d, 'id', '?')}: {e}")
+            rows += f"""
+        <tr id="drv-row-{getattr(d, 'id', '')}">
+          <td colspan="10" style="color:#f87171;padding:14px">
+            ⚠ Could not display driver record #{getattr(d, 'id', '?')} ({html_escape(str(e))}).
+            <button class="btn btn-danger" style="font-size:12px;padding:4px 10px;margin-left:8px"
+              onclick="confirmDrvDelete({getattr(d, 'id', 'null')}, 'this record')">Delete</button>
           </td>
         </tr>"""
 
     if not rows:
-        rows = '<tr><td colspan="11" style="text-align:center;padding:48px;color:#484f58">No drivers registered yet. <a href="/driver" style="color:var(--gold)">Register one →</a></td></tr>'
+        rows = '<tr><td colspan="10" style="text-align:center;padding:48px;color:#484f58">No drivers registered yet. <a href="/driver" style="color:var(--gold)">Register one →</a></td></tr>'
 
     stat_live = sum(1 for d in drivers if TrackingSession.query.filter_by(username=d.username, active=True).first())
 
@@ -4851,7 +4963,6 @@ def admin_drivers():
             <th>Frequency</th>
             <th>Stops</th>
             <th>Status</th>
-            <th>Accessible</th>
             <th>Registered</th>
             <th>Actions</th>
           </tr>
@@ -4893,7 +5004,7 @@ let pendingDrvDeleteId = null;
 const driverStops = {{}};
 
 // Pre-load stops data from server rows
-{'; '.join([f"driverStops[{d.id}]={json.dumps(json.loads(d.stops_json or '[]'))}" for d in drivers])}
+{'; '.join([f"driverStops[{d.id}]={json.dumps(_safe_stops(d.stops_json))}" for d in drivers])}
 
 function viewStops(id, name, routeId) {{
   document.getElementById('stops-modal-title').textContent = '🚏 ' + name + ' — Route ' + routeId;
@@ -4917,26 +5028,6 @@ function viewStops(id, name, routeId) {{
     }}).join('');
   }}
   openModal('stops-overlay');
-}}
-
-async function toggleAccessible(id) {{
-  const btn = document.getElementById(`wc-btn-${{id}}`);
-  const currentlyOn = btn.textContent.includes('♿ Accessible');
-  try {{
-    const res = await fetch(`/api/driver/${{id}}`, {{
-      method: 'PATCH',
-      headers: {{ 'Content-Type': 'application/json' }},
-      body: JSON.stringify({{ wheelchairAccessible: !currentlyOn }})
-    }});
-    if (res.ok) {{
-      btn.textContent = !currentlyOn ? '♿ Accessible' : '♿ Mark accessible';
-      btn.style.borderColor = !currentlyOn ? '#22c55e55' : '';
-      btn.style.color = !currentlyOn ? '#4ade80' : '';
-      showToast(!currentlyOn ? '✓ Marked wheelchair accessible' : 'Removed accessible flag');
-    }} else {{
-      showToast('✗ Update failed', 'error');
-    }}
-  }} catch (e) {{ showToast('✗ Update failed', 'error'); }}
 }}
 
 function confirmDrvDelete(id, name) {{
@@ -5059,6 +5150,30 @@ Please contact them to set up their GPS tracking device.
         print(f'[DeviceRequest] Email failed: {e}')
 
 
+def _format_frequency(freq):
+    """DriverRoute.frequency is a short display string (e.g. "Every 30 min").
+    The driver registration form sends a structured object
+    {intervalMinutes, offsetMinutes, firstDeparture, lastDeparture} instead —
+    storing that dict directly crashes the DB insert. Accept either shape."""
+    if isinstance(freq, dict):
+        try:
+            interval = freq.get('intervalMinutes')
+            first = (freq.get('firstDeparture') or '').strip()
+            last = (freq.get('lastDeparture') or '').strip()
+            if not interval:
+                base = 'On demand'
+            else:
+                base = f'Every {int(interval)} min'
+            if first and last:
+                base += f' ({first}\u2013{last})'
+            return base[:40] or 'Every 15 minutes'
+        except Exception:
+            return 'Every 15 minutes'
+    if isinstance(freq, str) and freq.strip():
+        return freq.strip()[:40]
+    return 'Every 15 minutes'
+
+
 @app.route('/api/driver/register', methods=['POST'])
 def register_driver():
     data = request.get_json(force=True, silent=True) or {}
@@ -5083,7 +5198,7 @@ def register_driver():
         route_id=effective_route_id,
         route_name=route_name,
         route_color=data.get('routeColor', '#F5C518'),
-        frequency=data.get('frequency', 'Every 15 minutes'),
+        frequency=_format_frequency(data.get('frequency')),
         description=data.get('description', ''),
         stops_json=json.dumps(data.get('stops', [])),
         wheelchair_accessible=bool(data.get('wheelchairAccessible', False)),
@@ -5126,12 +5241,12 @@ def update_driver(driver_id):
     for field, col in [('driverName', 'driver_name'), ('driverPhone', 'driver_phone'),
                        ('username', 'username'), ('busId', 'bus_id'),
                        ('routeId', 'route_id'), ('routeName', 'route_name'),
-                       ('routeColor', 'route_color'), ('frequency', 'frequency'),
-                       ('description', 'description')]:
+                       ('routeColor', 'route_color'),
+                       ('description', 'description'), ('wheelchairAccessible', 'wheelchair_accessible')]:
         if field in data:
             setattr(driver, col, data[field])
-    if 'wheelchairAccessible' in data:
-        driver.wheelchair_accessible = bool(data['wheelchairAccessible'])
+    if 'frequency' in data:
+        driver.frequency = _format_frequency(data['frequency'])
     db.session.commit()
     return jsonify({'message': 'Driver updated'}), 200
 
@@ -5140,26 +5255,45 @@ def update_driver(driver_id):
 @require_admin
 def api_admin_drivers():
     drivers = DriverRoute.query.order_by(DriverRoute.created_at.desc()).all()
-    return jsonify({
-        'total': len(drivers),
-        'drivers': [{
-            'id': d.id,
-            'driverName': d.driver_name,
-            'driverPhone': d.driver_phone,
-            'username': d.username,
-            'busId': d.bus_id,
-            'routeId': d.route_id,
-            'routeName': d.route_name,
-            'routeColor': d.route_color,
-            'frequency': d.frequency,
-            'description': d.description,
-            'stops': json.loads(d.stops_json or '[]'),
-            'stopCount': len(json.loads(d.stops_json or '[]')),
-            'wheelchairAccessible': bool(d.wheelchair_accessible),
-            'isLive': bool(TrackingSession.query.filter_by(username=d.username, active=True).first()),
-            'createdAt': d.created_at.strftime('%d %b %Y, %H:%M'),
-        } for d in drivers]
-    })
+
+    def _safe_stops(stops_json):
+        try:
+            val = json.loads(stops_json) if stops_json else []
+            return val if isinstance(val, list) else []
+        except Exception:
+            return []
+
+    def _safe_date(dt):
+        try:
+            return dt.strftime('%d %b %Y, %H:%M')
+        except Exception:
+            return None
+
+    out = []
+    for d in drivers:
+        try:
+            stops = _safe_stops(d.stops_json)
+            out.append({
+                'id': d.id,
+                'driverName': d.driver_name,
+                'driverPhone': d.driver_phone,
+                'username': d.username,
+                'busId': d.bus_id,
+                'routeId': d.route_id,
+                'routeName': d.route_name,
+                'routeColor': d.route_color,
+                'frequency': d.frequency,
+                'description': d.description,
+                'stops': stops,
+                'stopCount': len(stops),
+                'isLive': bool(TrackingSession.query.filter_by(username=d.username, active=True).first()),
+                'wheelchairAccessible': bool(d.wheelchair_accessible),
+                'createdAt': _safe_date(d.created_at),
+            })
+        except Exception as e:
+            print(f"[api_admin_drivers] failed to serialize driver id={getattr(d, 'id', '?')}: {e}")
+
+    return jsonify({'total': len(out), 'drivers': out})
 
 
 # ═══════════════════════════════════════════════════════════
