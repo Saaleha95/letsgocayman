@@ -752,9 +752,9 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
       <h1 class="hero-title">EASTERN LINK<br><span class="gold">SHUTTLE</span></h1>
       <p class="hero-sub">Connecting Frank Sound Junction with North Side, Rum Point, Cayman Kai and East End. A free government pilot shuttle, with live GPS tracking so you always know when your bus is coming.</p>
       <div class="hero-route-badges">
-        <span class="route-badge" style="--rc:#F5C518">7A <em>East End Loop · via East End</em></span>
-        <span class="route-badge" style="--rc:#00897B">9A <em>East End Loop · via Queen's Hwy</em></span>
-        <span class="route-badge" style="--rc:#FF6B35">8A <em>North Side / Cayman Kai</em></span>
+        <span class="route-badge" style="--rc:#F5C518">East End Loop via East</span>
+        <span class="route-badge" style="--rc:#00897B">East End Loop via Queen's Highway</span>
+        <span class="route-badge" style="--rc:#FF6B35">North Side/Cayman Kai</span>
       </div>
       <div class="hero-cta-row">
         <a href="#dl" class="btn-primary" onclick="showPage('home')">
@@ -820,9 +820,9 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
             <div>
               <div class="why-hl-text">The Three Loops</div>
               <div class="why-hl-sub">
-                <strong style="color:var(--gold2)">7A</strong> East End Loop via East End &nbsp;·&nbsp;
-                <strong style="color:var(--gold2)">9A</strong> East End Loop via Queen's Highway &nbsp;·&nbsp;
-                <strong style="color:var(--gold2)">8A</strong> North Side / Cayman Kai
+                <strong style="color:var(--gold2)">East End Loop via East</strong> &nbsp;·&nbsp;
+                <strong style="color:var(--gold2)">East End Loop via Queen's Highway</strong> &nbsp;·&nbsp;
+                <strong style="color:var(--gold2)">North Side/Cayman Kai</strong>
               </div>
             </div>
           </div>
@@ -867,7 +867,7 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
     </div>
     <div class="stops-grid">
       <div class="stop-group reveal reveal-delay-1">
-        <div class="stop-group-hd"><span class="stop-group-dot" style="background:var(--navy)"></span>Shared stops <small>7A · 8A · 9A</small></div>
+        <div class="stop-group-hd"><span class="stop-group-dot" style="background:var(--navy)"></span>Shared stops <small>All routes</small></div>
         <ul class="stop-list">
           <li><span>Frank Sound Junction</span><em>Shelter</em></li>
           <li><span>Clifton Hunter High School</span><em>Shelter</em></li>
@@ -879,7 +879,7 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
         </ul>
       </div>
       <div class="stop-group reveal reveal-delay-2">
-        <div class="stop-group-hd"><span class="stop-group-dot" style="background:#FF6B35"></span>8A <small>North Side / Cayman Kai</small></div>
+        <div class="stop-group-hd"><span class="stop-group-dot" style="background:#FF6B35"></span>North Side/Cayman Kai <small>Route stops</small></div>
         <ul class="stop-list">
           <li><span>National Housing Development Trust</span><em>Shelter</em></li>
           <li><span>Melville's Lane</span><em>Stop only</em></li>
@@ -897,7 +897,7 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
         </ul>
       </div>
       <div class="stop-group reveal reveal-delay-3">
-        <div class="stop-group-hd"><span class="stop-group-dot" style="background:var(--gold)"></span>7A / 9A <small>East End Loop</small></div>
+        <div class="stop-group-hd"><span class="stop-group-dot" style="background:var(--gold)"></span>East End Loop <small>via East · via Queen's Highway</small></div>
         <ul class="stop-list">
           <li><span>Bo Miller Public Beach <small>(towards East End)</small></span><em>Stop only</em></li>
           <li><span>Bo Miller Public Beach <small>(towards North Side)</small></span><em>Stop only</em></li>
@@ -928,8 +928,8 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
   <div class="feat-card reveal reveal-delay-2">
     <div class="feat-num">02 ——</div><div class="feat-icon-wrap">🛡</div>
     <div class="feat-title">Safety Features</div>
-    <div class="feat-desc">Share your journey with live tracking for your safety. Family or friends can follow your ride in real time with one tap, so someone you trust </div>
-    <span class="feat-pill">SHARE YOUR JOURNEY · LIVE TRACKING · 911 INTEGRATED</span>
+    <div class="feat-desc">Share your journey with live tracking for your safety. Family or friends can follow your ride in real time with one tap, so someone you trust always knows where you are.</div>
+    <span class="feat-pill">SHARE YOUR JOURNEY · LIVE TRACKING</span>
   </div>
 
   <div class="feat-card reveal reveal-delay-1">
@@ -952,7 +952,7 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
     <h2 class="section-title">HOW IT <span class="accent">WORKS</span></h2>
     <div class="steps-row">
       <div class="step-card reveal"><div class="step-num">1</div><div class="step-title">Download Free</div><div class="step-desc">Get LetsGo on iOS or Android in seconds. Free forever for riders.</div></div>
-      <div class="step-card reveal reveal-delay-1"><div class="step-num">2</div><div class="step-title">Pick Your Loop</div><div class="step-desc">Choose 7A, 8A or 9A depending on your stop, and see it live on the map.</div></div>
+      <div class="step-card reveal reveal-delay-1"><div class="step-num">2</div><div class="step-title">Pick Your Loop</div><div class="step-desc">Choose your route depending on your stop, and see it live on the map.</div></div>
       <div class="step-card reveal reveal-delay-2"><div class="step-num">3</div><div class="step-title">Hop On, Free</div><div class="step-desc">No ticket, no tap — pilot routes are free to ride. Just board when your bus arrives.</div></div>
       <div class="step-card reveal reveal-delay-3"><div class="step-num">4</div><div class="step-title">Track &amp; Ride</div><div class="step-desc">Watch your bus approach in real time. Get notified before it arrives. Sit back, relax.</div></div>
     </div>
@@ -1284,9 +1284,9 @@ async function resolveReport(id){{
 </html>"""
 
 _ROUTE_LABELS = {
-    '7A': "East End Loop (via East End)",
-    '9A': "East End Loop (via Queen's Highway)",
-    '8A': 'North Side / Cayman Kai',
+    '7A': 'East End Loop via East',
+    '9A': "East End Loop via Queen's Highway",
+    '8A': 'North Side/Cayman Kai',
 }
 
 
@@ -4281,7 +4281,7 @@ def support():
         <span class="arrow">▼</span>
       </button>
       <div class="faq-a">
-        Open the app and tap <strong>Track</strong> on the home screen. Select your loop — <strong>7A</strong>, <strong>8A</strong>, or <strong>9A</strong> — for the Eastern Link Shuttle. A live map will appear showing the bus location and an estimated arrival time updated every few seconds. GPS must be enabled on your device for the best accuracy.
+        Open the app and tap <strong>Track</strong> on the home screen. Select your route — <strong>East End Loop via East</strong>, <strong>East End Loop via Queen's Highway</strong>, or <strong>North Side/Cayman Kai</strong> — for the Eastern Link Shuttle. A live map will appear showing the bus location and an estimated arrival time updated every few seconds. GPS must be enabled on your device for the best accuracy.
       </div>
     </div>
 
