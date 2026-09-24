@@ -4480,27 +4480,27 @@ def privacy_policy():
 
   <h2>Information we collect</h2>
   <ul>
-    <li>Account details you provide: full name, username, phone number, and a securely hashed password.</li>
-    <li>Location data, only while you use live tracking, journey sharing, or SOS features.</li>
-    <li>Community reports and journey search activity you submit within the app.</li>
-    <li>Emergency contact names and phone numbers you choose to save.</li>
+    <li><strong>Username and password:</strong> used only to create and sign in to your account. Your password is stored securely hashed.</li>
+    <li><strong>Location:</strong> used only for app functionality, such as showing live bus locations and estimated arrival times.</li>
+    <li><strong>Mobile number (optional):</strong> providing your own mobile number is optional and is not required to use the app.</li>
+    <li><strong>Journey sharing:</strong> if you choose to share your journey, we collect the mobile number you enter, with your consent, solely to send the live tracking link.</li>
   </ul>
 
   <h2>How we use your information</h2>
   <ul>
     <li>To show live bus locations and estimated arrival times.</li>
-    <li>To send SMS notifications for SOS alerts, journey sharing, and offline connectivity reminders.</li>
-    <li>To improve routes and service reliability using aggregated, anonymized usage data.</li>
+    <li>To send the tracking link by SMS when you choose to share your journey.</li>
+    <li>We do not use your information for any other purpose, and we handle it in line with applicable data protection rules.</li>
   </ul>
 
   <h2>Data retention and deletion</h2>
   <p>You can permanently delete your account and associated data at any time from <a href="/delete-account">our account deletion page</a>.</p>
 
   <h2>Third parties</h2>
-  <p>We use Twilio to deliver SMS alerts and Google services (Maps) as described above. We do not sell personal data to third parties.</p>
+  <p>We use Twilio to deliver the journey-sharing tracking link by SMS and Google services (Maps) to display maps. We do not sell personal data to third parties.</p>
 
   <h2>Contact us</h2>
-  <p>Questions about this policy can be sent to <a href="mailto:support@letsgocayman.com">support@letsgocayman.com</a>.</p>
+  <p>Questions about this policy can be sent to <a href="mailto:sally@letsgocayman.com">sally@letsgocayman.com</a>.</p>
 </main>
 <footer>© 2026 LetsGo Cayman · Grand Cayman, Cayman Islands</footer>
 </body>
