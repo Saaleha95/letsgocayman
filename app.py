@@ -928,8 +928,8 @@ footer{background:var(--navy);border-top:1px solid rgba(245,197,24,.1);padding:4
   <div class="feat-card reveal reveal-delay-2">
     <div class="feat-num">02 ——</div><div class="feat-icon-wrap">🛡</div>
     <div class="feat-title">Safety Features</div>
-    <div class="feat-desc">Share your live journey with family or friends in one tap. If anything feels wrong, hit SOS — your exact GPS location is sent to your emergency contacts instantly, with 911 integrated directly in the app.</div>
-    <span class="feat-pill">SOS · LIVE SHARE · 911 INTEGRATED</span>
+    <div class="feat-desc">Share your journey with live tracking for your safety. Family or friends can follow your ride in real time with one tap, so someone you trust always knows where you are — with 911 integrated directly in the app.</div>
+    <span class="feat-pill">SHARE YOUR JOURNEY · LIVE TRACKING · 911 INTEGRATED</span>
   </div>
 
   <div class="feat-card reveal reveal-delay-1">
