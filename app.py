@@ -4489,16 +4489,14 @@ def privacy_policy():
   <h2>How we use your information</h2>
   <ul>
     <li>To show live bus locations and estimated arrival times.</li>
-    <li>To send the tracking link by SMS when you choose to share your journey.</li>
+    <li>To send the tracking link when you choose to share your journey.</li>
     <li>We do not use your information for any other purpose, and we handle it in line with applicable data protection rules.</li>
   </ul>
 
   <h2>Data retention and deletion</h2>
   <p>You can permanently delete your account and associated data at any time from <a href="/delete-account">our account deletion page</a>.</p>
 
-  <h2>Third parties</h2>
-  <p>We use Twilio to deliver the journey-sharing tracking link by SMS and Google services (Maps) to display maps. We do not sell personal data to third parties.</p>
-
+  
   <h2>Contact us</h2>
   <p>Questions about this policy can be sent to <a href="mailto:sally@letsgocayman.com">sally@letsgocayman.com</a>.</p>
 </main>
