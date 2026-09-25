@@ -203,9 +203,6 @@ input::placeholder,textarea::placeholder{color:var(--dim)}
           <label>Route Number</label>
           <select id="routeId" onchange="onRouteChange()">
           <option value="">Select route…</option>
-          <option value="ee-east">ee-east — Eastern Link · East End Loop via East End</option>
-          <option value="ee-qh">ee-qh — Eastern Link · East End Loop via Queen's Highway</option>
-          <option value="ns-ck">ns-ck — Eastern Link · North Side / Cayman Kai</option>
           <option value="custom">Other (custom route)</option>
         </select>
         </div>
@@ -317,62 +314,13 @@ var ddTimers = {};
 
 var CAYMAN_CENTER = [19.3065, -81.3846];
 
-var ROUTE_NAMES = {
-  'ee-east':'EASTERN LINK – East End Loop via East End',
-  'ee-qh':'EASTERN LINK – East End Loop via Queen\u2019s Highway',
-  'ns-ck':'EASTERN LINK – North Side / Cayman Kai'
-};
+var ROUTE_NAMES = {};
 
-var ROUTE_FREQ = {
-  'ee-east': { interval:30, offset:30, first:'07:30', last:'18:30' },
-  'ee-qh': { interval:30, offset:0,  first:'08:00', last:'19:00' },
-  'ns-ck': { interval:60, offset:30, first:'07:30', last:'18:30' }
-};
+var ROUTE_FREQ = {};
 
 var OTHER_OPT = 'Other (specify name below)';
 
-/* ── PTU-confirmed stop list, from "Bus Stop and Shelter List from FS Jct 2026".
-   ee-east and ee-qh share the same confirmed stop set (both East End loops via Frank Sound Jct);
-   ns-ck is the separate North Side / Cayman Kai line. Two stops (H.M. Botanic Garden,
-   Blow Holes) are marked "unofficial — heavily requested" in the source doc but are
-   included here since they're listed as serviced. */
-var ROUTE_STOPS = {
-  'ee-east': [
-    'Frank Sound Junction Bus Shelter','Clifton Hunter High School Bus Shelter',
-    'Crystal Caves Bus Stop','Old Man Bay Dock Bus Shelter','Old Man Bay Dock Bus Stop',
-    'Bo Miller Public Beach Bus Stop towards EE','Bo Miller Public Beach Bus Stop towards NS',
-    'Old Robin Rd Bus Stop','Morritts Shopping Center Bus Shelter','Wyndham Bus Shelter',
-    'Colliers Beach Bus Shelter','Cayman Parrot Sanctuary Bus Stop',
-    'Cayman Parrot Sanctuary Bus Stop towards Tukka','Wreck of the Ten Sails Bus Shelter',
-    'Compass Point Bus Stop','George Dixon Park Bus Shelter',
-    'East End Primary School Bus Shelter','Health City Bus Shelter',
-    'South Coast Bar and Grill Bus Shelter','H.M. Botanic Garden (entrance of road)',
-    'Blow Holes ( Sea View Rd)'
-  ],
-  'ee-qh': [
-    'Frank Sound Junction Bus Shelter','Clifton Hunter High School Bus Shelter',
-    'Crystal Caves Bus Stop','Old Man Bay Dock Bus Shelter','Old Man Bay Dock Bus Stop',
-    'Bo Miller Public Beach Bus Stop towards EE','Bo Miller Public Beach Bus Stop towards NS',
-    'Old Robin Rd Bus Stop','Morritts Shopping Center Bus Shelter','Wyndham Bus Shelter',
-    'Colliers Beach Bus Shelter','Cayman Parrot Sanctuary Bus Stop',
-    'Cayman Parrot Sanctuary Bus Stop towards Tukka','Wreck of the Ten Sails Bus Shelter',
-    'Compass Point Bus Stop','George Dixon Park Bus Shelter',
-    'East End Primary School Bus Shelter','Health City Bus Shelter',
-    'South Coast Bar and Grill Bus Shelter','H.M. Botanic Garden (entrance of road)',
-    'Blow Holes ( Sea View Rd)'
-  ],
-  'ns-ck': [
-    'Frank Sound Junction Bus Shelter','Clifton Hunter High School Bus Shelter',
-    'Crystal Caves Bus Stop','Old Man Bay Dock Bus Shelter',
-    'National Housing Development Trust Bus Shelter','Melvilles Lane Bus Stop',
-    'Rum Point Bus Stop','Rum Point Bus Shelter','Rum Point Bus Stop #2','Kaibo Bus Stop',
-    'Cayman Kai Public Beach Bus Stop','Rum Point Exit Sign Bus Stop',
-    'Rum Point Otto\u2019s Ave Bus Stop','Chisholms Cemetery Bus Stop','Hutland Bus Shelter',
-    'Old Man Bay Dock Bus Stop','Over the Edge Bus Shelter','Compass Point Bus Stop',
-    'North Side Public Beach #5','South Coast Bar and Grill Bus Shelter',
-    'H.M. Botanic Garden (entrance of road)'
-  ]
-};
+var ROUTE_STOPS = {};
 
 /* returns the stop list for the currently selected route,
    or the full island list for custom / no selection */
