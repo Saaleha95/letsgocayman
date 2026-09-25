@@ -3,4 +3,5 @@ flask-sqlalchemy
 flask-cors
 werkzeug
 psycopg2-binary
+psycopg[binary]
 gunicorn
