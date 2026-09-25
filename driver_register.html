@@ -184,10 +184,6 @@ input::placeholder,textarea::placeholder{color:var(--dim)}
           <label>Username / Driver ID</label>
           <input type="text" id="driverUsername" placeholder="e.g. james_wb1">
         </div>
-        <div class="form-group">
-          <label>Bus ID / Plate</label>
-          <input type="text" id="busId" placeholder="e.g. CI-WB1-01">
-        </div>
       </div>
     </div>
   </div>
@@ -204,12 +200,12 @@ input::placeholder,textarea::placeholder{color:var(--dim)}
     <div class="card-body">
       <div class="form-grid">
         <div class="form-group">
-          <label>Route</label>
+          <label>Route Number</label>
           <select id="routeId" onchange="onRouteChange()">
           <option value="">Select route…</option>
-          <option value="ee-east">Eastern Link · East End Loop via East</option>
-          <option value="ee-qh">Eastern Link · East End Loop via Queen's Highway</option>
-          <option value="ns-ck">Eastern Link · North Side/Cayman Kai</option>
+          <option value="ee-east">ee-east — Eastern Link · East End Loop via East End</option>
+          <option value="ee-qh">ee-qh — Eastern Link · East End Loop via Queen's Highway</option>
+          <option value="ns-ck">ns-ck — Eastern Link · North Side / Cayman Kai</option>
           <option value="custom">Other (custom route)</option>
         </select>
         </div>
@@ -322,9 +318,9 @@ var ddTimers = {};
 var CAYMAN_CENTER = [19.3065, -81.3846];
 
 var ROUTE_NAMES = {
-  'ee-east':'EASTERN LINK – East End Loop via East',
+  'ee-east':'EASTERN LINK – East End Loop via East End',
   'ee-qh':'EASTERN LINK – East End Loop via Queen\u2019s Highway',
-  'ns-ck':'EASTERN LINK – North Side/Cayman Kai'
+  'ns-ck':'EASTERN LINK – North Side / Cayman Kai'
 };
 
 var ROUTE_FREQ = {
@@ -337,7 +333,7 @@ var OTHER_OPT = 'Other (specify name below)';
 
 /* ── PTU-confirmed stop list, from "Bus Stop and Shelter List from FS Jct 2026".
    ee-east and ee-qh share the same confirmed stop set (both East End loops via Frank Sound Jct);
-   ns-ck is the separate North Side/Cayman Kai line. Two stops (H.M. Botanic Garden,
+   ns-ck is the separate North Side / Cayman Kai line. Two stops (H.M. Botanic Garden,
    Blow Holes) are marked "unofficial — heavily requested" in the source doc but are
    included here since they're listed as serviced. */
 var ROUTE_STOPS = {
@@ -755,7 +751,7 @@ function updateProgress() {
   document.getElementById('progressFill').style.width = ((score / 6) * 100) + '%';
 }
 
-['driverName','driverPhone','driverUsername','busId','routeName','routeDesc'].forEach(function(id) {
+['driverName','driverPhone','driverUsername','routeName','routeDesc'].forEach(function(id) {
   var el = document.getElementById(id);
   if (el) el.addEventListener('input', updateProgress);
 });
@@ -798,8 +794,8 @@ async function submitForm() {
   var driverName     = document.getElementById('driverName').value.trim();
   var driverPhone    = document.getElementById('driverPhone').value.trim();
   var driverUsername = document.getElementById('driverUsername').value.trim();
-  var busId          = document.getElementById('busId').value.trim();
   var routeId        = document.getElementById('routeId').value;
+  var busId          = routeId;
   var routeName      = document.getElementById('routeName').value.trim();
   var routeColor     = document.getElementById('routeColor').value;
   var frequency = {
@@ -891,7 +887,7 @@ function resetAll() {
   activeMaps = {}; stops = []; stopCounter = 0;
   document.getElementById('stopsList').innerHTML =
     '<div class="empty-stops" id="emptyHint"><span class="icon">🚏</span>No stops yet — press <strong style="color:var(--gold)">Add Stop</strong> to begin.</div>';
-  ['driverName','driverPhone','driverUsername','busId','routeName','routeDesc','freqFirst','freqLast'].forEach(function(id){
+  ['driverName','driverPhone','driverUsername','routeName','routeDesc','freqFirst','freqLast'].forEach(function(id){
     var el = document.getElementById(id); if (el) el.value = '';
   });
   document.getElementById('freqInterval').value = '';
