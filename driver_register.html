@@ -184,6 +184,10 @@ input::placeholder,textarea::placeholder{color:var(--dim)}
           <label>Username / Driver ID</label>
           <input type="text" id="driverUsername" placeholder="e.g. james_wb1">
         </div>
+        <div class="form-group">
+          <label>Bus ID / Plate</label>
+          <input type="text" id="busId" placeholder="e.g. CI-WB1-01">
+        </div>
       </div>
     </div>
   </div>
@@ -751,7 +755,7 @@ function updateProgress() {
   document.getElementById('progressFill').style.width = ((score / 6) * 100) + '%';
 }
 
-['driverName','driverPhone','driverUsername','routeName','routeDesc'].forEach(function(id) {
+['driverName','driverPhone','driverUsername','busId','routeName','routeDesc'].forEach(function(id) {
   var el = document.getElementById(id);
   if (el) el.addEventListener('input', updateProgress);
 });
@@ -795,7 +799,7 @@ async function submitForm() {
   var driverPhone    = document.getElementById('driverPhone').value.trim();
   var driverUsername = document.getElementById('driverUsername').value.trim();
   var routeId        = document.getElementById('routeId').value;
-  var busId          = routeId;
+  var busId          = document.getElementById('busId').value.trim();
   var routeName      = document.getElementById('routeName').value.trim();
   var routeColor     = document.getElementById('routeColor').value;
   var frequency = {
@@ -887,7 +891,7 @@ function resetAll() {
   activeMaps = {}; stops = []; stopCounter = 0;
   document.getElementById('stopsList').innerHTML =
     '<div class="empty-stops" id="emptyHint"><span class="icon">🚏</span>No stops yet — press <strong style="color:var(--gold)">Add Stop</strong> to begin.</div>';
-  ['driverName','driverPhone','driverUsername','routeName','routeDesc','freqFirst','freqLast'].forEach(function(id){
+  ['driverName','driverPhone','driverUsername','busId','routeName','routeDesc','freqFirst','freqLast'].forEach(function(id){
     var el = document.getElementById(id); if (el) el.value = '';
   });
   document.getElementById('freqInterval').value = '';
