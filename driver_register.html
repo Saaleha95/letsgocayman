@@ -209,7 +209,7 @@ input::placeholder,textarea::placeholder{color:var(--dim)}
           <option value="">Select route…</option>
           <option value="east-end-via-east">East End Loop via East</option>
           <option value="east-end-via-qh">East End Loop via Queen's Highway</option>
-          <option value="north-side-cayman-kai">North Side/Cayman Kai</option>
+          <option value="ns-cayman-kai">North Side/Cayman Kai</option>
           <option value="custom">Other (custom route)</option>
         </select>
         </div>
@@ -324,20 +324,20 @@ var CAYMAN_CENTER = [19.3065, -81.3846];
 var ROUTE_NAMES = {
   'east-end-via-east':'EASTERN LINK – East End Loop via East',
   'east-end-via-qh':'EASTERN LINK – East End Loop via Queen\u2019s Highway',
-  'north-side-cayman-kai':'EASTERN LINK – North Side/Cayman Kai'
+  'ns-cayman-kai':'EASTERN LINK – North Side/Cayman Kai'
 };
 
 var ROUTE_FREQ = {
   'east-end-via-east': { interval:30, offset:30, first:'07:30', last:'18:30' },
   'east-end-via-qh': { interval:30, offset:0,  first:'08:00', last:'19:00' },
-  'north-side-cayman-kai': { interval:60, offset:30, first:'07:30', last:'18:30' }
+  'ns-cayman-kai': { interval:60, offset:30, first:'07:30', last:'18:30' }
 };
 
 var OTHER_OPT = 'Other (specify name below)';
 
 /* ── PTU-confirmed stop list, from "Bus Stop and Shelter List from FS Jct 2026".
    east-end-via-east and east-end-via-qh share the same confirmed stop set (both East End
-   loops via Frank Sound Jct); north-side-cayman-kai is the separate North Side / Cayman Kai
+   loops via Frank Sound Jct); ns-cayman-kai is the separate North Side / Cayman Kai
    line. Two stops (H.M. Botanic Garden, Blow Holes) are marked "unofficial — heavily
    requested" in the source doc but are included here since they're listed as serviced. */
 var ROUTE_STOPS = {
@@ -365,7 +365,7 @@ var ROUTE_STOPS = {
     'South Coast Bar and Grill Bus Shelter','H.M. Botanic Garden (entrance of road)',
     'Blow Holes ( Sea View Rd)'
   ],
-  'north-side-cayman-kai': [
+  'ns-cayman-kai': [
     'Frank Sound Junction Bus Shelter','Clifton Hunter High School Bus Shelter',
     'Crystal Caves Bus Stop','Old Man Bay Dock Bus Shelter',
     'National Housing Development Trust Bus Shelter','Melvilles Lane Bus Stop',
