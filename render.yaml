@@ -1,7 +1,8 @@
 services:
   - type: web
     name: my-flask-app
-    env: python
+    runtime: python
+    region: frankfurt
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app
     envVars:
@@ -12,4 +13,5 @@ services:
 
 databases:
   - name: my-flask-db
+    region: frankfurt
     plan: free
