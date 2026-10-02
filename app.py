@@ -3658,6 +3658,7 @@ def _fetch_axxon_unit(unit_id):
     import time
     import urllib.request
     import urllib.parse
+    import urllib.error
     now = time.time()
     with _axxon_cache_lock:
         hit = _axxon_cache.get(unit_id)
@@ -3666,13 +3667,28 @@ def _fetch_axxon_unit(unit_id):
     unit = None
     try:
         qs = urllib.parse.urlencode({'key': AXXON_API_KEY, 'unit_id': unit_id})
-        req = urllib.request.Request(f'{AXXON_API_URL}?{qs}', headers={'Accept': 'application/json'})
+        # Default 'Python-urllib' User-Agent is commonly blocked (HTTP 403) by WAFs, so look like a browser.
+        req = urllib.request.Request(f'{AXXON_API_URL}?{qs}', headers={
+            'Accept': 'application/json, text/plain, */*',
+            'User-Agent': ('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 '
+                           '(KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36'),
+            'Accept-Language': 'en-US,en;q=0.9',
+        })
         with urllib.request.urlopen(req, timeout=6) as resp:
             payload = json.loads(resp.read().decode('utf-8'))
         for u in (payload.get('data') or {}).get('units') or []:
             if int(u.get('unit_id', -1)) == int(unit_id):
                 unit = u
                 break
+        if unit is None:
+            app.logger.warning('Axxon: unit %s not in response: %s', unit_id, str(payload)[:300])
+    except urllib.error.HTTPError as ex:
+        try:
+            body = ex.read().decode('utf-8', 'replace')[:300]
+        except Exception:
+            body = ''
+        app.logger.warning('Axxon fetch failed for unit %s: HTTP %s %s | body: %s',
+                           unit_id, ex.code, ex.reason, body)
     except Exception as ex:
         app.logger.warning('Axxon fetch failed for unit %s: %s', unit_id, ex)
     with _axxon_cache_lock:
