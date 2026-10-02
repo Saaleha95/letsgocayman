@@ -3792,7 +3792,8 @@ def _apply_axxon_override(route_data):
 # ── STOP ETA SETTINGS ─────────────────────────────────────────────────────
 CAYMAN_UTC_OFFSET = timedelta(hours=-5)   # Cayman Islands = UTC-5, no daylight saving
 MOVING_SPEED_KMH = 5.0         # at/above this speed the bus counts as "moving"
-LAYOVER_MIN_SECONDS = 600      # standing at least this long = parked/layover -> use the timetable
+LAYOVER_MIN_SECONDS = 300      # standing this long anywhere = parked/layover -> use the timetable
+TERMINAL_RADIUS_KM = 2.0       # standing within this of the first stop = waiting for its next departure (any duration)
 TYPICAL_BUS_SPEED_KMH = 35.0   # moving speed assumed until the bus's own average has been learned
 TYPICAL_SPEED_MIN_SAMPLES = 5
 TYPICAL_SPEED_BOUNDS = (20.0, 60.0)
@@ -3983,7 +3984,8 @@ def _compute_stop_etas(route_id, bus_key, stops, live, now):
     Returns a list parallel to `stops` of {'secs','km','mode','method','depart'} (or None if the
     bus has no usable position).
       mode 'live'      : the bus itself will reach the stop on its current trip.
-      mode 'scheduled' : next scheduled bus - the bus is parked (standing >= 10 min), or it has
+      mode 'scheduled' : next scheduled bus - the bus is parked (standing >= 5 min, or standing within
+                         2 km of the first stop = waiting to depart), or it has
                          already passed this stop on the current trip, so the stop's next bus is
                          the next timetable departure from the first stop + travel time.
       method 'route'    : road distance along the loop, stop by stop, with dwell time per stop.
@@ -4020,7 +4022,8 @@ def _compute_stop_etas(route_id, bus_key, stops, live, now):
 
     try:
         # 1) Parked / layover -> everything follows the timetable.
-        if sched and trip_km and not moving and standing and standing_for >= LAYOVER_MIN_SECONDS:
+        at_terminal = bool(sched and _hav_km(blat, blng, float(stops[0]['lat']), float(stops[0]['lng'])) <= TERMINAL_RADIUS_KM)
+        if sched and trip_km and not moving and standing and (standing_for >= LAYOVER_MIN_SECONDS or at_terminal):
             to_start_km = straight_km(stops[0])
             reach_s = 0.0 if to_start_km < 0.3 else to_start_km / typical * 3600.0
             depart = _next_departure(now + timedelta(seconds=reach_s), sched)
@@ -4042,6 +4045,9 @@ def _compute_stop_etas(route_id, bus_key, stops, live, now):
                 km, k = plan['ahead'][i]
                 secs = int(round(km / route_speed * 3600.0 + STOP_DWELL_SECONDS * k))
                 out[i] = {'secs': secs, 'km': km, 'mode': 'live', 'method': 'route', 'depart': None}
+            elif plan is not None and i < n_loop and straight_km(st) < 0.1:
+                # bus is standing AT this stop right now -> it is here
+                out[i] = {'secs': 0, 'km': straight_km(st), 'mode': 'live', 'method': 'route', 'depart': None}
             elif plan is not None and i < n_loop and next_depart is not None:
                 out[i] = scheduled(i, next_depart)      # already passed on this trip -> next bus
             else:
