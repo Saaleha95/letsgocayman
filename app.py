@@ -3638,6 +3638,7 @@ AXXON_API_URL = os.environ.get('AXXON_API_URL', 'https://app.axxon.co/api/v1/uni
 AXXON_API_KEY = os.environ.get('AXXON_API_KEY', '99a8800d22cd02476c463ce7c6fd31727e8230d9')
 AXXON_BUS_UNITS = {
     'EASTERN LINK \u2013 North Side Cayman Kai': 579187,
+    'North Side Cayman Kai': 579187,   # short id the driver app / telemetry used before
 }
 AXXON_CACHE_SECONDS = 3   # Axxon is re-polled at most every 3 seconds
 _axxon_cache = {}          # unit_id -> (fetched_at_epoch, unit_dict_or_None)
@@ -3747,26 +3748,25 @@ def _axxon_speed_kmh(unit_id, unit):
     return 0.0
 
 
-def _apply_axxon_override(route_data):
-    """If route_data's busId is mapped to an Axxon unit, replace its liveLocation with the tracker's."""
-    match = _AXXON_UNITS_NORM.get(_norm_bus_id(route_data.get('busId')))
+def _axxon_live_location(bus_id):
+    """liveLocation dict for a bus mapped to an Axxon unit (None if unmapped / Axxon unavailable)."""
+    match = _AXXON_UNITS_NORM.get(_norm_bus_id(bus_id))
     if not match:
-        return
-    bus_id, unit_id = match
+        return None
+    name, unit_id = match
     unit = _fetch_axxon_unit(unit_id)
     if not unit:
-        return  # Axxon unavailable -> keep whatever the driver app reported
+        return None
     lat, lng = _to_float(unit.get('lat')), _to_float(unit.get('lng'))
     if lat is None or lng is None or not _valid_latlng(lat, lng):
-        return
+        return None
     speed = _axxon_speed_kmh(unit_id, unit)
     heading = _to_float(unit.get('direction'))
     mstate = unit.get('movement_state') or unit.get('state') or {}
     _record_moving_speed(bus_id, speed, unit.get('last_update'))
-    prev = route_data.get('liveLocation') or {}
-    route_data['liveLocation'] = {
-        'busId': bus_id,
-        'heading': round(heading) if heading is not None else prev.get('heading'),
+    return {
+        'busId': name,
+        'heading': round(heading) if heading is not None else None,
         'lat': lat,
         'lng': lng,
         'speedKmh': speed,
@@ -3774,6 +3774,18 @@ def _apply_axxon_override(route_data):
         'stateDurationSec': mstate.get('duration'),
         'updatedAt': unit.get('last_update') or datetime.utcnow().isoformat(),
     }
+
+
+def _apply_axxon_override(route_data):
+    """If route_data's busId is mapped to an Axxon unit, replace its liveLocation with the tracker's."""
+    live = _axxon_live_location(route_data.get('busId'))
+    if live is None:
+        return  # not an Axxon bus / Axxon unavailable -> keep whatever the driver app reported
+    prev = route_data.get('liveLocation') or {}
+    if live.get('heading') is None:
+        live['heading'] = prev.get('heading')
+    live['busId'] = route_data.get('busId') or live['busId']
+    route_data['liveLocation'] = live
     route_data['online'] = True
 
 
@@ -3804,11 +3816,17 @@ _typical_speed = {}   # normalised bus id -> {'avg', 'n', 'stamp'}
 _typical_speed_lock = threading.Lock()
 
 
+def _speed_key(bus_id):
+    """All name variants of one Axxon tracker share a single learned-speed entry."""
+    m = _AXXON_UNITS_NORM.get(_norm_bus_id(bus_id))
+    return f'unit:{m[1]}' if m else _norm_bus_id(bus_id)
+
+
 def _record_moving_speed(bus_id, speed_kmh, stamp):
     """Learn the bus's real moving speed (exponential moving average, once per new GPS fix)."""
     if speed_kmh is None or speed_kmh < MOVING_SPEED_KMH:
         return
-    key = _norm_bus_id(bus_id)
+    key = _speed_key(bus_id)
     with _typical_speed_lock:
         st = _typical_speed.get(key)
         if st is None:
@@ -3821,7 +3839,7 @@ def _record_moving_speed(bus_id, speed_kmh, stamp):
 
 def _typical_speed_kmh(bus_id):
     with _typical_speed_lock:
-        st = _typical_speed.get(_norm_bus_id(bus_id))
+        st = _typical_speed.get(_speed_key(bus_id))
         if st and st['n'] >= TYPICAL_SPEED_MIN_SAMPLES:
             lo, hi = TYPICAL_SPEED_BOUNDS
             return max(lo, min(hi, st['avg']))
@@ -3890,11 +3908,14 @@ def _apply_service_hours(route_data, now=None):
 
 
 def _loop_ahead(blat, blng, heading, loop_stops):
-    """Where is a MOVING bus on a looping route, and how far (road km) to each stop ahead?
+    """Where is the bus on a looping route, and how far (road km) to each stop ahead?
 
-    The bus is matched to the nearest loop segment whose direction agrees with its heading (so
-    outbound vs. return legs on the same road are told apart). Returns {stop_index: (km, k)} where
-    k = number of stops passed before it, or None if the bus is off the route / heading unknown.
+    The bus is matched to the nearest loop segment whose direction agrees with its heading (so the
+    outbound and return legs of the same road are told apart). Returns None if the bus is off the
+    route or its heading is unknown, else:
+      'ahead' : {stop_index: (km, k)}  k = stops passed before it (going round the loop)
+      'live'  : stop indexes the bus still reaches on THIS trip (stops it already passed on this
+                trip are not in here - they belong to the next trip).
     """
     n = len(loop_stops)
     if n < 2 or heading is None:
@@ -3913,91 +3934,148 @@ def _loop_ahead(blat, blng, heading, loop_stops):
     _, i, t = best
     a, b = loop_stops[i], loop_stops[(i + 1) % n]
     cum = _hav_km(a['lat'], a['lng'], b['lat'], b['lng']) * (1.0 - t)
-    out, prev = {}, (i + 1) % n
+    ahead, prev = {}, (i + 1) % n
     for k in range(n):
         idx = (i + 1 + k) % n
         if k > 0:
             cum += _hav_km(loop_stops[prev]['lat'], loop_stops[prev]['lng'],
                            loop_stops[idx]['lat'], loop_stops[idx]['lng'])
-        out[idx] = (cum * ROUTE_ROAD_FACTOR, k)
+        ahead[idx] = (cum * ROUTE_ROAD_FACTOR, k)
         prev = idx
+    on_closing_leg = (i == n - 1)          # last stop -> first stop: only the first stop is left
+    live = {0} if on_closing_leg else set(range(i + 1, n))
+    return {'ahead': ahead, 'live': live}
+
+
+def _in_service_hours(route_id, now=None):
+    """False between 'offline_from' and 'online_from' (Cayman time) for routes that define them."""
+    sched = ROUTE_SCHEDULES.get(route_id)
+    if not sched or 'offline_from' not in sched:
+        return True
+    local = (now or datetime.utcnow()) + CAYMAN_UTC_OFFSET
+    cur = (local.hour, local.minute)
+    return not (cur >= sched['offline_from'] or cur < sched.get('online_from', (0, 0)))
+
+
+def _apply_service_hours(route_data, now=None):
+    if not _in_service_hours(route_data.get('route'), now):
+        route_data['online'] = False
+
+
+def _format_eta(seconds):
+    if seconds < 60:
+        return 'Arriving'
+    mins = int(round(seconds / 60.0))
+    if mins < 60:
+        return f'{mins} min'
+    h, m = divmod(mins, 60)
+    return f'{h} hr {m} min' if m else f'{h} hr'
+
+
+def _local_clock(utc_dt):
+    return (utc_dt + CAYMAN_UTC_OFFSET).strftime('%I:%M %p').lstrip('0')
+
+
+def _compute_stop_etas(route_id, bus_key, stops, live, now):
+    """ETA for every stop. ONE implementation shared by /api/buses/coordinates (stop list) and the
+    /api/tracking/live/<bus> journey card, so both always show the same numbers.
+
+    Returns a list parallel to `stops` of {'secs','km','mode','method','depart'} (or None if the
+    bus has no usable position).
+      mode 'live'      : the bus itself will reach the stop on its current trip.
+      mode 'scheduled' : next scheduled bus - the bus is parked (standing >= 10 min), or it has
+                         already passed this stop on the current trip, so the stop's next bus is
+                         the next timetable departure from the first stop + travel time.
+      method 'route'    : road distance along the loop, stop by stop, with dwell time per stop.
+      method 'straight' : straight line x road factor (stops not on the loop sequence).
+      method 'schedule' : timetable.
+    """
+    blat, blng = _to_float(live.get('lat')), _to_float(live.get('lng'))
+    if blat is None or blng is None or not stops:
+        return None
+    typical = _typical_speed_kmh(bus_key)
+    live_speed = _to_float(live.get('speedKmh')) or 0.0
+    moving = live_speed >= MOVING_SPEED_KMH
+    standing = str(live.get('movementState') or '').lower() == 'standing'
+    standing_for = _to_float(live.get('stateDurationSec')) or 0.0
+    sched = ROUTE_SCHEDULES.get(route_id)
+    n = len(stops)
+    out = [None] * n
+
+    trip_km = None
+    if sched:
+        try:
+            trip_km = _trip_km_from_start(stops, sched.get('ordered_stops'))
+        except (KeyError, TypeError, ValueError):
+            trip_km = None
+
+    def straight_km(st):
+        return _hav_km(blat, blng, float(st['lat']), float(st['lng'])) * STRAIGHT_ROAD_FACTOR
+
+    def scheduled(i, depart):
+        arrival = depart + timedelta(seconds=trip_km[i] / typical * 3600.0)
+        secs = max(0, int(round((arrival - now).total_seconds())))
+        return {'secs': secs, 'km': straight_km(stops[i]), 'mode': 'scheduled',
+                'method': 'schedule', 'depart': depart}
+
+    try:
+        # 1) Parked / layover -> everything follows the timetable.
+        if sched and trip_km and not moving and standing and standing_for >= LAYOVER_MIN_SECONDS:
+            to_start_km = straight_km(stops[0])
+            reach_s = 0.0 if to_start_km < 0.3 else to_start_km / typical * 3600.0
+            depart = _next_departure(now + timedelta(seconds=reach_s), sched)
+            if depart is not None:
+                return [scheduled(i, depart) for i in range(n)]
+
+        # 2) On a trip.
+        route_speed = min(max(0.5 * live_speed + 0.5 * typical, 15.0), MAX_ETA_SPEED_KMH)
+        straight_speed = min(max(live_speed if moving else typical, 10.0), MAX_ETA_SPEED_KMH)
+        plan, n_loop, next_depart = None, 0, None
+        if sched and sched.get('loop') and trip_km:
+            n_loop = sched.get('ordered_stops') or n
+            loop_stops = [{'lat': float(x['lat']), 'lng': float(x['lng'])} for x in stops[:n_loop]]
+            plan = _loop_ahead(blat, blng, _to_float(live.get('heading')), loop_stops)
+            next_depart = _next_departure(now, sched)
+
+        for i, st in enumerate(stops):
+            if plan is not None and i < n_loop and i in plan['live']:
+                km, k = plan['ahead'][i]
+                secs = int(round(km / route_speed * 3600.0 + STOP_DWELL_SECONDS * k))
+                out[i] = {'secs': secs, 'km': km, 'mode': 'live', 'method': 'route', 'depart': None}
+            elif plan is not None and i < n_loop and next_depart is not None:
+                out[i] = scheduled(i, next_depart)      # already passed on this trip -> next bus
+            else:
+                km = straight_km(st)
+                secs = 0 if km < 0.1 else int(round(km / straight_speed * 3600.0))
+                out[i] = {'secs': secs, 'km': km, 'mode': 'live', 'method': 'straight', 'depart': None}
+    except (KeyError, TypeError, ValueError):
+        return None
     return out
 
 
 def _add_stop_etas(route_data, now=None):
-    """Add ETA fields to every stop of a route that has a live bus location.
-
-    etaMode 'live'      : bus is moving (or standing only briefly) -> distance / speed, using the
-                          live speed, or the bus's learned typical moving speed when it is stopped.
-    etaMode 'scheduled' : bus has been standing >= LAYOVER_MIN_SECONDS and the route has a timetable
-                          -> next departure it can make from the first stop + travel time to each stop.
-    Recomputed on every request, so it is as current as the live location.
-    """
-    live = route_data.get('liveLocation') or {}
-    blat, blng = _to_float(live.get('lat')), _to_float(live.get('lng'))
+    """Write the ETA fields onto every stop of a route that has a live bus location."""
     stops = route_data.get('stops') or []
-    if blat is None or blng is None or not stops:
-        return
     now = now or datetime.utcnow()
-    typical = _typical_speed_kmh(route_data.get('busId'))
-    live_speed = _to_float(live.get('speedKmh')) or 0.0
-    moving = live_speed >= MOVING_SPEED_KMH
-    standing_for = _to_float(live.get('stateDurationSec')) or 0.0
-    standing = str(live.get('movementState') or '').lower() == 'standing'
-    sched = ROUTE_SCHEDULES.get(route_data.get('route'))
-
-    depart = trip_km = None
-    if sched and not moving and standing and standing_for >= LAYOVER_MIN_SECONDS:
-        try:
-            to_start_km = _hav_km(blat, blng, float(stops[0]['lat']), float(stops[0]['lng'])) * STRAIGHT_ROAD_FACTOR
-            reach_s = 0.0 if to_start_km < 0.3 else to_start_km / typical * 3600.0
-            depart = _next_departure(now + timedelta(seconds=reach_s), sched)
-            trip_km = _trip_km_from_start(stops, sched.get('ordered_stops'))
-        except (KeyError, TypeError, ValueError):
-            depart = None
-
-    live_speed_kmh = min(max(live_speed if moving else typical, 10.0), MAX_ETA_SPEED_KMH)
-
-    loop_plan = None
-    if moving and sched and sched.get('loop'):
-        try:
-            n_loop = sched.get('ordered_stops') or len(stops)
-            loop_stops = [{'lat': float(x['lat']), 'lng': float(x['lng'])} for x in stops[:n_loop]]
-            loop_plan = _loop_ahead(blat, blng, _to_float(live.get('heading')), loop_stops)
-        except (KeyError, TypeError, ValueError):
-            loop_plan = None
-    # Moving speed for route-based ETAs: blend of live speed and the bus's typical speed (less jumpy).
-    route_speed_kmh = min(max(0.5 * live_speed + 0.5 * typical, 15.0), MAX_ETA_SPEED_KMH)
-
-    for i, st in enumerate(stops):
-        try:
-            km = _hav_km(blat, blng, float(st['lat']), float(st['lng'])) * STRAIGHT_ROAD_FACTOR
-        except (KeyError, TypeError, ValueError):
+    etas = _compute_stop_etas(route_data.get('route'), route_data.get('busId'), stops,
+                              route_data.get('liveLocation') or {}, now)
+    if etas is None:
+        return
+    for st, e in zip(stops, etas):
+        if e is None:
             continue
-        if depart is not None:
-            arrival = depart + timedelta(seconds=trip_km[i] / typical * 3600.0)
-            secs = max(0, int(round((arrival - now).total_seconds())))
-            st['etaMode'] = 'scheduled'
-            st['scheduledDeparture'] = depart.isoformat() + 'Z'
-            st['eta'] = _format_eta(secs) if secs < 3600 else _local_clock(arrival)
-        elif loop_plan is not None and i in loop_plan:
-            km, k = loop_plan[i]
-            secs = int(round(km / route_speed_kmh * 3600.0 + STOP_DWELL_SECONDS * k))
-            arrival = now + timedelta(seconds=secs)
-            st['etaMode'] = 'live'
-            st['etaMethod'] = 'route'
-            st['eta'] = _format_eta(secs)
-        else:
-            secs = 0 if km < 0.1 else int(round(km / live_speed_kmh * 3600.0))
-            arrival = now + timedelta(seconds=secs)
-            st['etaMode'] = 'live'
-            st['etaMethod'] = 'straight'
-            st['eta'] = _format_eta(secs)
-        st['distanceKm'] = round(km, 2)
+        secs = e['secs']
+        arrival = now + timedelta(seconds=secs)
+        st['etaMode'] = e['mode']
+        st['etaMethod'] = e['method']
+        st['eta'] = _format_eta(secs) if (e['mode'] == 'live' or secs < 3600) else _local_clock(arrival)
+        st['distanceKm'] = round(e['km'], 2)
         st['etaSeconds'] = secs
         st['etaMinutes'] = int(round(secs / 60.0))
         st['etaArrivalTime'] = arrival.isoformat() + 'Z'
         st['etaLocalTime'] = _local_clock(arrival)
+        if e.get('depart') is not None:
+            st['scheduledDeparture'] = e['depart'].isoformat() + 'Z'
 
 
 @app.route('/api/buses/coordinates', methods=['GET', 'POST'])
@@ -7140,8 +7218,54 @@ def _plan_ahead(lat, lng, speed_kmh, heading, stops):
     return result
 
 
+def _build_axxon_bus_state(bus_id, route_id, live):
+    """Bus state for an Axxon-tracked bus: same position + same ETA engine as /api/buses/coordinates."""
+    info = _route_info(bus_id, route_id) or {}
+    stops = info.get('stops', [])
+    rid = info.get('routeId') or route_id or ''
+    now = datetime.utcnow()
+    etas = _compute_stop_etas(rid, bus_id, stops, live, now) or []
+    ahead = []
+    for st, e in zip(stops, etas):
+        if e is None:
+            continue
+        ahead.append({'id': st['id'], 'name': st['name'], 'lat': st['lat'], 'lng': st['lng'],
+                      'distanceKm': round(e['km'], 2), 'etaSeconds': e['secs'],
+                      'etaMinutes': int(round(e['secs'] / 60.0)), 'mode': e['mode'],
+                      '_straight': e['method'] == 'straight'})
+    # next stop = soonest live stop on the route itself; off-sequence (straight-line) and scheduled stops after
+    ahead.sort(key=lambda a: (a['mode'] != 'live', a['_straight'], a['etaSeconds']))
+    for a in ahead:
+        a.pop('_straight', None)
+    import time as _time
+    ts = _parse_iso_epoch(live.get('updatedAt'))
+    age = max(0, int(_time.time() - ts)) if ts else None
+    speed = live.get('speedKmh')
+    return {
+        'busId': bus_id,
+        'routeId': rid,
+        'routeName': info.get('routeName') or '',
+        'color': info.get('color') or '#F5C518',
+        'online': _in_service_hours(rid, now),
+        'stale': False,            # a parked tracker legitimately reports rarely
+        'ageSeconds': age,
+        'updatedAt': live.get('updatedAt'),
+        'lat': live['lat'], 'lng': live['lng'],
+        'speedKmh': speed,
+        'heading': live.get('heading'),
+        'moving': bool(speed is not None and speed >= MOVING_KMH),
+        'direction': 'forward' if speed and speed >= MOVING_KMH else 'unknown',
+        'onRoute': True,
+        'stops': stops,
+        'ahead': ahead,
+    }
+
+
 def _build_bus_state(bus_id, route_id=''):
     t = BusTelemetry.query.filter_by(bus_id=bus_id).first()
+    axxon_live = _axxon_live_location(bus_id)
+    if axxon_live is not None:
+        return _build_axxon_bus_state(bus_id, route_id, axxon_live)
     if t is None or t.lat is None or t.lng is None:
         return None
     age = max(0, int((_utcnow() - t.updated_at).total_seconds())) if t.updated_at else None
@@ -7206,6 +7330,9 @@ def _eta_to_target(state, lat, lng):
     if stop is not None and state['onRoute']:
         for a in state['ahead']:
             if a['id'] == stop['id']:
+                if a.get('mode') == 'scheduled':   # next scheduled bus, not the live one
+                    return {'status': 'approaching', 'distanceKm': a['distanceKm'],
+                            'etaSeconds': a['etaSeconds'], 'scheduled': True}
                 return {'status': 'arriving' if a['distanceKm'] <= ARRIVING_KM else 'approaching',
                         'distanceKm': a['distanceKm'], 'etaSeconds': a['etaSeconds']}
         return {'status': 'passed', 'distanceKm': None, 'etaSeconds': None}
@@ -7224,7 +7351,8 @@ def _eta_to_target(state, lat, lng):
 def _target_json(info, name='', lat=None, lng=None):
     return {'name': name, 'lat': lat, 'lng': lng, 'status': info['status'],
             'distanceKm': info['distanceKm'], 'etaSeconds': info['etaSeconds'],
-            'etaMinutes': None if info['etaSeconds'] is None else int(round(info['etaSeconds'] / 60.0))}
+            'etaMinutes': None if info['etaSeconds'] is None else int(round(info['etaSeconds'] / 60.0)),
+            'scheduled': bool(info.get('scheduled'))}
 
 
 # ── 1. REAL-TIME TRACKING API ──────────────────────────────
@@ -7306,6 +7434,8 @@ def _best_candidate(rem, cache):
         if not st or not st['online'] or st['stale']:
             continue
         info = _eta_to_target(st, rem.stop_lat, rem.stop_lng)
+        if info.get('scheduled'):
+            continue  # timetable estimate, not a live bus -> never fire reminders from it
         if info['status'] not in ('approaching', 'arriving'):
             continue  # already passed it, or driving away from it
         if best is None or info['etaSeconds'] < best[1]['etaSeconds']:
