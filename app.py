@@ -44,7 +44,9 @@ def require_gov(fn):
         if not session.get('gov_logged_in'):
             return redirect('/gov/login')
         return fn(*args, **kwargs)
+
     return wrapper
+
 
 # ── TWILIO CONFIG (stored in env / overridable via admin) ──
 TWILIO_CONFIG = {
@@ -55,7 +57,6 @@ TWILIO_CONFIG = {
 
 # Runtime override (persists until restart)
 _twilio_override = {}
-
 
 # ═══════════════════════════════════════════════════════════
 # ROBOTS / CRAWL CONTROL
@@ -108,6 +109,7 @@ def robots_txt():
 @app.route('/sitemap.xml')
 def sitemap_xml():
     return Response(SITEMAP_XML, mimetype='application/xml')
+
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -221,7 +223,7 @@ class JourneySearch(db.Model):
     """Logs every Journey-tab search / nearest-bus tap from the app."""
     id = db.Column(db.Integer, primary_key=True)
     source = db.Column(db.String(30), default='')
-    search_query = db.Column(db.String(200), default='')   # ← renamed from `query`
+    search_query = db.Column(db.String(200), default='')  # ← renamed from `query`
     stop_id = db.Column(db.String(40), default='')
     stop_name = db.Column(db.String(120), default='')
     route_id = db.Column(db.String(20), default='')
@@ -249,8 +251,8 @@ class BusTelemetry(db.Model):
     bus_id = db.Column(db.String(120), unique=True, nullable=False, index=True)
     lat = db.Column(db.Float, nullable=True)
     lng = db.Column(db.Float, nullable=True)
-    speed_kmh = db.Column(db.Float, nullable=True)   # None = unknown
-    heading = db.Column(db.Float, nullable=True)     # degrees, 0 = north
+    speed_kmh = db.Column(db.Float, nullable=True)  # None = unknown
+    heading = db.Column(db.Float, nullable=True)  # degrees, 0 = north
     online = db.Column(db.Boolean, default=True)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -305,10 +307,10 @@ class TripLog(db.Model):
     metrics on the gov portal — as opposed to app-engagement proxies like JourneySearch."""
     id = db.Column(db.Integer, primary_key=True)
     bus_id = db.Column(db.String(120), default='')
-    route_id = db.Column(db.String(20), default='')       # loop identifier
+    route_id = db.Column(db.String(20), default='')  # loop identifier
     driver_username = db.Column(db.String(80), default='')
-    passengers = db.Column(db.Integer, nullable=True)      # boarded on this trip
-    delay_minutes = db.Column(db.Integer, default=0)       # 0 = on time
+    passengers = db.Column(db.Integer, nullable=True)  # boarded on this trip
+    delay_minutes = db.Column(db.Integer, default=0)  # 0 = on time
     cancelled = db.Column(db.Boolean, default=False)
     cancel_reason = db.Column(db.String(200), default='')
     notes = db.Column(db.Text, default='')
@@ -486,6 +488,7 @@ def nav_html(active='users'):
       <a href="/admin/logout" class="logout">Logout</a>
     </nav>"""
 
+
 def gov_nav_html(active='users'):
     return f"""
     <nav class="gov-nav">
@@ -498,6 +501,7 @@ def gov_nav_html(active='users'):
       </div>
       <a href="/gov/logout" class="logout">Logout</a>
     </nav>"""
+
 
 def require_admin(fn):
     from functools import wraps
@@ -1133,6 +1137,7 @@ def admin_logout():
     session.pop('admin_logged_in', None)
     return redirect('/admin/login')
 
+
 @app.route('/gov/login', methods=['GET', 'POST'])
 def gov_login():
     error = ''
@@ -1194,6 +1199,7 @@ def gov_login():
 </div>
 </body>
 </html>"""
+
 
 @app.route('/gov/community-reports')
 @require_gov
@@ -1282,6 +1288,7 @@ async function resolveReport(id){{
 </script>
 </body>
 </html>"""
+
 
 _ROUTE_LABELS = {
     '7A': 'East End Loop via East',
@@ -1694,6 +1701,7 @@ async function resolveGovSos(token){{
 </body>
 </html>"""
 
+
 @app.route('/gov/logout')
 def gov_logout():
     session.pop('gov_logged_in', None)
@@ -1941,6 +1949,7 @@ setInterval(refreshUsers,15000);
 </script>
 </body>
 </html>"""
+
 
 @app.route('/gov')
 @require_gov
@@ -2892,7 +2901,7 @@ def community_reports():
         username=username,
     )
     db.session.add(report)
-    db.session.flush()                      # need report.id for the timeline
+    db.session.flush()  # need report.id for the timeline
     db.session.add(ReportUpdate(report_id=report.id, status='open', actor='LetsGo',
                                 note='Report received — our team will look into it.'))
     db.session.commit()
@@ -2924,7 +2933,7 @@ def community_report_detail(report_id):
         report.status = new_status
     if 'message' in data:
         report.message = data['message']
-    note = _clean_text(data.get('note'), 500)     # optional note the rider will see
+    note = _clean_text(data.get('note'), 500)  # optional note the rider will see
     changed = report.status != old_status
     if changed or note:
         actor = ('Admin' if session.get('admin_logged_in')
@@ -3241,7 +3250,7 @@ def sos_alert():
     _lng = _to_float(data.get('lng') if data.get('lng') is not None else data.get('longitude'))
     if _valid_latlng(_lat, _lng):
         lat, lng = f'{_lat:.6f}', f'{_lng:.6f}'
-    else:                                   # no usable GPS fix → George Town default (as before)
+    else:  # no usable GPS fix → George Town default (as before)
         lat, lng = '19.2869', '-81.3674'
     contacts = data.get('emergencyContacts') or []
 
@@ -3268,7 +3277,7 @@ def sos_alert():
     )
     db.session.add(sos)
     db.session.commit()
-    db.session.add(SOSLocationPing(sos_id=sos.id, lat=float(lat), lng=float(lng)))   # first point of the trail
+    db.session.add(SOSLocationPing(sos_id=sos.id, lat=float(lat), lng=float(lng)))  # first point of the trail
     db.session.commit()
 
     sos_url = f'https://www.letsgocayman.com/sos/{sos.token}'
@@ -3622,6 +3631,82 @@ def update_bus_location():
     return buses_registered()
 
 
+# ── AXXON GPS TRACKER OVERRIDES ───────────────────────────────────────────
+# Buses listed here get their liveLocation from the Axxon fleet API instead of
+# the driver app. Key = busId as registered in DriverRoute, value = Axxon unit_id.
+AXXON_API_URL = os.environ.get('AXXON_API_URL', 'https://app.axxon.co/api/v1/unit/list.json')
+AXXON_API_KEY = os.environ.get('AXXON_API_KEY', '99a8800d22cd02476c463ce7c6fd31727e8230d9')
+AXXON_BUS_UNITS = {
+    'EASTERN LINK \u2013 North Side Cayman Kai': 579187,
+}
+AXXON_CACHE_SECONDS = 10
+_axxon_cache = {}          # unit_id -> (fetched_at_epoch, unit_dict_or_None)
+_axxon_cache_lock = threading.Lock()
+
+
+def _norm_bus_id(value):
+    """Case/dash/space-insensitive key so en dash vs hyphen never breaks the match."""
+    v = str(value or '').replace('\u2013', '-').replace('\u2014', '-')
+    return re.sub(r'\s+', ' ', v).strip().lower()
+
+
+_AXXON_UNITS_NORM = {_norm_bus_id(k): (k, v) for k, v in AXXON_BUS_UNITS.items()}
+
+
+def _fetch_axxon_unit(unit_id):
+    """Return the Axxon unit dict for unit_id (cached a few seconds), or None on any failure."""
+    import time
+    import urllib.request
+    import urllib.parse
+    now = time.time()
+    with _axxon_cache_lock:
+        hit = _axxon_cache.get(unit_id)
+        if hit and now - hit[0] < AXXON_CACHE_SECONDS:
+            return hit[1]
+    unit = None
+    try:
+        qs = urllib.parse.urlencode({'key': AXXON_API_KEY, 'unit_id': unit_id})
+        req = urllib.request.Request(f'{AXXON_API_URL}?{qs}', headers={'Accept': 'application/json'})
+        with urllib.request.urlopen(req, timeout=6) as resp:
+            payload = json.loads(resp.read().decode('utf-8'))
+        for u in (payload.get('data') or {}).get('units') or []:
+            if int(u.get('unit_id', -1)) == int(unit_id):
+                unit = u
+                break
+    except Exception as ex:
+        app.logger.warning('Axxon fetch failed for unit %s: %s', unit_id, ex)
+    with _axxon_cache_lock:
+        # Cache failures too (briefly) so a dead Axxon API can't slow every request.
+        _axxon_cache[unit_id] = (now, unit)
+    return unit
+
+
+def _apply_axxon_override(route_data):
+    """If route_data's busId is mapped to an Axxon unit, replace its liveLocation with the tracker's."""
+    match = _AXXON_UNITS_NORM.get(_norm_bus_id(route_data.get('busId')))
+    if not match:
+        return
+    bus_id, unit_id = match
+    unit = _fetch_axxon_unit(unit_id)
+    if not unit:
+        return  # Axxon unavailable -> keep whatever the driver app reported
+    lat, lng = _to_float(unit.get('lat')), _to_float(unit.get('lng'))
+    if lat is None or lng is None or not _valid_latlng(lat, lng):
+        return
+    speed = _to_float(unit.get('speed'))
+    heading = _to_float(unit.get('direction'))
+    prev = route_data.get('liveLocation') or {}
+    route_data['liveLocation'] = {
+        'busId': bus_id,
+        'heading': round(heading) if heading is not None else prev.get('heading'),
+        'lat': lat,
+        'lng': lng,
+        'speedKmh': round(speed, 1) if speed is not None else 0,
+        'updatedAt': unit.get('last_update') or datetime.utcnow().isoformat(),
+    }
+    route_data['online'] = True
+
+
 @app.route('/api/buses/coordinates', methods=['GET', 'POST'])
 def buses_coordinates():
     # ── POST: driver app pushes lat/lng ───────────────────────────────────
@@ -3848,6 +3933,10 @@ def buses_coordinates():
             'driverName': d.driver_name,
             'registeredAt': d.created_at.isoformat() if d.created_at else None,
         })
+
+    # ── 6. Axxon-tracked buses: override liveLocation with the GPS tracker ─
+    for r in all_routes:
+        _apply_axxon_override(r)
 
     return jsonify({
         'routes': all_routes,
@@ -4496,13 +4585,14 @@ def privacy_policy():
   <h2>Data retention and deletion</h2>
   <p>You can permanently delete your account and associated data at any time from <a href="/delete-account">our account deletion page</a>.</p>
 
-  
+
   <h2>Contact us</h2>
   <p>Questions about this policy can be sent to <a href="mailto:sally@letsgocayman.com">sally@letsgocayman.com</a>.</p>
 </main>
 <footer>© 2026 LetsGo Cayman · Grand Cayman, Cayman Islands</footer>
 </body>
 </html>"""
+
 
 @app.route('/api/safety/sos/<token>/resolve', methods=['POST'])
 def resolve_sos(token):
@@ -6222,7 +6312,7 @@ def sos_page(token):
         + username + '</strong><br><span style="font-size:12px;color:#555">Bus ' + bus_id
         + ' · Route ' + route_id + '</span></div>').replace('</', '<\\/')
     token_js = json.dumps(token).replace('</', '<\\/')
-    sos_live_js = 'true' if sos else 'false'      # demo page (unknown token) doesn't poll
+    sos_live_js = 'true' if sos else 'false'  # demo page (unknown token) doesn't poll
     resolved_js = 'true' if resolved else 'false'
 
     return f"""<!DOCTYPE html>
@@ -6447,15 +6537,15 @@ if(SOS_LIVE&&!SOS_WAS_RESOLVED){{ pollSOS(); setInterval(pollSOS,5000); }}
 # ═══════════════════════════════════════════════════════════
 
 # ── tunables ───────────────────────────────────────────────
-TELEMETRY_STALE_SECONDS = 90      # no GPS fix for this long → bus is "stale"
-ROUTE_ROAD_FACTOR = 1.15          # stop-to-stop straight lines → real road distance
-STRAIGHT_ROAD_FACTOR = 1.30       # bus → arbitrary point straight line → road distance
-DEFAULT_BUS_SPEED_KMH = 30.0      # ETA speed when bus speed is unknown or it is stopped
+TELEMETRY_STALE_SECONDS = 90  # no GPS fix for this long → bus is "stale"
+ROUTE_ROAD_FACTOR = 1.15  # stop-to-stop straight lines → real road distance
+STRAIGHT_ROAD_FACTOR = 1.30  # bus → arbitrary point straight line → road distance
+DEFAULT_BUS_SPEED_KMH = 30.0  # ETA speed when bus speed is unknown or it is stopped
 MIN_ETA_SPEED_KMH = 15.0
 MAX_ETA_SPEED_KMH = 60.0
-STOP_DWELL_SECONDS = 20           # extra time per intermediate stop
-ON_ROUTE_MAX_KM = 0.6             # farther than this from the route line = "off route"
-ARRIVING_KM = 0.15                # within 150 m of the stop = arriving
+STOP_DWELL_SECONDS = 20  # extra time per intermediate stop
+ON_ROUTE_MAX_KM = 0.6  # farther than this from the route line = "off route"
+ARRIVING_KM = 0.15  # within 150 m of the stop = arriving
 MOVING_KMH = 5.0
 
 REMINDER_DEFAULT_MINUTES = 5
@@ -6467,7 +6557,7 @@ REPORT_MAX_PER_HOUR = 10
 REPORT_STATUSES = ('open', 'in_progress', 'resolved')
 REPORT_STATUS_LABELS = {'open': 'Open', 'in_progress': 'In Progress', 'resolved': 'Resolved'}
 
-SOS_MAX_PINGS = 1200              # per SOS; oldest are trimmed beyond this
+SOS_MAX_PINGS = 1200  # per SOS; oldest are trimmed beyond this
 
 
 # ── small utilities ────────────────────────────────────────
@@ -6673,7 +6763,7 @@ def _ingest_bus_location(bus_id, lat, lng, active=True, data=None):
     if not isinstance(active, bool):
         active = str(active).strip().lower() not in ('false', '0', 'no', 'off')
     speed = _to_float(data.get('speedKmh'))
-    if speed is None:                       # GPS speed is metres/second (expo-location, W3C)
+    if speed is None:  # GPS speed is metres/second (expo-location, W3C)
         ms = _to_float(data.get('speed'))
         speed = ms * 3.6 if ms is not None and ms >= 0 else None
     heading = _to_float(data.get('heading'))
@@ -6723,7 +6813,7 @@ def _plan_ahead(lat, lng, speed_kmh, heading, stops):
     on_route = off_km <= ON_ROUTE_MAX_KM
     result['onRoute'] = on_route
 
-    if not on_route:   # can't follow the line → straight-line distance, nearest stop first
+    if not on_route:  # can't follow the line → straight-line distance, nearest stop first
         result['ahead'] = sorted(
             ({'stop': s, 'km': _hav_km(lat, lng, s['lat'], s['lng']) * STRAIGHT_ROAD_FACTOR} for s in stops),
             key=lambda x: x['km'])
@@ -6741,11 +6831,11 @@ def _plan_ahead(lat, lng, speed_kmh, heading, stops):
     if reverse:
         order = range(n - 1 if past_last else i, -1, -1)
         if before_first and off_km > ARRIVING_KM:
-            order = range(0)                 # heading away from the start of the route: nothing ahead
+            order = range(0)  # heading away from the start of the route: nothing ahead
     else:
         order = range(0 if before_first else i + 1, n)
         if past_last and off_km > ARRIVING_KM:
-            order = range(0)                 # already beyond the terminus
+            order = range(0)  # already beyond the terminus
     cum, prev = 0.0, (lat, lng)
     for idx in order:
         s = stops[idx]
@@ -6783,7 +6873,7 @@ def _build_bus_state(bus_id, route_id=''):
         'lat': t.lat, 'lng': t.lng,
         'speedKmh': None if t.speed_kmh is None else round(t.speed_kmh, 1),
         'heading': None if t.heading is None else int(round(t.heading)),
-        'moving': t.speed_kmh is None or t.speed_kmh >= MOVING_KMH,   # unknown speed ≠ parked
+        'moving': t.speed_kmh is None or t.speed_kmh >= MOVING_KMH,  # unknown speed ≠ parked
         'direction': plan['direction'],
         'onRoute': plan['onRoute'],
         'stops': stops,
@@ -6922,7 +7012,7 @@ def _best_candidate(rem, cache):
             continue
         info = _eta_to_target(st, rem.stop_lat, rem.stop_lng)
         if info['status'] not in ('approaching', 'arriving'):
-            continue          # already passed it, or driving away from it
+            continue  # already passed it, or driving away from it
         if best is None or info['etaSeconds'] < best[1]['etaSeconds']:
             best = (st, info)
     return best
@@ -6953,7 +7043,7 @@ def _try_fire_reminder(rem, cache):
     if info['etaSeconds'] > rem.minutes_before * 60:
         return False
     if not st['moving'] and info['status'] != 'arriving':
-        return False          # parked / stuck at a light — wait until it actually moves
+        return False  # parked / stuck at a light — wait until it actually moves
 
     now = _utcnow()
     eta_min = max(0, int(round(info['etaSeconds'] / 60.0)))
@@ -7021,7 +7111,7 @@ def reminders_collection():
             return jsonify({'reminders': []}), 200
         status = (request.args.get('status') or 'active').strip()
         q = BusReminder.query.filter_by(username=username)
-        if status == 'active':      # pending + anything that fired in the last day
+        if status == 'active':  # pending + anything that fired in the last day
             q = q.filter(db.or_(BusReminder.status == 'pending',
                                 db.and_(BusReminder.status == 'sent',
                                         BusReminder.triggered_at >= _utcnow() - timedelta(days=1))))
@@ -7063,7 +7153,7 @@ def reminders_collection():
 
     existing = BusReminder.query.filter_by(username=username, status='pending',
                                            bus_id=bus_id, route_id=route_id).all()
-    for d in existing:                # setting the same reminder twice is a no-op
+    for d in existing:  # setting the same reminder twice is a no-op
         if abs(d.stop_lat - lat) < 1e-4 and abs(d.stop_lng - lng) < 1e-4:
             return jsonify({'success': True, 'duplicate': True, 'reminder': _reminder_json(d),
                             'message': 'You already have a reminder for this stop'}), 200
@@ -7091,7 +7181,7 @@ def reminders_collection():
         current = {'busId': best[0]['busId'], 'status': best[1]['status'],
                    'etaMinutes': int(round(best[1]['etaSeconds'] / 60.0)),
                    'distanceKm': best[1]['distanceKm']}
-    _run_async(_check_reminders, None)      # fires straight away if the bus is already that close
+    _run_async(_check_reminders, None)  # fires straight away if the bus is already that close
     db.session.refresh(rem)
     return jsonify({'success': True, 'reminder': _reminder_json(rem), 'currentEta': current,
                     'message': f"Reminder set — we'll alert you when the bus is {minutes} min away"}), 201
@@ -7215,13 +7305,13 @@ def sos_location_update(token):
         return jsonify({'success': False, 'message': 'valid lat and lng are required'}), 400
 
     db.session.add(SOSLocationPing(sos_id=sos.id, lat=lat, lng=lng, accuracy=_to_float(data.get('accuracy'))))
-    sos.lat, sos.lng = f'{lat:.6f}', f'{lng:.6f}'      # admin / gov SOS pages show the latest fix
+    sos.lat, sos.lng = f'{lat:.6f}', f'{lng:.6f}'  # admin / gov SOS pages show the latest fix
     if 'busId' in data:
         sos.bus_id = _clean_text(data.get('busId'), 40) or sos.bus_id
     db.session.commit()
 
     total = SOSLocationPing.query.filter_by(sos_id=sos.id).count()
-    if total > SOS_MAX_PINGS:                            # keep the trail bounded
+    if total > SOS_MAX_PINGS:  # keep the trail bounded
         cutoff = (SOSLocationPing.query.filter_by(sos_id=sos.id).order_by(SOSLocationPing.id.desc())
                   .offset(SOS_MAX_PINGS - 200).first())
         if cutoff:
