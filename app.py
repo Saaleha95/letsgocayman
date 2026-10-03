@@ -3845,13 +3845,13 @@ TYPICAL_SPEED_BOUNDS = (20.0, 60.0)
 # that are not on the loop sequence, so their trip distance is measured straight from the start stop.
 ROUTE_SCHEDULES = {
     'ns-cayman-kai': {
-        'first': (7, 30),          # first departure 07:30 (Cayman time)
+        'first': (8, 30),          # first departure 08:30 (Cayman time)
         'last': (18, 30),          # last departure 18:30
         'interval_min': 60,        # every 60 minutes
         'ordered_stops': 17,       # S01..S17 = the loop; S18..S21 are out-of-sequence extras
         'loop': True,              # S01..S17 repeat as a loop (S17 returns to S01)
         'offline_from': (19, 30),  # from 7:30 PM Cayman time the route is reported online=false
-        'online_from': (6, 0),     # ...and goes back to normal at 6:00 AM
+        'online_from': (8, 30),    # ...and goes online again at 8:30 AM
     },
     # East End Loop via Queen's Highway: service 8:30 AM - 7:30 PM, a trip every 30 min.
     # Online from 8:30 AM, offline from 7:30 PM. 'ordered_stops' left out = every stop is in driving order.
