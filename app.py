@@ -4921,6 +4921,7 @@ __NAV__
     <div><label>Bus</label><select id="f-bus"><option value="">All buses</option></select></div>
     <button onclick="load()">Apply</button>
     <button class="alt" onclick="resetWindow()">Current trip</button>
+    <button class="alt" onclick="downloadExcel()">&#11015; Excel report</button>
     <a href="#" id="text-link" class="alt" style="font-size:12px;margin-left:auto">Plain text</a>
     <a href="#" id="json-link" class="alt" style="font-size:12px">Raw JSON</a>
   </div></div>
@@ -4939,6 +4940,12 @@ function qs(){
   if ($('f-hdate').value) p.set('hdate', $('f-hdate').value);
   if ($('f-bus').value) p.set('busId', $('f-bus').value);
   return p.toString();
+}
+function downloadExcel(){
+  const d = $('f-hdate').value || $('f-date').value;
+  const b = $('f-bus').value;
+  const q = new URLSearchParams(); if (d) q.set('date', d); if (b) q.set('busId', b);
+  window.location.href = '/gov/driverinfo/report.xlsx' + (q.toString() ? '?' + q : '');
 }
 function resetWindow(){ $('f-date').value = $('f-start').value = $('f-end').value = $('f-hdate').value = ''; load(); }
 
@@ -5130,6 +5137,130 @@ def gov_driverinfo():
     if fmt == 'text':
         return Response(_trip_report_text(routes), mimetype='text/plain; charset=utf-8')
     return jsonify(payload), 200
+
+
+def _report_windows(route_id, day_start_utc, now):
+    """Hourly windows (UTC datetimes) for one route on one Cayman day. Follows the route's timetable
+    (e.g. 8:30-9:30, 9:30-10:30 ... until it goes offline); routes without one use clock hours 00:00-24:00."""
+    sched = ROUTE_SCHEDULES.get(route_id)
+    if sched:
+        first = sched['first']
+        off = sched.get('offline_from') or (sched['last'][0] + 1, sched['last'][1])
+        t = day_start_utc + timedelta(hours=first[0], minutes=first[1])
+        end_all = day_start_utc + timedelta(hours=off[0], minutes=off[1])
+    else:
+        t, end_all = day_start_utc, day_start_utc + timedelta(hours=24)
+    wins = []
+    while t < end_all and t < now:
+        wins.append((t, min(t + timedelta(hours=1), end_all)))
+        t += timedelta(hours=1)
+    return wins
+
+
+def _build_day_report_xlsx(day_local, only_bus=None):
+    """Excel workbook: stops covered hour by hour, for every bus, for one Cayman day. Returns bytes."""
+    import io
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+
+    now = _utcnow()
+    day_start_utc = day_local - CAYMAN_UTC_OFFSET
+    payload = _build_coordinates_payload()
+    try:
+        _sample_bus_positions(payload)
+    except Exception:
+        db.session.rollback()
+
+    hourly_rows, stop_rows, total_rows, loc_rows = [], [], [], []
+    for r in payload['routes']:
+        live = r.get('liveLocation') or {}
+        bus_id = r.get('busId') or live.get('busId')
+        if not bus_id or (only_bus and str(bus_id).lower() != only_bus.lower()):
+            continue
+        label = _bus_label(r, bus_id)
+        plate = live.get('plate') or ''
+        rname = r.get('routeName') or r.get('route') or ''
+        tot_cov = tot_stp = 0
+        for (ws_, we_) in _report_windows(r.get('route'), day_start_utc, now):
+            t = _driver_trip_report(r, now, (ws_, we_))
+            if not t:
+                continue
+            hour = f"{_local_hms(ws_)[:-6].lstrip('0') or '12'}{_local_hms(ws_)[-3:]} - {_local_hms(we_)[:-6].lstrip('0') or '12'}{_local_hms(we_)[-3:]}"
+            sm = t['summary']
+            tot_cov += sm['stopsArrived']; tot_stp += sm['stopsStoppedAt']
+            names = ', '.join(a['stopName'] for a in t['arrivedStops'])
+            hourly_rows.append([day_local.strftime('%Y-%m-%d'), label, plate, rname, hour, sm['stopsArrived'],
+                                sm['stopsStoppedAt'], sm['totalStanding'], names or '-'])
+            for a in t['arrivedStops']:
+                what = 'Standing (still here)' if a['status'] == 'at_stop' else ('Stopped' if a['stopped'] else 'Drove past')
+                stop_rows.append([day_local.strftime('%Y-%m-%d'), label, plate, hour, a['order'], a['stopName'],
+                                  a['arrivedLocal'], a.get('departedLocal') or '', a['dwell'] if a['stopped'] or a['status'] == 'at_stop' else '', what])
+        for hl in reversed(_hourly_locations(bus_id, r.get('stops') or [], day_start_utc, min(now, day_start_utc + timedelta(hours=24)))):
+            loc_rows.append([day_local.strftime('%Y-%m-%d'), label, plate, hl['hour'], hl['where'], hl['seenAt'] or '',
+                             'Yes' if hl['moving'] else ('No' if hl['seenAt'] else ''), hl['mapUrl'] or ''])
+        total_rows.append([day_local.strftime('%Y-%m-%d'), label, plate, rname, tot_cov, tot_stp])
+
+    hdr_fill = PatternFill('solid', fgColor='1F3A5F')
+    hdr_font = Font(bold=True, color='FFFFFF')
+    thin = Side(style='thin', color='D0D7DE')
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+    band = PatternFill('solid', fgColor='F3F6FA')
+
+    wb = Workbook()
+    def sheet(title, headers, rows, widths, first=False):
+        ws = wb.active if first else wb.create_sheet()
+        ws.title = title
+        ws.append(headers)
+        for row in rows:
+            ws.append(row)
+        for c in ws[1]:
+            c.fill, c.font, c.border = hdr_fill, hdr_font, border
+            c.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+        for i, w in enumerate(widths, 1):
+            ws.column_dimensions[get_column_letter(i)].width = w
+        for ri, row in enumerate(ws.iter_rows(min_row=2), 2):
+            for c in row:
+                c.border = border
+                c.alignment = Alignment(vertical='top', wrap_text=True)
+                if ri % 2 == 0:
+                    c.fill = band
+        ws.freeze_panes = 'A2'
+        ws.auto_filter.ref = ws.dimensions
+        ws.row_dimensions[1].height = 28
+        return ws
+
+    sheet('Hourly summary', ['Date', 'Bus', 'Plate', 'Route', 'Hour', 'Stops covered', 'Stopped at', 'Time standing', 'Stops reached (in order)'],
+          hourly_rows or [[day_local.strftime('%Y-%m-%d'), 'No data for this day', '', '', '', '', '', '', '']],
+          [12, 18, 11, 38, 20, 14, 12, 15, 80], first=True)
+    sheet('Stop details', ['Date', 'Bus', 'Plate', 'Hour', '#', 'Stop', 'Arrived', 'Left', 'Stood', 'What happened'],
+          stop_rows, [12, 18, 11, 20, 5, 42, 13, 13, 12, 22])
+    sheet('Hourly location', ['Date', 'Bus', 'Plate', 'Hour', 'Where the bus was', 'Last seen', 'Moving', 'Map'],
+          loc_rows, [12, 18, 11, 22, 42, 13, 9, 45])
+    sheet('Day total', ['Date', 'Bus', 'Plate', 'Route', 'Stops covered (all hours)', 'Stopped at (all hours)'],
+          total_rows, [12, 18, 11, 38, 24, 22])
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+@app.route('/gov/driverinfo/report.xlsx', methods=['GET'])
+@require_gov
+def gov_driverinfo_report():
+    """Gov-only. Excel report of the stops each bus covered, hour by hour, for one day.
+      ?date=YYYY-MM-DD   Cayman date (default: today)        ?busId=<id>   one bus only
+    Built from the saved GPS history, so it works for any day still inside BUS_PING_RETENTION_DAYS."""
+    raw = (request.args.get('date') or '').strip()
+    try:
+        day = datetime.strptime(raw, '%Y-%m-%d') if raw else (_utcnow() + CAYMAN_UTC_OFFSET).replace(hour=0, minute=0, second=0, microsecond=0)
+    except ValueError:
+        return jsonify({'error': 'date must be YYYY-MM-DD'}), 400
+    try:
+        data = _build_day_report_xlsx(day, (request.args.get('busId') or '').strip() or None)
+    except ImportError:
+        return jsonify({'error': 'Excel support is not installed. Add "openpyxl" to requirements.txt and redeploy.'}), 503
+    return Response(data, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    headers={'Content-Disposition': f'attachment; filename="bus-report-{day.strftime("%Y-%m-%d")}.xlsx"'})
 
 
 @app.route('/support')
