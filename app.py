@@ -512,6 +512,7 @@ def gov_nav_html(active='users'):
         <a href="/gov" class="{'active' if active == 'users' else ''}">Users</a>
         <a href="/gov/community-reports" class="{'active' if active == 'community' else ''}">Community Reports</a>
         <a href="/gov/journey-tracking" class="{'active' if active == 'journeys' else ''}">🧭 Journey Tracking</a>
+        <a href="/gov/driverinfo" class="{'active' if active == 'driverinfo' else ''}">🚌 Driver Info</a>
         <a href="/gov/sos-alerts" class="sos-link {'active' if active == 'sos' else ''}">🆘 SOS Alerts</a>
       </div>
       <a href="/gov/logout" class="logout">Logout</a>
@@ -4776,10 +4777,141 @@ def _driver_trip_report(route, now, custom_window):
     }
 
 
+DRIVERINFO_PAGE = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Driver Info — Gov Portal</title>
+<meta name="robots" content="noindex, nofollow">
+__STYLE__
+__NAV_STYLE__
+<style>
+  .filters{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;padding:16px 20px}
+  .filters label{display:block;font-size:11px;font-weight:600;color:#8b949e;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+  .filters input,.filters select{background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:8px 10px;color:#e6edf3;font-size:13px}
+  .filters button{background:var(--gold);color:#0d1117;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer;font-size:13px}
+  .filters button.alt{background:#21262d;color:#e6edf3;border:1px solid #30363d}
+  .bus-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;padding:16px 20px;border-bottom:1px solid #30363d}
+  .bus-head h2{font-size:17px;color:#f0f6fc;margin:0}
+  .bus-head p{font-size:12px;color:#8b949e;margin:4px 0 0}
+  .chips{display:flex;flex-wrap:wrap;gap:10px;padding:14px 20px}
+  .chip{background:#0d1117;border:1px solid #30363d;border-radius:10px;padding:8px 14px;min-width:110px}
+  .chip b{display:block;font-size:20px;color:#f0f6fc}
+  .chip span{font-size:11px;color:#8b949e;text-transform:uppercase;letter-spacing:.4px}
+  .now{margin:0 20px 14px;padding:10px 14px;border-radius:10px;background:rgba(245,197,24,.08);border:1px solid rgba(245,197,24,.25);font-size:14px}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:0}
+  .cols h3{font-size:13px;color:#8b949e;text-transform:uppercase;letter-spacing:.5px;padding:12px 20px 0;margin:0}
+  .pill{display:inline-block;padding:2px 9px;border-radius:12px;font-size:11px;font-weight:600}
+  .pill.ok{background:rgba(74,222,128,.12);color:#4ade80}.pill.mute{background:#21262d;color:#8b949e}
+  .pill.warn{background:rgba(245,197,24,.12);color:var(--gold)}.pill.bad{background:rgba(248,113,113,.12);color:#f87171}
+  .note{margin:0 20px 14px;padding:10px 14px;border-radius:10px;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.25);color:#f87171;font-size:12px}
+  .empty{padding:16px 20px;color:#6e7681;font-size:13px}
+  @media(max-width:900px){.cols{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+__NAV__
+<div class="admin-main">
+  <div class="page-header">
+    <div><h1>🚌 Driver Info</h1><p>Stops reached, time standing at each, and where each bus is heading (Cayman time)</p></div>
+    <span class="badge" id="updated">Loading…</span>
+  </div>
+  <div class="card"><div class="filters">
+    <div><label>Date (optional)</label><input type="date" id="f-date"></div>
+    <div><label>Start</label><input type="time" id="f-start"></div>
+    <div><label>End</label><input type="time" id="f-end"></div>
+    <div><label>Bus</label><select id="f-bus"><option value="">All buses</option></select></div>
+    <button onclick="load()">Apply</button>
+    <button class="alt" onclick="resetWindow()">Current trip</button>
+    <a href="#" id="json-link" class="alt" style="font-size:12px;margin-left:auto">View raw JSON ↗</a>
+  </div></div>
+  <div id="out"></div>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const STATUS = {standing_at_stop:['Standing at stop','warn'], passing_stop:['Passing a stop','ok'], moving:['Moving','ok'],
+                standing:['Standing','warn'], offline:['Offline','mute'], no_data:['No GPS data','bad']};
+const TRIP = {not_started:'Not started', in_progress:'In progress', completed:'Completed'};
+
+function qs(){
+  const p = new URLSearchParams();
+  if ($('f-start').value) { p.set('start', $('f-start').value); if ($('f-end').value) p.set('end', $('f-end').value); if ($('f-date').value) p.set('date', $('f-date').value); }
+  if ($('f-bus').value) p.set('busId', $('f-bus').value);
+  return p.toString();
+}
+function resetWindow(){ $('f-date').value = $('f-start').value = $('f-end').value = ''; load(); }
+
+function arrivedRows(list){
+  if (!list.length) return '<div class="empty">No stops reached in this window yet.</div>';
+  return '<div class="table-wrap"><table><thead><tr><th>#</th><th>Stop</th><th>Arrived</th><th>Departed</th><th>Time at stop</th><th></th></tr></thead><tbody>' +
+    list.map(a => `<tr><td>${a.order}</td><td>${esc(a.stopName)}</td><td>${esc(a.arrivedLocal)}${a.arrivedBeforeWindow ? ' *' : ''}</td>
+      <td>${a.departedLocal ? esc(a.departedLocal) : '—'}</td><td><b>${esc(a.dwell)}</b></td>
+      <td>${a.status === 'at_stop' ? '<span class="pill warn">here now</span>' : (a.stopped ? '<span class="pill ok">stopped</span>' : '<span class="pill mute">drove past</span>')}</td></tr>`).join('') +
+    '</tbody></table></div>';
+}
+function headingRows(list){
+  if (!list.length) return '<div class="empty">No upcoming stops (bus has no live position).</div>';
+  return '<div class="table-wrap"><table><thead><tr><th>#</th><th>Stop</th><th>ETA</th><th>Arrives about</th><th>Distance</th></tr></thead><tbody>' +
+    list.map(h => `<tr><td>${h.order}</td><td>${esc(h.stopName)}</td><td><b>${esc(h.eta)}</b>${h.etaMode !== 'live' ? ' <span class="pill mute">' + esc(h.etaMode) + '</span>' : ''}</td>
+      <td>${esc(h.etaLocalTime)}</td><td>${h.distanceKm != null ? esc(h.distanceKm) + ' km' : '—'}</td></tr>`).join('') +
+    '</tbody></table></div>';
+}
+function bus(r){
+  const t = r.tripReport; if (!t) return '';
+  const w = t.window, s = t.summary, st = STATUS[t.currentStatus] || [t.currentStatus, 'mute'];
+  const cs = t.currentStop;
+  return `<div class="card">
+    <div class="bus-head"><div><h2>${esc(r.routeName)} <span class="pill ${st[1]}">${esc(st[0])}</span></h2>
+      <p>Bus ${esc(t.busId)}${t.driverName ? ' · Driver ' + esc(t.driverName) : ''}</p></div>
+      <div style="text-align:right"><b>${esc(w.startLocal)} – ${esc(w.endLocal)}</b><p>${esc(TRIP[w.tripStatus] || w.tripStatus)}${w.nextDepartureLocal ? ' · next departure ' + esc(w.nextDepartureLocal) : ''}</p></div></div>
+    <div class="chips">
+      <div class="chip"><b>${s.stopsArrived}</b><span>Stops reached</span></div>
+      <div class="chip"><b>${s.stopsStoppedAt}</b><span>Stopped at</span></div>
+      <div class="chip"><b>${s.stopsRemaining}</b><span>Stops ahead</span></div>
+      <div class="chip"><b>${esc(s.totalStanding)}</b><span>Total standing</span></div>
+    </div>
+    ${cs ? `<div class="now">📍 At <b>${esc(cs.stopName)}</b> — standing for <b>${esc(cs.standing)}</b>${cs.arrivedLocal ? ' (since ' + esc(cs.arrivedLocal) + ')' : ''}</div>` : ''}
+    ${t.nextStop ? `<div class="now">➡ Heading to <b>${esc(t.nextStop.stopName)}</b> — ${esc(t.nextStop.eta)}</div>` : ''}
+    ${t.history.note ? `<div class="note">⚠ ${esc(t.history.note)}</div>` : ''}
+    <div class="cols"><div><h3>Stops reached</h3>${arrivedRows(t.arrivedStops)}</div><div><h3>Heading to</h3>${headingRows(t.headingTo)}</div></div>
+  </div>`;
+}
+async function load(){
+  const q = qs();
+  $('json-link').href = '/gov/driverinfo?format=json' + (q ? '&' + q : '');
+  try {
+    const res = await fetch('/gov/driverinfo?format=json' + (q ? '&' + q : ''), {headers:{'Accept':'application/json'}});
+    const j = await res.json();
+    if (!res.ok) { $('out').innerHTML = `<div class="note">${esc(j.error || 'Error')}</div>`; return; }
+    const sel = $('f-bus'), cur = sel.value;
+    if (sel.options.length <= 1) {
+      const all = await (await fetch('/gov/driverinfo?format=json', {headers:{'Accept':'application/json'}})).json();
+      all.routes.filter(r => r.tripReport).forEach(r => sel.add(new Option(r.routeName + ' (' + r.tripReport.busId + ')', r.tripReport.busId)));
+      sel.value = cur;
+    }
+    const html = j.routes.map(bus).join('');
+    $('out').innerHTML = html || '<div class="card"><div class="empty">No buses found.</div></div>';
+    $('updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+  } catch (e) { $('updated').textContent = 'Update failed'; }
+}
+load(); setInterval(load, 15000);
+</script>
+</body>
+</html>"""
+
+
+def _driverinfo_page():
+    return (DRIVERINFO_PAGE.replace('__STYLE__', ADMIN_STYLE).replace('__NAV_STYLE__', GOV_NAV_STYLE)
+            .replace('__NAV__', gov_nav_html('driverinfo')))
+
+
 @app.route('/gov/driverinfo', methods=['GET'])
 @require_gov
 def gov_driverinfo():
     """Gov-only. Same payload as GET /api/buses/coordinates, plus `tripReport` on every route that has a bus.
+
+    Browsers get an HTML page (linked from the gov menu); API clients, or ?format=json, get the JSON.
 
     Optional query params
       busId=<id> | routeId=<id>        limit to one bus / route
@@ -4787,6 +4919,8 @@ def gov_driverinfo():
                                        Cayman time, e.g. start=08:30&end=09:30. Default: the hourly trip
                                        the route is on right now (from its timetable).
     """
+    if request.args.get('format') != 'json' and request.accept_mimetypes.best == 'text/html':
+        return Response(_driverinfo_page(), mimetype='text/html')   # browser -> the page; API clients -> JSON
     now = _utcnow()
     try:
         custom = _requested_window(request.args, now)
