@@ -3669,6 +3669,8 @@ _axxon_cache_lock = threading.Lock()
 def _norm_bus_id(value):
     """Case/dash/space-insensitive key so en dash vs hyphen never breaks the match."""
     v = str(value or '').replace('\u2013', '-').replace('\u2014', '-')
+    for q in ('\u2019', '\u2018', '\u02bc', '\u0060', '\u00b4'):   # curly / typographic apostrophes -> '
+        v = v.replace(q, "'")
     return re.sub(r'\s+', ' ', v).strip().lower()
 
 
@@ -3850,6 +3852,16 @@ ROUTE_SCHEDULES = {
         'loop': True,              # S01..S17 repeat as a loop (S17 returns to S01)
         'offline_from': (19, 30),  # from 7:30 PM Cayman time the route is reported online=false
         'online_from': (6, 0),     # ...and goes back to normal at 6:00 AM
+    },
+    # East End Loop via Queen's Highway: service 8:30 AM - 7:30 PM, a trip every 30 min.
+    # Online from 8:30 AM, offline from 7:30 PM. 'ordered_stops' left out = every stop is in driving order.
+    'east-end-via-qh': {
+        'first': (8, 30),          # first departure 8:30 AM (Cayman time)
+        'last': (19, 0),           # last departure 7:00 PM (service ends 7:30 PM)
+        'interval_min': 30,
+        'loop': True,
+        'offline_from': (19, 30),  # 7:30 PM -> online=false
+        'online_from': (8, 30),    # 8:30 AM -> online again
     },
 }
 
