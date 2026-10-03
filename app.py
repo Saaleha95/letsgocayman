@@ -4434,6 +4434,37 @@ def _sample_bus_positions(payload=None):
     return added
 
 
+def _hourly_locations(bus_id, stops, day_start_utc, upto_utc):
+    """One row per full hour of the (Cayman) day: where the bus was at the end of that hour,
+    taken from the saved GPS history. Returns newest hour first."""
+    out = []
+    local_start = day_start_utc + CAYMAN_UTC_OFFSET
+    h = 0
+    while True:
+        h_start = day_start_utc + timedelta(hours=h)
+        h_end = h_start + timedelta(hours=1)
+        if h_start >= upto_utc:
+            break
+        row = (BusPing.query.filter(BusPing.bus_id == bus_id, BusPing.fix_at >= h_start,
+                                    BusPing.fix_at < min(h_end, upto_utc))
+               .order_by(BusPing.fix_at.desc()).first())
+        label = f"{(local_start + timedelta(hours=h)).strftime('%I:%M %p').lstrip('0')} - " \
+                f"{(local_start + timedelta(hours=h + 1)).strftime('%I:%M %p').lstrip('0')}"
+        if row:
+            near = _nearest_stop(stops, row.lat, row.lng) if stops else None
+            at = stops[near[1]]['name'] if near and near[0] <= STOP_ENTER_KM else None
+            nxt = stops[near[1]]['name'] if near and near[0] > STOP_ENTER_KM else None
+            moving = row.speed_kmh is not None and row.speed_kmh >= MOVING_SPEED_KMH
+            out.append({'hour': label, 'seenAt': _local_hms(row.fix_at), 'lat': row.lat, 'lng': row.lng,
+                        'where': f'At {at}' if at else (f'Near {nxt}' if nxt else 'On the road'),
+                        'moving': moving, 'mapUrl': f'https://maps.google.com/?q={row.lat},{row.lng}'})
+        else:
+            out.append({'hour': label, 'seenAt': None, 'where': 'No GPS data', 'moving': False,
+                        'lat': None, 'lng': None, 'mapUrl': None})
+        h += 1
+    return out[::-1]
+
+
 def _bus_sampler_loop():
     import time
     last_cleanup = 0.0
@@ -4598,6 +4629,13 @@ def _stop_ref(st):
     return {'stopId': st.get('id'), 'stopName': st.get('name'), 'lat': st.get('lat'), 'lng': st.get('lng')}
 
 
+def _bus_label(route, bus_id):
+    """Short human label for a bus: the tracker/bus name plus its route, e.g. 'CB-12 · North Side/Cayman Kai'."""
+    name = str(bus_id or '').strip()
+    rname = str(route.get('routeName') or route.get('route') or '').strip()
+    return f'{name} · {rname}' if name and rname else (name or rname or 'Bus')
+
+
 def _driver_trip_report(route, now, custom_window):
     """The per-bus trip analysis that /gov/driverinfo adds to each route of the coordinates payload."""
     live = route.get('liveLocation') or {}
@@ -4759,7 +4797,7 @@ def _driver_trip_report(route, now, custom_window):
             window['nextDepartureLocal'] = _local_hms(nxt)
 
     return {
-        'busId': bus_id, 'driverName': route.get('driverName'),
+        'busId': bus_id, 'busLabel': _bus_label(route, bus_id),
         'currentStatus': status, 'window': window,
         'currentStop': current_stop, 'nextStop': heading_to[0] if heading_to else None,
         'summary': {
@@ -4773,6 +4811,9 @@ def _driver_trip_report(route, now, custom_window):
         },
         'arrivedStops': arrived_out,
         'headingTo': heading_to,
+        'hourlyLocations': _hourly_locations(
+            bus_id, stops, (now + CAYMAN_UTC_OFFSET).replace(hour=0, minute=0, second=0, microsecond=0)
+            - CAYMAN_UTC_OFFSET, now) if trip_status != 'not_started' else [],
         'history': history,
     }
 
@@ -4781,7 +4822,7 @@ DRIVERINFO_PAGE = """<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Driver Info — Gov Portal</title>
+<title>Bus Tracker - Gov Portal</title>
 <meta name="robots" content="noindex, nofollow">
 __STYLE__
 __NAV_STYLE__
@@ -4791,21 +4832,40 @@ __NAV_STYLE__
   .filters input,.filters select{background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:8px 10px;color:#e6edf3;font-size:13px}
   .filters button{background:var(--gold);color:#0d1117;border:none;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer;font-size:13px}
   .filters button.alt{background:#21262d;color:#e6edf3;border:1px solid #30363d}
-  .bus-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;padding:16px 20px;border-bottom:1px solid #30363d}
-  .bus-head h2{font-size:17px;color:#f0f6fc;margin:0}
+  .bus-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;padding:18px 20px;border-bottom:1px solid #30363d}
+  .bus-head h2{font-size:20px;color:#f0f6fc;margin:0}
   .bus-head p{font-size:12px;color:#8b949e;margin:4px 0 0}
-  .chips{display:flex;flex-wrap:wrap;gap:10px;padding:14px 20px}
-  .chip{background:#0d1117;border:1px solid #30363d;border-radius:10px;padding:8px 14px;min-width:110px}
-  .chip b{display:block;font-size:20px;color:#f0f6fc}
+  .pill{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;vertical-align:middle}
+  .pill.ok{background:rgba(74,222,128,.14);color:#4ade80}.pill.mute{background:#21262d;color:#8b949e}
+  .pill.warn{background:rgba(245,197,24,.14);color:var(--gold)}.pill.bad{background:rgba(248,113,113,.14);color:#f87171}
+  .hero{margin:16px 20px 0;padding:16px 18px;border-radius:14px;display:flex;gap:14px;align-items:center;border:1px solid #30363d;background:#0d1117}
+  .hero .ico{font-size:30px}
+  .hero .big{font-size:18px;font-weight:700;color:#f0f6fc}
+  .hero .sub{font-size:13px;color:#8b949e;margin-top:2px}
+  .hero.here{border-color:rgba(245,197,24,.45);background:rgba(245,197,24,.07)}
+  .hero.next{border-color:rgba(74,222,128,.35);background:rgba(74,222,128,.06)}
+  .chips{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;padding:16px 20px}
+  .chip{background:#0d1117;border:1px solid #30363d;border-radius:12px;padding:12px 14px}
+  .chip b{display:block;font-size:24px;color:#f0f6fc}
   .chip span{font-size:11px;color:#8b949e;text-transform:uppercase;letter-spacing:.4px}
-  .now{margin:0 20px 14px;padding:10px 14px;border-radius:10px;background:rgba(245,197,24,.08);border:1px solid rgba(245,197,24,.25);font-size:14px}
-  .cols{display:grid;grid-template-columns:1fr 1fr;gap:0}
-  .cols h3{font-size:13px;color:#8b949e;text-transform:uppercase;letter-spacing:.5px;padding:12px 20px 0;margin:0}
-  .pill{display:inline-block;padding:2px 9px;border-radius:12px;font-size:11px;font-weight:600}
-  .pill.ok{background:rgba(74,222,128,.12);color:#4ade80}.pill.mute{background:#21262d;color:#8b949e}
-  .pill.warn{background:rgba(245,197,24,.12);color:var(--gold)}.pill.bad{background:rgba(248,113,113,.12);color:#f87171}
   .note{margin:0 20px 14px;padding:10px 14px;border-radius:10px;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.25);color:#f87171;font-size:12px}
-  .empty{padding:16px 20px;color:#6e7681;font-size:13px}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:0}
+  .cols h3,.sec h3{font-size:12px;color:#8b949e;text-transform:uppercase;letter-spacing:.6px;padding:14px 20px 8px;margin:0}
+  .tl{list-style:none;margin:0;padding:0 20px 16px 28px;position:relative}
+  .tl:before{content:'';position:absolute;left:34px;top:6px;bottom:22px;width:2px;background:#30363d}
+  .tl li{position:relative;padding:0 0 14px 28px}
+  .tl li:before{content:'';position:absolute;left:0;top:4px;width:12px;height:12px;border-radius:50%;background:#484f58;border:2px solid #0d1117;box-shadow:0 0 0 2px #30363d}
+  .tl li.stopped:before{background:#4ade80;box-shadow:0 0 0 2px rgba(74,222,128,.35)}
+  .tl li.here:before{background:var(--gold);box-shadow:0 0 0 4px rgba(245,197,24,.35)}
+  .tl li.todo:before{background:#0d1117;box-shadow:0 0 0 2px #58a6ff}
+  .tl .nm{font-size:14px;font-weight:600;color:#f0f6fc}
+  .tl .mt{font-size:12px;color:#8b949e;margin-top:2px}
+  .hours{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;padding:0 20px 18px}
+  .hr{background:#0d1117;border:1px solid #30363d;border-radius:12px;padding:10px 12px}
+  .hr .t{font-size:11px;color:#8b949e;font-weight:600}
+  .hr .w{font-size:14px;color:#f0f6fc;font-weight:600;margin-top:3px}
+  .hr a{font-size:11px;color:#58a6ff;text-decoration:none}
+  .empty{padding:6px 20px 16px;color:#6e7681;font-size:13px}
   @media(max-width:900px){.cols{grid-template-columns:1fr}}
 </style>
 </head>
@@ -4813,85 +4873,100 @@ __NAV_STYLE__
 __NAV__
 <div class="admin-main">
   <div class="page-header">
-    <div><h1>🚌 Driver Info</h1><p>Stops reached, time standing at each, and where each bus is heading (Cayman time)</p></div>
-    <span class="badge" id="updated">Loading…</span>
+    <div><h1>Bus Tracker</h1><p>Where each bus is, the stops it has covered, and where it is going next (Cayman time)</p></div>
+    <span class="badge" id="updated">Loading...</span>
   </div>
   <div class="card"><div class="filters">
     <div><label>Date (optional)</label><input type="date" id="f-date"></div>
     <div><label>Start</label><input type="time" id="f-start"></div>
     <div><label>End</label><input type="time" id="f-end"></div>
+    <div><label>History date</label><input type="date" id="f-hdate"></div>
     <div><label>Bus</label><select id="f-bus"><option value="">All buses</option></select></div>
     <button onclick="load()">Apply</button>
     <button class="alt" onclick="resetWindow()">Current trip</button>
-    <a href="#" id="json-link" class="alt" style="font-size:12px;margin-left:auto">View raw JSON ↗</a>
+    <a href="#" id="text-link" class="alt" style="font-size:12px;margin-left:auto">Plain text</a>
+    <a href="#" id="json-link" class="alt" style="font-size:12px">Raw JSON</a>
   </div></div>
   <div id="out"></div>
 </div>
 <script>
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const STATUS = {standing_at_stop:['Standing at stop','warn'], passing_stop:['Passing a stop','ok'], moving:['Moving','ok'],
+const STATUS = {standing_at_stop:['Standing at a stop','warn'], passing_stop:['Passing a stop','ok'], moving:['Moving','ok'],
                 standing:['Standing','warn'], offline:['Offline','mute'], no_data:['No GPS data','bad']};
 const TRIP = {not_started:'Not started', in_progress:'In progress', completed:'Completed'};
 
 function qs(){
   const p = new URLSearchParams();
   if ($('f-start').value) { p.set('start', $('f-start').value); if ($('f-end').value) p.set('end', $('f-end').value); if ($('f-date').value) p.set('date', $('f-date').value); }
+  if ($('f-hdate').value) p.set('hdate', $('f-hdate').value);
   if ($('f-bus').value) p.set('busId', $('f-bus').value);
   return p.toString();
 }
-function resetWindow(){ $('f-date').value = $('f-start').value = $('f-end').value = ''; load(); }
+function resetWindow(){ $('f-date').value = $('f-start').value = $('f-end').value = $('f-hdate').value = ''; load(); }
 
-function arrivedRows(list){
-  if (!list.length) return '<div class="empty">No stops reached in this window yet.</div>';
-  return '<div class="table-wrap"><table><thead><tr><th>#</th><th>Stop</th><th>Arrived</th><th>Departed</th><th>Time at stop</th><th></th></tr></thead><tbody>' +
-    list.map(a => `<tr><td>${a.order}</td><td>${esc(a.stopName)}</td><td>${esc(a.arrivedLocal)}${a.arrivedBeforeWindow ? ' *' : ''}</td>
-      <td>${a.departedLocal ? esc(a.departedLocal) : '—'}</td><td><b>${esc(a.dwell)}</b></td>
-      <td>${a.status === 'at_stop' ? '<span class="pill warn">here now</span>' : (a.stopped ? '<span class="pill ok">stopped</span>' : '<span class="pill mute">drove past</span>')}</td></tr>`).join('') +
-    '</tbody></table></div>';
+function hero(t){
+  const cs = t.currentStop, ns = t.nextStop;
+  let h = '';
+  if (cs) h += '<div class="hero here"><div class="ico">&#128205;</div><div><div class="big">Standing at ' + esc(cs.stopName) + '</div><div class="sub">for ' + esc(cs.standing) + (cs.arrivedLocal ? ' (since ' + esc(cs.arrivedLocal) + ')' : '') + '</div></div></div>';
+  else h += '<div class="hero"><div class="ico">&#128652;</div><div><div class="big">' + esc((STATUS[t.currentStatus] || [t.currentStatus])[0]) + '</div><div class="sub">Not at a stop right now</div></div></div>';
+  if (ns) h += '<div class="hero next"><div class="ico">&#10145;&#65039;</div><div><div class="big">Heading to ' + esc(ns.stopName) + '</div><div class="sub">' + esc(ns.eta) + (ns.etaLocalTime ? ' &middot; about ' + esc(ns.etaLocalTime) : '') + '</div></div></div>';
+  return h;
 }
-function headingRows(list){
-  if (!list.length) return '<div class="empty">No upcoming stops (bus has no live position).</div>';
-  return '<div class="table-wrap"><table><thead><tr><th>#</th><th>Stop</th><th>ETA</th><th>Arrives about</th><th>Distance</th></tr></thead><tbody>' +
-    list.map(h => `<tr><td>${h.order}</td><td>${esc(h.stopName)}</td><td><b>${esc(h.eta)}</b>${h.etaMode !== 'live' ? ' <span class="pill mute">' + esc(h.etaMode) + '</span>' : ''}</td>
-      <td>${esc(h.etaLocalTime)}</td><td>${h.distanceKm != null ? esc(h.distanceKm) + ' km' : '—'}</td></tr>`).join('') +
-    '</tbody></table></div>';
+function reached(list){
+  if (!list.length) return '<div class="empty">No stops reached in this window yet.</div>';
+  return '<ul class="tl">' + list.map(a => {
+    const cls = a.status === 'at_stop' ? 'here' : (a.stopped ? 'stopped' : '');
+    const what = a.status === 'at_stop' ? '<span class="pill warn">here now</span> ' + esc(a.dwell) + ' so far'
+      : (a.stopped ? 'Stood <b>' + esc(a.dwell) + '</b>, left ' + esc(a.departedLocal) : 'Drove past');
+    return '<li class="' + cls + '"><div class="nm">' + a.order + '. ' + esc(a.stopName) + '</div><div class="mt">Arrived ' + esc(a.arrivedLocal) + (a.arrivedBeforeWindow ? ' *' : '') + ' &middot; ' + what + '</div></li>';
+  }).join('') + '</ul>';
+}
+function ahead(list){
+  if (!list.length) return '<div class="empty">No upcoming stops.</div>';
+  return '<ul class="tl">' + list.map(h =>
+    '<li class="todo"><div class="nm">' + esc(h.stopName) + '</div><div class="mt"><b>' + esc(h.eta) + '</b>' + (h.etaLocalTime ? ' &middot; about ' + esc(h.etaLocalTime) : '') + (h.distanceKm != null ? ' &middot; ' + esc(h.distanceKm) + ' km' : '') + '</div></li>'
+  ).join('') + '</ul>';
+}
+function hourly(list, dt){
+  if (!list || !list.length) return '';
+  return '<div class="sec"><h3>&#128340; History &middot; hourly location' + (dt ? ' &middot; ' + esc(dt) : ' &middot; today') + '</h3><div class="hours">' + list.map(x =>
+    '<div class="hr"><div class="t">' + esc(x.hour) + '</div><div class="w">' + esc(x.where) + '</div>' +
+    (x.seenAt ? '<div class="t">seen ' + esc(x.seenAt) + (x.moving ? ' &middot; moving' : '') + '</div>' : '') +
+    (x.mapUrl ? '<a href="' + esc(x.mapUrl) + '" target="_blank" rel="noopener">Open on map</a>' : '') + '</div>'
+  ).join('') + '</div></div>';
 }
 function bus(r){
   const t = r.tripReport; if (!t) return '';
   const w = t.window, s = t.summary, st = STATUS[t.currentStatus] || [t.currentStatus, 'mute'];
-  const cs = t.currentStop;
-  return `<div class="card">
-    <div class="bus-head"><div><h2>${esc(r.routeName)} <span class="pill ${st[1]}">${esc(st[0])}</span></h2>
-      <p>Bus ${esc(t.busId)}${t.driverName ? ' · Driver ' + esc(t.driverName) : ''}</p></div>
-      <div style="text-align:right"><b>${esc(w.startLocal)} – ${esc(w.endLocal)}</b><p>${esc(TRIP[w.tripStatus] || w.tripStatus)}${w.nextDepartureLocal ? ' · next departure ' + esc(w.nextDepartureLocal) : ''}</p></div></div>
-    <div class="chips">
-      <div class="chip"><b>${s.stopsArrived}</b><span>Stops reached</span></div>
-      <div class="chip"><b>${s.stopsStoppedAt}</b><span>Stopped at</span></div>
-      <div class="chip"><b>${s.stopsRemaining}</b><span>Stops ahead</span></div>
-      <div class="chip"><b>${esc(s.totalStanding)}</b><span>Total standing</span></div>
-    </div>
-    ${cs ? `<div class="now">📍 At <b>${esc(cs.stopName)}</b> — standing for <b>${esc(cs.standing)}</b>${cs.arrivedLocal ? ' (since ' + esc(cs.arrivedLocal) + ')' : ''}</div>` : ''}
-    ${t.nextStop ? `<div class="now">➡ Heading to <b>${esc(t.nextStop.stopName)}</b> — ${esc(t.nextStop.eta)}</div>` : ''}
-    ${t.history.note ? `<div class="note">⚠ ${esc(t.history.note)}</div>` : ''}
-    <div class="cols"><div><h3>Stops reached</h3>${arrivedRows(t.arrivedStops)}</div><div><h3>Heading to</h3>${headingRows(t.headingTo)}</div></div>
-  </div>`;
+  return '<div class="card">' +
+    '<div class="bus-head"><div><h2>&#128652; ' + esc(t.busLabel) + ' <span class="pill ' + st[1] + '">' + esc(st[0]) + '</span></h2></div>' +
+    '<div style="text-align:right"><b>' + esc(w.startLocal) + ' - ' + esc(w.endLocal) + '</b><p>' + esc(TRIP[w.tripStatus] || w.tripStatus) + (w.nextDepartureLocal ? ' &middot; next departure ' + esc(w.nextDepartureLocal) : '') + '</p></div></div>' +
+    hero(t) +
+    '<div class="chips"><div class="chip"><b>' + s.stopsArrived + '</b><span>Stops covered</span></div>' +
+    '<div class="chip"><b>' + s.stopsStoppedAt + '</b><span>Stopped at</span></div>' +
+    '<div class="chip"><b>' + s.stopsRemaining + '</b><span>Stops ahead</span></div>' +
+    '<div class="chip"><b>' + esc(s.totalStanding) + '</b><span>Total standing</span></div></div>' +
+    (t.history.note ? '<div class="note">' + esc(t.history.note) + '</div>' : '') +
+    '<div class="cols"><div><h3>Stops covered</h3>' + reached(t.arrivedStops) + '</div><div><h3>Heading to</h3>' + ahead(t.headingTo) + '</div></div>' +
+    hourly(t.hourlyLocations, t.hourlyDate) + '</div>';
 }
+
 async function load(){
   const q = qs();
   $('json-link').href = '/gov/driverinfo?format=json' + (q ? '&' + q : '');
+  $('text-link').href = '/gov/driverinfo?format=text' + (q ? '&' + q : '');
   try {
     const res = await fetch('/gov/driverinfo?format=json' + (q ? '&' + q : ''), {headers:{'Accept':'application/json'}});
     const j = await res.json();
-    if (!res.ok) { $('out').innerHTML = `<div class="note">${esc(j.error || 'Error')}</div>`; return; }
+    if (!res.ok) { $('out').innerHTML = '<div class="note">' + esc(j.error || 'Error') + '</div>'; return; }
     const sel = $('f-bus'), cur = sel.value;
     if (sel.options.length <= 1) {
       const all = await (await fetch('/gov/driverinfo?format=json', {headers:{'Accept':'application/json'}})).json();
-      all.routes.filter(r => r.tripReport).forEach(r => sel.add(new Option(r.routeName + ' (' + r.tripReport.busId + ')', r.tripReport.busId)));
+      all.routes.filter(r => r.tripReport).forEach(r => sel.add(new Option(r.tripReport.busLabel, r.tripReport.busId)));
       sel.value = cur;
     }
-    const html = j.routes.map(bus).join('');
-    $('out').innerHTML = html || '<div class="card"><div class="empty">No buses found.</div></div>';
+    $('out').innerHTML = j.routes.map(bus).join('') || '<div class="card"><div class="empty">No buses found.</div></div>';
     $('updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
   } catch (e) { $('updated').textContent = 'Update failed'; }
 }
@@ -4904,6 +4979,53 @@ load(); setInterval(load, 15000);
 def _driverinfo_page():
     return (DRIVERINFO_PAGE.replace('__STYLE__', ADMIN_STYLE).replace('__NAV_STYLE__', GOV_NAV_STYLE)
             .replace('__NAV__', gov_nav_html('driverinfo')))
+
+
+def _trip_report_text(routes):
+    """Human-readable version of tripReport (no JSON): stops covered, where it stood, where it is heading."""
+    out = []
+    for r in routes:
+        t = r.get('tripReport')
+        if not t:
+            continue
+        w, s = t['window'], t['summary']
+        out.append(f"BUS: {t['busLabel']}")
+        out.append(f"Window: {w['startLocal']} - {w['endLocal']} (Cayman time), trip {w['tripStatus'].replace('_', ' ')}")
+        out.append(f"Stops covered: {s['stopsArrived']}  |  Actually stopped at: {s['stopsStoppedAt']}  |  "
+                   f"Total standing: {s['totalStanding']}")
+        out.append('')
+        if t['arrivedStops']:
+            out.append('Stops reached:')
+            for a in t['arrivedStops']:
+                if a['status'] == 'at_stop':
+                    what = f"standing here now ({a['dwell']} so far)"
+                elif a['stopped']:
+                    what = f"stood {a['dwell']}, left {a['departedLocal']}"
+                else:
+                    what = 'drove past'
+                out.append(f"  {a['order']}. {a['stopName']} - arrived {a['arrivedLocal']} - {what}")
+        else:
+            out.append('No stops reached in this window.')
+        out.append('')
+        cs, ns = t.get('currentStop'), t.get('nextStop')
+        if cs:
+            out.append(f"NOW: standing at {cs['stopName']} for {cs['standing']}"
+                       + (f" (since {cs['arrivedLocal']})" if cs.get('arrivedLocal') else ''))
+        else:
+            out.append(f"NOW: {t['currentStatus'].replace('_', ' ')} (not at a stop)")
+        if ns:
+            out.append(f"HEADING TO: {ns['stopName']} - {ns.get('eta')}"
+                       + (f" (about {ns['etaLocalTime']})" if ns.get('etaLocalTime') else ''))
+        if t['headingTo'][1:]:
+            out.append('Then: ' + ', '.join(h['stopName'] for h in t['headingTo'][1:]))
+        if t.get('hourlyLocations'):
+            out.append('\nHISTORY - hourly location' + (f" ({t['hourlyDate']})" if t.get('hourlyDate') else ' (today)') + ':')
+            for hl in t['hourlyLocations']:
+                out.append(f"  {hl['hour']}: {hl['where']}" + (f" (seen {hl['seenAt']})" if hl['seenAt'] else ''))
+        if t['history'].get('note'):
+            out.append('Note: ' + t['history']['note'])
+        out.append('\n' + '-' * 60 + '\n')
+    return '\n'.join(out) or 'No buses found.'
 
 
 @app.route('/gov/driverinfo', methods=['GET'])
@@ -4919,13 +5041,22 @@ def gov_driverinfo():
                                        Cayman time, e.g. start=08:30&end=09:30. Default: the hourly trip
                                        the route is on right now (from its timetable).
     """
-    if request.args.get('format') != 'json' and request.accept_mimetypes.best == 'text/html':
+    fmt = (request.args.get('format') or '').lower()
+    wants_json = request.accept_mimetypes['application/json'] > request.accept_mimetypes['text/html']
+    if fmt not in ('json', 'text') and not wants_json:
         return Response(_driverinfo_page(), mimetype='text/html')   # browser -> the page; API clients -> JSON
     now = _utcnow()
     try:
         custom = _requested_window(request.args, now)
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
+
+    hist_day = None
+    if (request.args.get('hdate') or '').strip():
+        try:
+            hist_day = datetime.strptime(request.args['hdate'].strip(), '%Y-%m-%d')
+        except ValueError:
+            return jsonify({'error': 'hdate must be YYYY-MM-DD'}), 400
 
     payload = _build_coordinates_payload()
     try:
@@ -4944,6 +5075,12 @@ def gov_driverinfo():
         if route_f and str(r.get('route') or '').lower() != route_f:
             continue
         r['tripReport'] = _driver_trip_report(r, now, custom)
+        if hist_day is not None and r['tripReport']:
+            bid = r['tripReport']['busId']
+            r['tripReport']['hourlyLocations'] = _hourly_locations(
+                bid, r.get('stops') or [], hist_day - CAYMAN_UTC_OFFSET,
+                min(now, hist_day - CAYMAN_UTC_OFFSET + timedelta(days=1)))
+            r['tripReport']['hourlyDate'] = hist_day.strftime('%Y-%m-%d')
         routes.append(r)
 
     payload['routes'] = routes
@@ -4952,6 +5089,8 @@ def gov_driverinfo():
     payload['liveRoutesCount'] = sum(1 for r in routes if r.get('online'))
     payload['timezone'] = 'Cayman Islands (UTC-5)'
     payload['generatedAt'] = _iso_z(now)
+    if fmt == 'text':
+        return Response(_trip_report_text(routes), mimetype='text/plain; charset=utf-8')
     return jsonify(payload), 200
 
 
