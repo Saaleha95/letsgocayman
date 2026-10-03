@@ -3655,6 +3655,11 @@ AXXON_API_KEY = os.environ.get('AXXON_API_KEY', '99a8800d22cd02476c463ce7c6fd317
 AXXON_BUS_UNITS = {
     'EASTERN LINK \u2013 North Side Cayman Kai': 579187,
     'North Side Cayman Kai': 579187,   # short id the driver app / telemetry used before
+    # East End Loop via Queen's Highway (route 9A) - Axxon unit 579186
+    'EASTERN LINK \u2013 East End Loop via Queen\'s Highway': 579186,
+    'EASTERN LINK \u2013 East End Loop via Queens Highway': 579186,
+    'East End Loop via Queen\'s Highway': 579186,
+    'East End Loop via Queens Highway': 579186,
 }
 AXXON_CACHE_SECONDS = 3   # Axxon is re-polled at most every 3 seconds
 _axxon_cache = {}          # unit_id -> (fetched_at_epoch, unit_dict_or_None)
