@@ -319,6 +319,21 @@ class TripLog(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
+class BusPing(db.Model):
+    """GPS history: one row per new fix of a bus. /gov/driverinfo replays these to work out which
+    stops a bus has reached and how long it stood at each (the live feed alone only knows 'now')."""
+    __table_args__ = (db.UniqueConstraint('bus_id', 'fix_at', name='uq_busping_bus_fix'),)
+    id = db.Column(db.Integer, primary_key=True)
+    bus_id = db.Column(db.String(120), nullable=False, index=True)
+    route_id = db.Column(db.String(40), default='')
+    lat = db.Column(db.Float, nullable=False)
+    lng = db.Column(db.Float, nullable=False)
+    speed_kmh = db.Column(db.Float, nullable=True)
+    movement_state = db.Column(db.String(30), default='')
+    fix_at = db.Column(db.DateTime, nullable=False, index=True)  # time of the GPS fix (naive UTC)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
 def _ensure_schema():
     """Defensive auto-migration: add any model columns that are missing from
     the live database (e.g. a field added to a model but never migrated on
@@ -4142,7 +4157,11 @@ def buses_coordinates():
             'updatedAt': sess.updated_at.isoformat(),
         }), 200
 
-    # ── GET ───────────────────────────────────────────────────────────────
+    return jsonify(_build_coordinates_payload()), 200
+
+
+def _build_coordinates_payload():
+    """Everything GET /api/buses/coordinates returns (also used by /gov/driverinfo)."""
 
     # ── 1. Raspberry Pi live location for CaymanBus (unchanged) ──────────
     pi_session = TrackingSession.query.filter_by(
@@ -4317,13 +4336,489 @@ def buses_coordinates():
         _apply_service_hours(r)
         _add_stop_etas(r)
 
-    return jsonify({
+    return {
         'routes': all_routes,
         'totalRoutes': len(all_routes),
         'totalStops': sum(len(r['stops']) for r in all_routes),
         'liveRoutesCount': sum(1 for r in all_routes if r.get('online')),
         'generatedAt': datetime.utcnow().isoformat() + 'Z',
-    }), 200
+    }
+
+
+# ═══════════════════════════════════════════════════════════
+# GOV: DRIVER / TRIP INFO  →  GET /gov/driverinfo
+# Everything /api/buses/coordinates returns, plus for every bus: the stops it has reached in the
+# current hourly trip (e.g. 8:30-9:30), how long it stood at each, and the stops it is heading to.
+# ═══════════════════════════════════════════════════════════
+from datetime import timezone as _dt_timezone
+from sqlalchemy.exc import IntegrityError as _IntegrityError
+
+STOP_ENTER_KM = 0.10        # within 100 m of a stop = the bus has reached it
+STOP_EXIT_KM = 0.15         # ...and it has only left once it is > 150 m away (stops GPS jitter splitting a visit)
+STOP_MIN_STANDING_S = 30    # inside a stop's radius this long (or reported speed < 5 km/h) = it really stopped
+PASSBY_MAX_GAP_S = 180      # a stop between two fixes is only inferred when the fixes are this close in time...
+PASSBY_MAX_SEGMENT_KM = 1.5  # ...and this close in distance
+DEFAULT_WINDOW_MINUTES = 60
+BUS_SAMPLE_INTERVAL_SECONDS = max(3, int(os.environ.get('BUS_SAMPLE_INTERVAL_SECONDS', '10')))
+BUS_PING_RETENTION_DAYS = int(os.environ.get('BUS_PING_RETENTION_DAYS', '7'))
+
+_bus_sampler_started = False
+_bus_sampler_lock = threading.Lock()
+
+
+def _fix_datetime(value):
+    """ISO timestamp from a tracker / driver app -> naive UTC datetime (None if unparseable)."""
+    if not value:
+        return None
+    try:
+        dt = datetime.fromisoformat(str(value).strip().replace('Z', '+00:00'))
+    except ValueError:
+        return None
+    if dt.tzinfo is not None:
+        dt = dt.astimezone(_dt_timezone.utc).replace(tzinfo=None)
+    return dt
+
+
+def _fmt_duration(seconds):
+    s = max(0, int(round(seconds or 0)))
+    if s < 60:
+        return f'{s} s'
+    m, s = divmod(s, 60)
+    if m < 60:
+        return f'{m} min {s} s' if s else f'{m} min'
+    h, m = divmod(m, 60)
+    return f'{h} hr {m} min' if m else f'{h} hr'
+
+
+def _local_hms(utc_dt):
+    return (utc_dt + CAYMAN_UTC_OFFSET).strftime('%I:%M:%S %p').lstrip('0') if utc_dt else None
+
+
+def _nearest_stop(stops, lat, lng):
+    """(distance_km, index) of the stop closest to (lat, lng), or None."""
+    best = None
+    for i, s in enumerate(stops):
+        d = _hav_km(lat, lng, s['lat'], s['lng'])
+        if best is None or d < best[0]:
+            best = (d, i)
+    return best
+
+
+# ── position history (sampler) ─────────────────────────────
+def _sample_bus_positions(payload=None):
+    """Store one BusPing per bus per NEW gps fix (duplicates are ignored). Returns rows added."""
+    payload = payload or _build_coordinates_payload()
+    now = _utcnow()
+    added = 0
+    for r in payload.get('routes', []):
+        live = r.get('liveLocation') or {}
+        bus_id = _clean_text(r.get('busId') or live.get('busId'), 120)
+        lat, lng = _to_float(live.get('lat')), _to_float(live.get('lng'))
+        if not bus_id or not _valid_latlng(lat, lng) or (lat == 0 and lng == 0):
+            continue
+        fix = _fix_datetime(live.get('updatedAt')) or now.replace(microsecond=0)
+        if fix > now + timedelta(minutes=5):  # tracker clock is wrong
+            fix = now.replace(microsecond=0)
+        if BusPing.query.filter_by(bus_id=bus_id, fix_at=fix).first():
+            continue
+        db.session.add(BusPing(
+            bus_id=bus_id, route_id=_clean_text(r.get('route'), 40), lat=lat, lng=lng,
+            speed_kmh=_to_float(live.get('speedKmh')),
+            movement_state=_clean_text(live.get('movementState'), 30), fix_at=fix))
+        try:
+            db.session.commit()
+            added += 1
+        except _IntegrityError:  # another worker stored the same fix first
+            db.session.rollback()
+    return added
+
+
+def _bus_sampler_loop():
+    import time
+    last_cleanup = 0.0
+    while True:
+        try:
+            with app.app_context():
+                try:
+                    _sample_bus_positions()
+                    if time.time() - last_cleanup > 3600:
+                        cutoff = _utcnow() - timedelta(days=BUS_PING_RETENTION_DAYS)
+                        BusPing.query.filter(BusPing.fix_at < cutoff).delete(synchronize_session=False)
+                        db.session.commit()
+                        last_cleanup = time.time()
+                except Exception:
+                    db.session.rollback()
+                    raise
+        except Exception:
+            app.logger.exception('bus position sampler failed')
+        time.sleep(BUS_SAMPLE_INTERVAL_SECONDS)
+
+
+@app.before_request
+def _start_bus_sampler():
+    """Lazily start the background sampler in whichever process is actually serving requests
+    (safe with gunicorn workers and the debug reloader). Disable with BUS_SAMPLER=0."""
+    global _bus_sampler_started
+    if _bus_sampler_started or app.config.get('TESTING') or os.environ.get('BUS_SAMPLER', '1') == '0':
+        return
+    with _bus_sampler_lock:
+        if not _bus_sampler_started:
+            _bus_sampler_started = True
+            threading.Thread(target=_bus_sampler_loop, name='bus-sampler', daemon=True).start()
+
+
+# ── trip window ────────────────────────────────────────────
+def _requested_window(args, now):
+    """Custom window from ?start=HH:MM[&end=HH:MM][&date=YYYY-MM-DD] (Cayman time) -> (start_utc, end_utc) or None."""
+    start_s = (args.get('start') or '').strip()
+    end_s = (args.get('end') or '').strip()
+    date_s = (args.get('date') or '').strip()
+    if not (start_s or end_s or date_s):
+        return None
+    if not start_s:
+        raise ValueError('start (HH:MM, Cayman time) is required when end or date is given')
+
+    def hhmm(text, name):
+        m = re.fullmatch(r'(\d{1,2}):(\d{2})', text)
+        if not m or int(m.group(1)) > 23 or int(m.group(2)) > 59:
+            raise ValueError(f'{name} must be HH:MM (24-hour, Cayman time), e.g. 08:30')
+        return int(m.group(1)), int(m.group(2))
+
+    if date_s:
+        try:
+            day = datetime.strptime(date_s, '%Y-%m-%d')
+        except ValueError:
+            raise ValueError('date must be YYYY-MM-DD')
+    else:
+        day = (now + CAYMAN_UTC_OFFSET).replace(hour=0, minute=0, second=0, microsecond=0)
+    sh, sm = hhmm(start_s, 'start')
+    start_local = day + timedelta(hours=sh, minutes=sm)
+    if end_s:
+        eh, em = hhmm(end_s, 'end')
+        end_local = day + timedelta(hours=eh, minutes=em)
+    else:
+        end_local = start_local + timedelta(minutes=DEFAULT_WINDOW_MINUTES)
+    if end_local <= start_local:
+        raise ValueError('end must be after start')
+    return start_local - CAYMAN_UTC_OFFSET, end_local - CAYMAN_UTC_OFFSET
+
+
+def _current_trip_window(route_id, now):
+    """(start_utc, end_utc, source) of the hourly trip the route is on right now, from ROUTE_SCHEDULES
+    (e.g. departs 08:30 -> window 08:30-09:30). Routes without a timetable get the last 60 minutes."""
+    sched = ROUTE_SCHEDULES.get(route_id)
+    if not sched:
+        return now - timedelta(minutes=DEFAULT_WINDOW_MINUTES), now, 'last_60_minutes'
+    local = now + CAYMAN_UTC_OFFSET
+    day = local.replace(hour=0, minute=0, second=0, microsecond=0)
+    step = timedelta(minutes=sched['interval_min'])
+    first = day + timedelta(hours=sched['first'][0], minutes=sched['first'][1])
+    last = day + timedelta(hours=sched['last'][0], minutes=sched['last'][1])
+    if local < first:
+        dep = first                                   # today's first trip has not started yet
+    else:
+        dep = min(first + int((local - first) // step) * step, last)
+    return dep - CAYMAN_UTC_OFFSET, dep + step - CAYMAN_UTC_OFFSET, 'current_trip'
+
+
+# ── stop visits from the position history ──────────────────
+def _build_stop_visits(pings, stops):
+    """pings: time-ordered [(t, lat, lng, speed_kmh)]. Returns the visits to route stops, oldest first:
+    {'idx','arrived','last','departed','open','slow','passby'}."""
+    if not stops:
+        return []
+    visits, cur, prev = [], None, None
+
+    def finish(v, closing):
+        # Trackers report rarely while parked, so the departure is best estimated as the first fix after
+        # the stop minus the time the bus needed to drive from the stop to that fix.
+        v['open'] = False
+        v['departed'] = v['last']
+        if closing is not None and (closing[0] - v['last']).total_seconds() <= 900:
+            s = stops[v['idx']]
+            km = _hav_km(closing[1], closing[2], s['lat'], s['lng'])
+            drive_s = km / max(closing[3] or 0.0, 15.0) * 3600.0
+            v['departed'] = max(v['last'], closing[0] - timedelta(seconds=drive_s))
+
+    for p in pings:
+        t, lat, lng, spd = p
+        slow = spd is not None and spd < MOVING_SPEED_KMH
+        idx = None
+        if cur is not None:
+            s = stops[cur['idx']]
+            if _hav_km(lat, lng, s['lat'], s['lng']) <= STOP_EXIT_KM:
+                idx = cur['idx']
+        if idx is None:
+            near = _nearest_stop(stops, lat, lng)
+            if near and near[0] <= STOP_ENTER_KM:
+                idx = near[1]
+
+        # a stop the bus drove past BETWEEN two fixes (no fix inside its radius)
+        if prev is not None:
+            gap = (t - prev[0]).total_seconds()
+            if 0 < gap <= PASSBY_MAX_GAP_S and _hav_km(prev[1], prev[2], lat, lng) <= PASSBY_MAX_SEGMENT_KM:
+                for i, s in enumerate(stops):
+                    if i == idx or (cur is not None and i == cur['idx']):
+                        continue
+                    frac, d = _project_to_segment_km((s['lat'], s['lng']), (prev[1], prev[2]), (lat, lng))
+                    if d <= STOP_ENTER_KM:
+                        when = prev[0] + timedelta(seconds=gap * frac)
+                        visits.append({'idx': i, 'arrived': when, 'last': when, 'departed': when,
+                                       'open': False, 'slow': False, 'passby': True})
+
+        if idx is not None and cur is not None and cur['idx'] == idx:
+            cur['last'] = t
+            cur['slow'] = cur['slow'] or slow
+        else:
+            if cur is not None:
+                finish(cur, p)
+                visits.append(cur)
+                cur = None
+            if idx is not None:
+                cur = {'idx': idx, 'arrived': t, 'last': t, 'departed': None,
+                       'open': True, 'slow': slow, 'passby': False}
+        prev = p
+    if cur is not None:
+        visits.append(cur)  # still open: the caller decides whether the bus is still there
+    visits.sort(key=lambda v: v['arrived'])
+
+    # a stop that is only 'passed' twice because two stops sit close together -> keep one
+    keep = []
+    for v in visits:
+        if v['passby'] and any(o is not v and o['idx'] == v['idx']
+                               and o['arrived'] - timedelta(seconds=120) <= v['arrived']
+                               <= (o['departed'] or o['last']) + timedelta(seconds=120) for o in keep):
+            continue
+        keep.append(v)
+    return keep
+
+
+def _stop_ref(st):
+    return {'stopId': st.get('id'), 'stopName': st.get('name'), 'lat': st.get('lat'), 'lng': st.get('lng')}
+
+
+def _driver_trip_report(route, now, custom_window):
+    """The per-bus trip analysis that /gov/driverinfo adds to each route of the coordinates payload."""
+    live = route.get('liveLocation') or {}
+    bus_id = route.get('busId') or live.get('busId')
+    if not bus_id:
+        return None
+    stops = route.get('stops') or []
+    if custom_window:
+        w_start, w_end = custom_window
+        source = 'custom'
+    else:
+        w_start, w_end, source = _current_trip_window(route.get('route'), now)
+    eff_end = min(w_end, now)
+    trip_status = 'not_started' if now < w_start else ('in_progress' if now <= w_end else 'completed')
+
+    blat, blng = _to_float(live.get('lat')), _to_float(live.get('lng'))
+    live_ok = _valid_latlng(blat, blng)
+    speed = _to_float(live.get('speedKmh'))
+    moving = speed is not None and speed >= MOVING_SPEED_KMH
+    standing_state = str(live.get('movementState') or '').lower() == 'standing'
+    state_dur = _to_float(live.get('stateDurationSec')) if standing_state else None
+
+    # ── history in the window ───────────────────────────────
+    rows = []
+    if trip_status != 'not_started':
+        rows = (BusPing.query.filter(BusPing.bus_id == bus_id, BusPing.fix_at >= w_start, BusPing.fix_at <= eff_end)
+                .order_by(BusPing.fix_at.asc(), BusPing.id.asc()).all())
+    visits = _build_stop_visits([(r.fix_at, r.lat, r.lng, r.speed_kmh) for r in rows], stops)
+
+    # ── is the bus at a stop right now? ─────────────────────
+    cur_idx = None
+    open_v = visits[-1] if visits and visits[-1]['open'] else None
+    if live_ok and stops:
+        if open_v and _hav_km(blat, blng, stops[open_v['idx']]['lat'], stops[open_v['idx']]['lng']) <= STOP_EXIT_KM:
+            cur_idx = open_v['idx']
+        else:
+            near = _nearest_stop(stops, blat, blng)
+            if near and near[0] <= STOP_ENTER_KM:
+                cur_idx = near[1]
+    if open_v and open_v['idx'] != cur_idx:       # the bus has left the stop it was last seen at
+        open_v['open'] = False
+        open_v['departed'] = open_v['last']
+        open_v = None
+
+    # the tracker knows how long it has been standing (can be longer than our history)
+    started = (now - timedelta(seconds=state_dur)) if state_dur else None
+    if cur_idx is not None and trip_status == 'in_progress':   # 'now' must fall inside the window
+        if open_v is None:      # parked here since before our history in this window began
+            arrived = started or min(_fix_datetime(live.get('updatedAt')) or now, now)
+            open_v = {'idx': cur_idx, 'arrived': max(arrived, w_start), 'last': now, 'departed': None,
+                      'open': True, 'slow': bool(standing_state or not moving), 'passby': False}
+            visits.append(open_v)
+        elif started and started < open_v['arrived']:
+            open_v['arrived'] = max(started, w_start)
+        if started and started < w_start:
+            open_v['beforeWindow'] = True
+
+    arrived_out, total_standing = [], 0.0
+    for n, v in enumerate(visits, 1):
+        end = eff_end if v['open'] else min(v['departed'] or v['last'], eff_end)
+        dwell = max(0.0, (end - v['arrived']).total_seconds())
+        stopped = (not v['passby']) and (v['slow'] or dwell >= STOP_MIN_STANDING_S)
+        if stopped:
+            total_standing += dwell
+        st = stops[v['idx']]
+        item = {
+            'order': n, **_stop_ref(st),
+            'arrivedAt': _iso_z(v['arrived']), 'arrivedLocal': _local_hms(v['arrived']),
+            'departedAt': None if v['open'] else _iso_z(v['departed']),
+            'departedLocal': None if v['open'] else _local_hms(v['departed']),
+            'dwellSeconds': int(round(dwell)), 'dwell': _fmt_duration(dwell),
+            'stopped': stopped, 'status': 'at_stop' if v['open'] else 'departed',
+        }
+        if v.get('beforeWindow'):
+            item['arrivedBeforeWindow'] = True
+        arrived_out.append(item)
+
+    current_stop = None
+    if cur_idx is not None:
+        cs = stops[cur_idx]
+        ov = next((a for a in arrived_out if a['status'] == 'at_stop'), None)
+        sec = ov['dwellSeconds'] if ov else int(state_dur or 0)
+        current_stop = {**_stop_ref(cs), 'standingSeconds': sec, 'standing': _fmt_duration(sec),
+                        'arrivedAt': ov['arrivedAt'] if ov else (_iso_z(started) if started else None),
+                        'arrivedLocal': ov['arrivedLocal'] if ov else (_local_hms(started) if started else None)}
+
+    # ── stops it is heading to ──────────────────────────────
+    sched = ROUTE_SCHEDULES.get(route.get('route'))
+    n_loop = (sched or {}).get('ordered_stops') or len(stops)
+    pos_idx = cur_idx if cur_idx is not None else (visits[-1]['idx'] if visits else None)
+    heading_to = []
+
+    def eta_fields(s):
+        return {'distanceKm': s.get('distanceKm'), 'eta': s.get('eta'), 'etaSeconds': s.get('etaSeconds'),
+                'etaMinutes': s.get('etaMinutes'), 'etaLocalTime': s.get('etaLocalTime'),
+                'etaMode': s.get('etaMode'), 'etaMethod': s.get('etaMethod')}
+
+    if sched and sched.get('loop') and pos_idx is not None and pos_idx < n_loop and n_loop >= 2 and live_ok:
+        # Looping route: the stops AFTER the bus's position, in driving order, ending back at stop 1.
+        # The rider ETA engine calls a bus that has stood >= 5 min 'parked' and quotes the next timetable
+        # departure; for a bus that is part-way round its trip we keep going from the history instead.
+        order = list(range(pos_idx + 1, n_loop)) + ([] if cur_idx == 0 else [0])
+        parked_at_start = cur_idx == 0                      # waiting at stop 1: timetable ETAs are right
+        typical = _typical_speed_kmh(bus_id)
+        prev_pt = (stops[cur_idx]['lat'], stops[cur_idx]['lng']) if cur_idx is not None else (blat, blng)
+        cum = 0.0
+        for k, i in enumerate(order):
+            st = stops[i]
+            cum += _hav_km(prev_pt[0], prev_pt[1], st['lat'], st['lng']) * ROUTE_ROAD_FACTOR
+            prev_pt = (st['lat'], st['lng'])
+            if st.get('etaSeconds') is not None and (st.get('etaMode') == 'live' or parked_at_start):
+                f = eta_fields(st)
+            else:                                           # estimate: road km at the bus's usual speed + dwell
+                secs = int(round(cum / typical * 3600.0 + STOP_DWELL_SECONDS * k))
+                f = {'distanceKm': round(cum, 2), 'eta': _format_eta(secs), 'etaSeconds': secs,
+                     'etaMinutes': int(round(secs / 60.0)),
+                     'etaLocalTime': _local_clock(now + timedelta(seconds=secs)),
+                     'etaMode': 'estimated', 'etaMethod': 'route'}
+            heading_to.append({'order': k + 1, **_stop_ref(st), **f})
+    else:
+        # Any other route: the rider ETA engine's view (nearest first), without the off-loop extras.
+        ahead = [s for s in stops if s.get('etaSeconds') is not None]
+        if any(s.get('etaMethod') in ('route', 'schedule') for s in ahead):
+            ahead = [s for s in ahead if s.get('etaMethod') in ('route', 'schedule')]
+        cur_id = stops[cur_idx].get('id') if cur_idx is not None else None
+        ahead = [s for s in ahead if s.get('id') != cur_id]
+        ahead.sort(key=lambda s: (s.get('etaMode') != 'live', s['etaSeconds']))
+        heading_to = [{'order': i, **_stop_ref(s), **eta_fields(s)} for i, s in enumerate(ahead, 1)]
+
+    if not live_ok:
+        status = 'no_data'
+    elif not route.get('online'):
+        status = 'offline'
+    elif current_stop and not moving:
+        status = 'standing_at_stop'
+    elif current_stop:
+        status = 'passing_stop'
+    else:
+        status = 'moving' if moving else 'standing'
+
+    first_ping = rows[0].fix_at if rows else None
+    complete = trip_status == 'not_started' or (
+        first_ping is not None and (first_ping - w_start).total_seconds() <= 180)
+    history = {'fixes': len(rows), 'firstFixAt': _iso_z(first_ping),
+               'lastFixAt': _iso_z(rows[-1].fix_at) if rows else None, 'complete': complete}
+    if not complete:
+        history['note'] = (
+            f'Position history for this window only starts at {_local_hms(first_ping)} Cayman time, '
+            'so earlier stops cannot be reconstructed.' if first_ping else
+            'No position history was recorded for this window, so the stops cannot be reconstructed.')
+
+    window = {'source': source, 'tripStatus': trip_status,
+              'startUtc': _iso_z(w_start), 'endUtc': _iso_z(w_end),
+              'startLocal': _local_hms(w_start), 'endLocal': _local_hms(w_end)}
+    if sched and source == 'current_trip':
+        nxt = _next_departure(now, sched)
+        if nxt:
+            window['nextDepartureUtc'] = _iso_z(nxt)
+            window['nextDepartureLocal'] = _local_hms(nxt)
+
+    return {
+        'busId': bus_id, 'driverName': route.get('driverName'),
+        'currentStatus': status, 'window': window,
+        'currentStop': current_stop, 'nextStop': heading_to[0] if heading_to else None,
+        'summary': {
+            'stopsArrived': len(arrived_out),
+            'stopsStoppedAt': sum(1 for a in arrived_out if a['stopped']),
+            'uniqueStopsArrived': len({a['stopId'] for a in arrived_out}),
+            'stopsRemaining': len(heading_to),
+            'totalStops': len(stops),
+            'totalStandingSeconds': int(round(total_standing)),
+            'totalStanding': _fmt_duration(total_standing),
+        },
+        'arrivedStops': arrived_out,
+        'headingTo': heading_to,
+        'history': history,
+    }
+
+
+@app.route('/gov/driverinfo', methods=['GET'])
+@require_gov
+def gov_driverinfo():
+    """Gov-only. Same payload as GET /api/buses/coordinates, plus `tripReport` on every route that has a bus.
+
+    Optional query params
+      busId=<id> | routeId=<id>        limit to one bus / route
+      start=HH:MM [&end=HH:MM] [&date=YYYY-MM-DD]
+                                       Cayman time, e.g. start=08:30&end=09:30. Default: the hourly trip
+                                       the route is on right now (from its timetable).
+    """
+    now = _utcnow()
+    try:
+        custom = _requested_window(request.args, now)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+
+    payload = _build_coordinates_payload()
+    try:
+        _sample_bus_positions(payload)  # make sure the very latest fix is in the history
+    except Exception:
+        db.session.rollback()
+        app.logger.exception('could not store bus fix for /gov/driverinfo')
+
+    bus_f = (request.args.get('busId') or '').strip().lower()
+    route_f = (request.args.get('routeId') or '').strip().lower()
+    routes = []
+    for r in payload['routes']:
+        live = r.get('liveLocation') or {}
+        if bus_f and str(r.get('busId') or live.get('busId') or '').lower() != bus_f:
+            continue
+        if route_f and str(r.get('route') or '').lower() != route_f:
+            continue
+        r['tripReport'] = _driver_trip_report(r, now, custom)
+        routes.append(r)
+
+    payload['routes'] = routes
+    payload['totalRoutes'] = len(routes)
+    payload['totalStops'] = sum(len(r['stops']) for r in routes)
+    payload['liveRoutesCount'] = sum(1 for r in routes if r.get('online'))
+    payload['timezone'] = 'Cayman Islands (UTC-5)'
+    payload['generatedAt'] = _iso_z(now)
+    return jsonify(payload), 200
 
 
 @app.route('/support')
