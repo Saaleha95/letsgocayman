@@ -3674,6 +3674,22 @@ def _norm_bus_id(value):
 
 _AXXON_UNITS_NORM = {_norm_bus_id(k): (k, v) for k, v in AXXON_BUS_UNITS.items()}
 
+# Trackers whose bus is reported OFFLINE (online=false) while it is parked ("standing").
+# Hino bus = Axxon unit 579186. It only goes offline after standing this many seconds, so a
+# normal pause at a stop or traffic light does not flip it; set OFFLINE_STANDING_SECONDS=0 for "any standing".
+OFFLINE_WHEN_STANDING_UNITS = {579186}
+OFFLINE_STANDING_SECONDS = int(os.environ.get('OFFLINE_STANDING_SECONDS', '300'))
+
+
+def _offline_because_standing(bus_id, live):
+    """True when this bus is configured to count as offline while standing, and it is standing."""
+    match = _AXXON_UNITS_NORM.get(_norm_bus_id(bus_id))
+    if not match or match[1] not in OFFLINE_WHEN_STANDING_UNITS or not live:
+        return False
+    if str(live.get('movementState') or '').lower() != 'standing':
+        return False
+    return (_to_float(live.get('stateDurationSec')) or 0.0) >= OFFLINE_STANDING_SECONDS
+
 
 def _fetch_axxon_unit(unit_id):
     """Return the Axxon unit dict for unit_id (cached a few seconds), or None on any failure."""
@@ -3793,6 +3809,9 @@ def _axxon_live_location(bus_id):
         'speedKmh': speed,
         'movementState': mstate.get('name'),
         'stateDurationSec': mstate.get('duration'),
+        'label': (unit.get('label') or '').strip() or None,        # e.g. "Toyota Hiace", "HINO"
+        'plate': (unit.get('number') or unit.get('car_reg_certificate') or '').strip() or None,
+        'shortcut': (unit.get('shortcut') or '').strip() or None,  # e.g. "Wheelchair Bus 8"
         'updatedAt': unit.get('last_update') or datetime.utcnow().isoformat(),
     }
 
@@ -3807,7 +3826,7 @@ def _apply_axxon_override(route_data):
         live['heading'] = prev.get('heading')
     live['busId'] = route_data.get('busId') or live['busId']
     route_data['liveLocation'] = live
-    route_data['online'] = True
+    route_data['online'] = not _offline_because_standing(route_data.get('busId'), live)
 
 
 # ── STOP ETA SETTINGS ─────────────────────────────────────────────────────
@@ -4635,10 +4654,10 @@ def _stop_ref(st):
 
 
 def _bus_label(route, bus_id):
-    """Short human label for a bus: the tracker/bus name plus its route, e.g. 'CB-12 · North Side/Cayman Kai'."""
-    name = str(bus_id or '').strip()
-    rname = str(route.get('routeName') or route.get('route') or '').strip()
-    return f'{name} · {rname}' if name and rname else (name or rname or 'Bus')
+    """The bus's label: the GPS tracker's own label (e.g. 'Toyota Hiace', 'HINO'); falls back to the
+    bus id when the bus has no tracker label."""
+    live = route.get('liveLocation') or {}
+    return (live.get('label') or str(bus_id or '').strip() or str(route.get('routeName') or '').strip() or 'Bus')
 
 
 def _driver_trip_report(route, now, custom_window):
@@ -4802,7 +4821,8 @@ def _driver_trip_report(route, now, custom_window):
             window['nextDepartureLocal'] = _local_hms(nxt)
 
     return {
-        'busId': bus_id, 'busLabel': _bus_label(route, bus_id),
+        'busId': bus_id, 'busLabel': _bus_label(route, bus_id), 'busPlate': live.get('plate'),
+        'routeName': route.get('routeName'),
         'currentStatus': status, 'window': window,
         'currentStop': current_stop, 'nextStop': heading_to[0] if heading_to else None,
         'summary': {
@@ -4945,7 +4965,7 @@ function bus(r){
   const t = r.tripReport; if (!t) return '';
   const w = t.window, s = t.summary, st = STATUS[t.currentStatus] || [t.currentStatus, 'mute'];
   return '<div class="card">' +
-    '<div class="bus-head"><div><h2>&#128652; ' + esc(t.busLabel) + ' <span class="pill ' + st[1] + '">' + esc(st[0]) + '</span></h2></div>' +
+    '<div class="bus-head"><div><h2>&#128652; ' + esc(t.busLabel) + ' <span class="pill ' + st[1] + '">' + esc(st[0]) + '</span></h2><p>' + esc(t.routeName || '') + (t.busPlate ? ' &middot; Plate ' + esc(t.busPlate) : '') + '</p></div>' +
     '<div style="text-align:right"><b>' + esc(w.startLocal) + ' - ' + esc(w.endLocal) + '</b><p>' + esc(TRIP[w.tripStatus] || w.tripStatus) + (w.nextDepartureLocal ? ' &middot; next departure ' + esc(w.nextDepartureLocal) : '') + '</p></div></div>' +
     hero(t) +
     '<div class="chips"><div class="chip"><b>' + s.stopsArrived + '</b><span>Stops covered</span></div>' +
@@ -4968,7 +4988,7 @@ async function load(){
     const sel = $('f-bus'), cur = sel.value;
     if (sel.options.length <= 1) {
       const all = await (await fetch('/gov/driverinfo?format=json', {headers:{'Accept':'application/json'}})).json();
-      all.routes.filter(r => r.tripReport).forEach(r => sel.add(new Option(r.tripReport.busLabel, r.tripReport.busId)));
+      all.routes.filter(r => r.tripReport).forEach(r => sel.add(new Option(r.tripReport.busLabel + (r.tripReport.routeName ? ' - ' + r.tripReport.routeName : ''), r.tripReport.busId)));
       sel.value = cur;
     }
     $('out').innerHTML = j.routes.map(bus).join('') || '<div class="card"><div class="empty">No buses found.</div></div>';
@@ -4994,7 +5014,8 @@ def _trip_report_text(routes):
         if not t:
             continue
         w, s = t['window'], t['summary']
-        out.append(f"BUS: {t['busLabel']}")
+        out.append(f"BUS: {t['busLabel']}" + (f" ({t['busPlate']})" if t.get('busPlate') else '')
+                   + (f" | Route: {t['routeName']}" if t.get('routeName') else ''))
         out.append(f"Window: {w['startLocal']} - {w['endLocal']} (Cayman time), trip {w['tripStatus'].replace('_', ' ')}")
         out.append(f"Stops covered: {s['stopsArrived']}  |  Actually stopped at: {s['stopsStoppedAt']}  |  "
                    f"Total standing: {s['totalStanding']}")
@@ -8025,7 +8046,7 @@ def _build_axxon_bus_state(bus_id, route_id, live):
         'routeId': rid,
         'routeName': info.get('routeName') or '',
         'color': info.get('color') or '#F5C518',
-        'online': _in_service_hours(rid, now),
+        'online': _in_service_hours(rid, now) and not _offline_because_standing(bus_id, live),
         'stale': False,            # a parked tracker legitimately reports rarely
         'ageSeconds': age,
         'updatedAt': live.get('updatedAt'),
